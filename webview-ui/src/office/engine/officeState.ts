@@ -75,6 +75,8 @@ export class OfficeState {
   set selectedAgentId(id: number | null) {
     if (this._selectedAgentId === id) return;
     this._selectedAgentId = id;
+    const ch = id === null ? undefined : this.characters.get(id);
+    this._selectedPeer = ch?.peerId ?? ch?.avatarOf ?? null;
     requestRender('selection');
     for (const listener of this.selectionListeners) listener(id);
   }
@@ -84,6 +86,17 @@ export class OfficeState {
   subscribeSelection(listener: (id: number | null) => void): () => void {
     this.selectionListeners.add(listener);
     return () => this.selectionListeners.delete(listener);
+  }
+  private _selectedPeer: string | null = null;
+  /** PC whose characters (avatar + agents) all get the selection outline; follows a clicked
+   *  agent, or set alone by clicking an avatar. */
+  get selectedPeer(): string | null {
+    return this._selectedPeer;
+  }
+  set selectedPeer(peerId: string | null) {
+    if (this._selectedPeer === peerId) return;
+    this._selectedPeer = peerId;
+    requestRender('selection');
   }
   cameraFollowId: number | null = null;
   hoveredAgentId: number | null = null;
@@ -1544,11 +1557,12 @@ export class OfficeState {
   /** Get character at pixel position (for hit testing). Returns id or null.
    *  Agents only: clicks pass straight through the consent greeter, which is
    *  a prop, not something to select or follow. */
-  getCharacterAt(worldX: number, worldY: number): number | null {
+  /** `avatars` = hit-test only avatars (people) instead of agents. */
+  getCharacterAt(worldX: number, worldY: number, avatars = false): number | null {
     const chars = Array.from(this.characters.values()).sort((a, b) => b.y - a.y);
     for (const ch of chars) {
       // Skip characters that are despawning, and avatars (people, not agents)
-      if (ch.matrixEffect === 'despawn' || ch.avatarOf !== undefined) continue;
+      if (ch.matrixEffect === 'despawn' || (ch.avatarOf !== undefined) !== avatars) continue;
       // Sprites are anchored bottom-center; apply the sitting offset to match
       // the visual position. Pets are wider sideways and a bit shorter.
       const sittingOffset = ch.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0;

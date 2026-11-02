@@ -451,6 +451,8 @@ export function renderScene(
   hoveredAgentId: number | null,
   /** The first `wallCount` items are walls, already themed; the rest get the furniture theme. */
   wallCount = 0,
+  /** Every character of this PC (avatar + agents) gets the selected outline. */
+  selectedPeer: string | null = null,
 ): void {
   const drawables: ZDrawable[] = [];
   const theme = getTheme();
@@ -539,7 +541,9 @@ export function renderScene(
     }
 
     // White outline: full opacity for selected, 50% for hover
-    const isSelected = selectedAgentId !== null && ch.id === selectedAgentId;
+    const isSelected =
+      (selectedAgentId !== null && ch.id === selectedAgentId) ||
+      (selectedPeer !== null && (ch.peerId ?? ch.avatarOf) === selectedPeer);
     const isHovered = hoveredAgentId !== null && ch.id === hoveredAgentId;
     if (isSelected || isHovered) {
       const outlineAlpha = isSelected ? SELECTED_OUTLINE_ALPHA : HOVERED_OUTLINE_ALPHA;
@@ -857,6 +861,7 @@ export interface EditorRenderState {
 
 export interface SelectionRenderState {
   selectedAgentId: number | null;
+  selectedPeer?: string | null;
   hoveredAgentId: number | null;
   hoveredTile: { col: number; row: number } | null;
   seats: Map<string, Seat>;
@@ -961,6 +966,7 @@ export function renderFrame(
     selectedId,
     hoveredId,
     wallInstances.length,
+    selection?.selectedPeer ?? null,
   );
 
   // Editor overlays

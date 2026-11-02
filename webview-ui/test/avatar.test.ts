@@ -104,9 +104,22 @@ describe('my avatar: arrow keys', () => {
     expect(moves).toEqual([[3, 0, 'right']]);
   });
 
-  it('avatars are not hit-testable (clicks pass to agents/floor)', () => {
+  it('agent hit-tests skip avatars; the avatar hit-test finds them', () => {
     const { os, ch } = mine();
     expect(os.getCharacterAt(ch.x, ch.y - 4)).toBeNull();
+    expect(os.getCharacterAt(ch.x, ch.y - 4, true)).toBe(ch.id);
+  });
+
+  it('selecting an agent selects its PC (every character of it is outlined)', () => {
+    const { os, ch } = mine();
+    os.addAgent(99, 0, 0);
+    os.characters.get(99)!.peerId = 'me';
+    os.selectedAgentId = 99;
+    expect(os.selectedPeer).toBe('me');
+    os.selectedAgentId = null;
+    expect(os.selectedPeer).toBeNull();
+    os.selectedPeer = ch.avatarOf!;
+    expect(os.selectedPeer).toBe('me');
   });
 
   it('arrow keys map to facings; other keys do not', () => {

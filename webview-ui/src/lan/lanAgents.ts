@@ -284,6 +284,8 @@ export class LanAgents {
         os.cancelMerge(id); // homeArea is unset: re-homed below
       }
       this.restyle(id, look);
+      const shownCh = os.characters.get(id);
+      if (shownCh) shownCh.peerId = a.peer.id;
       if (a.permission) os.showPermissionBubble(id);
       else os.clearPermissionBubble(id);
     }

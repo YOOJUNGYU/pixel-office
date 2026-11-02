@@ -264,8 +264,10 @@ export interface Character {
   talkWith?: number;
 
   // -- Avatars --
-  /** A person's avatar (their peerId), not an agent: never seated, never hit-tested. */
+  /** A person's avatar (their peerId), not an agent: never seated, skipped by the agent hit-test. */
   avatarOf?: string;
+  /** PC (peerId) an agent character belongs to; avatars use `avatarOf`. */
+  peerId?: string;
   /** Facing to take when the current walk ends (remote avatars). */
   restDir?: Direction;
 

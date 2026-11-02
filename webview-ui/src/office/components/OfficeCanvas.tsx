@@ -225,6 +225,7 @@ export function OfficeCanvas({
         // Build selection render state
         const selectionRender: SelectionRenderState = {
           selectedAgentId: officeState.selectedAgentId,
+          selectedPeer: officeState.selectedPeer,
           hoveredAgentId: officeState.hoveredAgentId,
           hoveredTile: officeState.hoveredTile,
           seats: officeState.seats,
@@ -437,7 +438,10 @@ export function OfficeCanvas({
 
       const pos = screenToWorld(e.clientX, e.clientY);
       if (!pos) return;
-      const hitId = officeState.getCharacterAt(pos.worldX, pos.worldY);
+      // Agents first, then avatars (clickable: they select their person's characters).
+      const hitId =
+        officeState.getCharacterAt(pos.worldX, pos.worldY) ??
+        officeState.getCharacterAt(pos.worldX, pos.worldY, true);
       const tile = screenToTile(e.clientX, e.clientY);
       officeState.hoveredTile = tile;
       const canvas = canvasRef.current;
@@ -646,6 +650,18 @@ export function OfficeCanvas({
       if (!pos) return;
 
       const hitId = officeState.getCharacterAt(pos.worldX, pos.worldY);
+      if (hitId === null) {
+        // An avatar: outline all of that person's characters (click again = off).
+        const avatarId = officeState.getCharacterAt(pos.worldX, pos.worldY, true);
+        const peer = avatarId === null ? undefined : officeState.characters.get(avatarId)?.avatarOf;
+        if (peer !== undefined) {
+          const again = officeState.selectedPeer === peer && officeState.selectedAgentId === null;
+          officeState.selectedAgentId = null;
+          officeState.cameraFollowId = null;
+          officeState.selectedPeer = again ? null : peer;
+          return;
+        }
+      }
       if (hitId !== null) {
         // Dismiss any active bubble on click
         officeState.dismissBubble(hitId);
@@ -705,6 +721,7 @@ export function OfficeCanvas({
         officeState.selectedAgentId = null;
         officeState.cameraFollowId = null;
       }
+      officeState.selectedPeer = null;
     },
     [officeState, onClick, screenToWorld, screenToTile, tapSelectsFirst],
   );
