@@ -16,7 +16,7 @@ import {
   writeReopenMarker,
 } from '../../src/lan/updater.js';
 
-const DL = 'https://github.com/YOOJUNGYU/pixel-office-lan/releases/download/v0.2.0/';
+const DL = 'https://github.com/YOOJUNGYU/pixel-office/releases/download/v0.2.0/';
 const ASSETS = [
   {
     name: 'PixelOffice-0.2.0-Windows.exe',
@@ -31,7 +31,7 @@ const ASSETS = [
 ];
 const RELEASE = {
   tag_name: 'v0.2.0',
-  html_url: 'https://github.com/YOOJUNGYU/pixel-office-lan/releases/tag/v0.2.0',
+  html_url: 'https://github.com/YOOJUNGYU/pixel-office/releases/tag/v0.2.0',
   draft: false,
   assets: ASSETS,
 };
@@ -62,29 +62,20 @@ describe('isNewer', () => {
 });
 
 describe('repoUrl', () => {
-  const P = '/YOOJUNGYU/pixel-office-lan/releases/';
+  const P = '/YOOJUNGYU/pixel-office/releases/';
   it('accepts this repo only, after normalizing', () => {
     expect(repoUrl(RELEASE.html_url, P)).toBe(RELEASE.html_url);
     expect(repoUrl(`${RELEASE.html_url}/../../../../evil/repo/releases/x`, P)).toBeNull();
     expect(
-      repoUrl('https://github.com/YOOJUNGYU/pixel-office-lan/releases/%2e%2e/%2e%2e/x', P),
+      repoUrl('https://github.com/YOOJUNGYU/pixel-office/releases/%2e%2e/%2e%2e/x', P),
     ).toBeNull();
     expect(repoUrl('not a url', P)).toBeNull();
-  });
-
-  it('after the repo rename (pixel-office) the new URLs are accepted too', async () => {
-    const renamed = {
-      ...RELEASE,
-      html_url: 'https://github.com/YOOJUNGYU/pixel-office/releases/tag/v0.2.0',
-    };
-    const info = await checkForUpdate('0.1.0', json(renamed), 'win32');
-    expect(info?.notesUrl).toBe(renamed.html_url);
   });
 
   it('a notes URL outside the repo falls back to the releases page', async () => {
     const evil = { ...RELEASE, html_url: `${RELEASE.html_url}/../../../../evil/x/releases/y` };
     const info = await checkForUpdate('0.1.0', json(evil), 'win32');
-    expect(info?.notesUrl).toBe('https://github.com/YOOJUNGYU/pixel-office-lan/releases');
+    expect(info?.notesUrl).toBe('https://github.com/YOOJUNGYU/pixel-office/releases');
   });
 });
 
@@ -165,12 +156,12 @@ describe('downloadAndRun', () => {
     for (const assetUrl of [
       'https://evil.example/PixelOffice-0.2.0-Windows.exe',
       'https://github.com/someone/else/releases/download/v1/x.exe',
-      'http://github.com/YOOJUNGYU/pixel-office-lan/releases/download/v0.2.0/x.exe',
+      'http://github.com/YOOJUNGYU/pixel-office/releases/download/v0.2.0/x.exe',
       `${DL}../../../../evil/repo/releases/download/v1/PixelOffice-1-Windows.exe`,
       `${DL}%2e%2e/%2e%2e/%2e%2e/%2e%2e/evil/repo/releases/download/v1/PixelOffice-1-Windows.exe`,
       `${DL}%2E%2E/x.exe`,
-      'https://github.com.evil.example/YOOJUNGYU/pixel-office-lan/releases/download/v1/x.exe',
-      'https://github.com/YOOJUNGYU/pixel-office-x/releases/download/v1/x.exe',
+      'https://github.com.evil.example/YOOJUNGYU/pixel-office/releases/download/v1/x.exe',
+      'https://github.com/YOOJUNGYU/pixel-office-lan/releases/download/v1/x.exe',
       'https://github.com/YOOJUNGYU/pixel-office/../evil/releases/download/v1/x.exe',
     ]) {
       await expect(downloadAndRun({ ...info, assetUrl }, tmp(), { launch })).rejects.toThrow();
@@ -202,19 +193,6 @@ describe('downloadAndRun', () => {
     const file = path.join(dir, info.assetName);
     expect(fs.readFileSync(file, 'utf8')).toBe('12345');
     expect(launch).toHaveBeenCalledWith(file);
-  });
-
-  it('downloads from the renamed repo (pixel-office) as well', async () => {
-    const assetUrl = info.assetUrl.replace('/pixel-office-lan/', '/pixel-office/');
-    const launch = vi.fn();
-    const urls: string[] = [];
-    const fetchFn = (async (url: string) => {
-      urls.push(url);
-      return new Response('12345');
-    }) as unknown as typeof fetch;
-    await downloadAndRun({ ...info, assetUrl }, tmp(), { fetchFn, launch });
-    expect(urls).toEqual([assetUrl]);
-    expect(launch).toHaveBeenCalled();
   });
 
   it('an async launch failure (spawn error) rejects, so the status becomes error', async () => {

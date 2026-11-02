@@ -28,11 +28,10 @@ declare const __APP_VERSION__: string | undefined;
 /** Inlined by esbuild from package.json. Unbuilt (tests) it is 0.0.0; callers pass their own. */
 export const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0';
 
-export const RELEASES_API =
-  'https://api.github.com/repos/YOOJUNGYU/pixel-office-lan/releases/latest';
+export const RELEASES_API = 'https://api.github.com/repos/YOOJUNGYU/pixel-office/releases/latest';
 /** With PIXEL_OFFICE_ALLOW_PRERELEASE=1 (`releases/latest` skips prereleases). */
 export const RELEASES_LIST_API =
-  'https://api.github.com/repos/YOOJUNGYU/pixel-office-lan/releases?per_page=5';
+  'https://api.github.com/repos/YOOJUNGYU/pixel-office/releases?per_page=5';
 const GITHUB_ORIGIN = 'https://github.com';
 
 /**
@@ -55,16 +54,10 @@ const downloadOrigin = (): string => {
   const api = testApi();
   return api ? new URL(api).origin : GITHUB_ORIGIN;
 };
-/**
- * This repo under its current and its planned name: once GitHub renames it, the API
- * (old URL redirected) returns asset URLs under the new name, so both must be allowed
- * before the rename or installed PCs could never update again.
- */
-const REPO_PATHS = ['/YOOJUNGYU/pixel-office-lan/', '/YOOJUNGYU/pixel-office/'];
-/** The only places an installer is ever downloaded from (github.com + these paths). */
-const DOWNLOAD_PATH = REPO_PATHS.map((p) => `${p}releases/download/`);
-const NOTES_PATH = REPO_PATHS.map((p) => `${p}releases/`);
-const RELEASES_PAGE = 'https://github.com/YOOJUNGYU/pixel-office-lan/releases';
+/** The only place an installer is ever downloaded from (github.com + this path). */
+const DOWNLOAD_PATH = '/YOOJUNGYU/pixel-office/releases/download/';
+const NOTES_PATH = '/YOOJUNGYU/pixel-office/releases/';
+const RELEASES_PAGE = 'https://github.com/YOOJUNGYU/pixel-office/releases';
 
 /**
  * Installer names from scripts/package (Release assets): `-Windows.exe` / `-Mac.pkg`.
@@ -114,19 +107,14 @@ interface Release {
 }
 
 /**
- * Normalized href when `raw` is on github.com under (one of) `pathPrefix`, else null.
+ * Normalized href when `raw` is on github.com under `pathPrefix`, else null.
  * Parsed, not startsWith: `PREFIX/../../evil/...` normalizes out of the repo.
  */
-export function repoUrl(
-  raw: string,
-  pathPrefix: string | string[],
-  origin = GITHUB_ORIGIN,
-): string | null {
-  const prefixes = typeof pathPrefix === 'string' ? [pathPrefix] : pathPrefix;
+export function repoUrl(raw: string, pathPrefix: string, origin = GITHUB_ORIGIN): string | null {
   if (/\.\.|%2e/i.test(raw)) return null; // dot segments, raw or encoded
   try {
     const u = new URL(raw);
-    return u.origin === origin && prefixes.some((p) => u.pathname.startsWith(p)) ? u.href : null;
+    return u.origin === origin && u.pathname.startsWith(pathPrefix) ? u.href : null;
   } catch {
     return null;
   }

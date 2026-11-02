@@ -5,7 +5,7 @@
   "version": "1.0.23",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOOJUNGYU/pixel-office-lan"
+    "url": "https://github.com/YOOJUNGYU/pixel-office"
   },
   "workspaces": [
     "server",

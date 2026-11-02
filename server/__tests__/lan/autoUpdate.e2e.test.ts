@@ -21,7 +21,7 @@ const INSTALLED = (
 ).version;
 const NEXT = '1.0.99';
 const ASSET = `PixelOffice-${NEXT}-node-${process.version}-app.tgz`;
-const DL_PATH = `/YOOJUNGYU/pixel-office-lan/releases/download/v${NEXT}/${ASSET}`;
+const DL_PATH = `/YOOJUNGYU/pixel-office/releases/download/v${NEXT}/${ASSET}`;
 const WAIT_MS = 45_000;
 
 let work: string;

@@ -6,7 +6,7 @@ Pixel Office shows the coding agents (Claude Code, Codex) of every PC on the sam
 
 ## 1. Download
 
-Get the file for your PC from [GitHub Releases](https://github.com/YOOJUNGYU/pixel-office-lan/releases/latest).
+Get the file for your PC from [GitHub Releases](https://github.com/YOOJUNGYU/pixel-office/releases/latest).
 
 | PC                                 | File                            |
 | ---------------------------------- | ------------------------------- |

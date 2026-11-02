@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/YOOJUNGYU/pixel-office-lan/releases/latest"><b>⬇️ 설치 파일 받기</b></a> ·
+  <a href="https://github.com/YOOJUNGYU/pixel-office/releases/latest"><b>⬇️ 설치 파일 받기</b></a> ·
   <a href="docs/설치-안내.md">설치 안내</a> ·
   <a href="#동작-방식">동작 방식</a> ·
   <a href="#개발">개발</a>
@@ -24,7 +24,7 @@
 
 ## 설치
 
-1. [Releases](https://github.com/YOOJUNGYU/pixel-office-lan/releases/latest)에서 받습니다: Windows `PixelOffice-<버전>-Windows.exe`, Mac(Apple 칩·Intel) `PixelOffice-<버전>-Mac.pkg`. Node 는 들어 있어 따로 설치할 것이 없습니다.
+1. [Releases](https://github.com/YOOJUNGYU/pixel-office/releases/latest)에서 받습니다: Windows `PixelOffice-<버전>-Windows.exe`, Mac(Apple 칩·Intel) `PixelOffice-<버전>-Mac.pkg`. Node 는 들어 있어 따로 설치할 것이 없습니다.
 2. 코드 서명이 없어 경고가 뜹니다.
    - **Windows**: "Windows의 PC 보호" → **추가 정보** → **실행** → 사용자 계정 컨트롤 **예**
    - **Mac**: 막히면 **시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기**. 방화벽이 켜져 있으면 "들어오는 연결 허용"

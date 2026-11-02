@@ -282,10 +282,10 @@ describe('clientMessageHandler', () => {
       });
       updater.info = {
         version: '0.2.0',
-        assetUrl: 'https://github.com/YOOJUNGYU/pixel-office-lan/releases/download/v0.2.0/x.exe',
+        assetUrl: 'https://github.com/YOOJUNGYU/pixel-office/releases/download/v0.2.0/x.exe',
         assetName: 'PixelOffice-Setup-0.2.0.exe',
         assetSize: 1,
-        notesUrl: 'https://github.com/YOOJUNGYU/pixel-office-lan/releases/tag/v0.2.0',
+        notesUrl: 'https://github.com/YOOJUNGYU/pixel-office/releases/tag/v0.2.0',
       };
       const install = vi.spyOn(updater, 'install');
       return { updater, install };
@@ -297,7 +297,7 @@ describe('clientMessageHandler', () => {
       expect(sent.at(-1)).toEqual({
         type: 'updateAvailable',
         version: '0.2.0',
-        notesUrl: 'https://github.com/YOOJUNGYU/pixel-office-lan/releases/tag/v0.2.0',
+        notesUrl: 'https://github.com/YOOJUNGYU/pixel-office/releases/tag/v0.2.0',
       });
       sent = [];
       send({ type: 'webviewReady' }, { ...ctx(false), updater });

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/YOOJUNGYU/pixel-office-lan/releases/latest"><b>⬇️ Download</b></a> ·
+  <a href="https://github.com/YOOJUNGYU/pixel-office/releases/latest"><b>⬇️ Download</b></a> ·
   <a href="docs/INSTALL.en.md">Install guide</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#development">Development</a>
@@ -24,7 +24,7 @@ See at a glance who is doing what, with which agent (Claude Code / Codex). Insta
 
 ## Install
 
-1. Download from [Releases](https://github.com/YOOJUNGYU/pixel-office-lan/releases/latest): Windows `PixelOffice-<version>-Windows.exe`, Mac (Apple silicon · Intel) `PixelOffice-<version>-Mac.pkg`. Node is bundled; nothing else to install.
+1. Download from [Releases](https://github.com/YOOJUNGYU/pixel-office/releases/latest): Windows `PixelOffice-<version>-Windows.exe`, Mac (Apple silicon · Intel) `PixelOffice-<version>-Mac.pkg`. Node is bundled; nothing else to install.
 2. The installers are not code-signed, so you get a warning.
    - **Windows**: "Windows protected your PC" → **More info** → **Run anyway** → User Account Control **Yes**
    - **Mac**: if blocked, **System Settings → Privacy & Security → Open Anyway**; if the firewall is on, "Allow incoming connections"

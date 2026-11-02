@@ -194,7 +194,7 @@ describe('readTar / extractTgz', () => {
 
 describe('asset names', () => {
   const app = `PixelOffice-1.0.2-node-${NODE}-app.tgz`;
-  const DL = 'https://github.com/YOOJUNGYU/pixel-office-lan/releases/download/v1.0.2/';
+  const DL = 'https://github.com/YOOJUNGYU/pixel-office/releases/download/v1.0.2/';
   const assets = [
     { name: app, browser_download_url: DL + app, size: 9, digest: 'sha256:ab' },
     { name: `${app}.sha256`, browser_download_url: `${DL}${app}.sha256`, size: 1 },
@@ -232,7 +232,7 @@ describe('asset names', () => {
 describe('stageAppUpdate', () => {
   const V = '1.0.2';
   const name = `PixelOffice-${V}-node-${NODE}-app.tgz`;
-  const URL_ = `https://github.com/YOOJUNGYU/pixel-office-lan/releases/download/v${V}/${name}`;
+  const URL_ = `https://github.com/YOOJUNGYU/pixel-office/releases/download/v${V}/${name}`;
   const good = tgz([
     ['./app.json', manifest(V)],
     ['./cli.js', 'exports.main = async () => {};'],
