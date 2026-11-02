@@ -224,7 +224,10 @@ export class LanAgents {
   /** A fresh `officeSnapshot`. */
   apply(agents: OfficeAgent[]): void {
     // A peer can never impersonate a tour demo (their keys are client-only).
-    this.real = agents.filter((a) => !isDemoKey(a.key));
+    // One agent per key: a session reported twice (the same transcript under two roots) would
+    // give the overlays duplicate React keys, which leave orphaned bubbles/tags on screen.
+    const keys = new Set<string>();
+    this.real = agents.filter((a) => !isDemoKey(a.key) && !keys.has(a.key) && !!keys.add(a.key));
     this.reconcile();
     this.primed = true;
   }

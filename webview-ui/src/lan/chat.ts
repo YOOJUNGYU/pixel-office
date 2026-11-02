@@ -1,6 +1,7 @@
 // Chat bubbles above each person's avatar: one per person, from the office snapshot. Pure.
 import { CHAT_MIN_INTERVAL_MS, cleanChatText } from '../../../core/src/lan.js';
 import type { OfficePersonMessage } from '../../../core/src/messages.js';
+import { ZOOM_DEFAULT_DPR_FACTOR } from '../constants.js';
 
 export interface Bubble {
   peerId: string;
@@ -111,6 +112,11 @@ export function stackBubbles(boxes: readonly BubbleBox[], gap: number): number[]
   }
   return out;
 }
+
+/** Speech bubbles grow and shrink with the map: 1 at the default zoom (their designed size),
+ *  so a bubble keeps its size relative to the characters. */
+export const bubbleScale = (zoom: number, dpr: number): number =>
+  zoom / (ZOOM_DEFAULT_DPR_FACTOR * dpr);
 
 /** Focus is in something that takes typing (then arrows/Enter are the field's). */
 export const isTextEntry = (el: { tagName: string; isContentEditable?: boolean } | null): boolean =>

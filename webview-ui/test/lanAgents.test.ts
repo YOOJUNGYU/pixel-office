@@ -525,3 +525,10 @@ test('bubble text: a run shows the command alone (서버실 says it already), ot
     '작업 내용 비공개',
   );
 });
+
+test('a key reported twice is kept once (duplicate keys orphan overlay nodes)', () => {
+  const { lan } = setup();
+  lan.apply([agent('a', 'coding'), agent('a', 'server')]);
+  assert.equal(lan.all().length, 1);
+  assert.equal(lan.all()[0].room, 'coding');
+});

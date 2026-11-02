@@ -36,7 +36,7 @@ import { getCachedSprite } from '../office/sprites/spriteCache.js';
 import { BUBBLE_PERMISSION_SPRITE } from '../office/sprites/spriteData.js';
 import { type Character, CharacterState } from '../office/types.js';
 import { badgeColors } from './badgeColors.js';
-import { stackBubbles } from './chat.js';
+import { bubbleScale, stackBubbles } from './chat.js';
 import {
   activityText,
   type AvatarRef,
@@ -122,6 +122,10 @@ export function LanOverlay({
   // Sprite cache stays per integer zoom; the bubble is stretched by `scale`.
   const { renderZoom, scale } = renderScale(zoom);
   const permissionSprite = getCachedSprite(BUBBLE_PERMISSION_SPRITE, renderZoom);
+  // Tags and bubbles grow and shrink with the map (1 at the default zoom).
+  const k = bubbleScale(zoom, dpr);
+  /** Laid out unscaled, drawn × k around the top centre (the class's -translate-x-1/2 centres it). */
+  const tagScale = { transform: `scale(${k})`, transformOrigin: 'top center' } as const;
 
   const nodes = [];
   const byKey = new Map(lan.all().map((a) => [a.key, a] as const));
@@ -144,10 +148,11 @@ export function LanOverlay({
       x: project.toScreenX(ch.x),
       y: project.toScreenY(ch.y + (typing ? CHARACTER_SITTING_OFFSET_PX : 0)),
       w:
-        2 * LAN_TAG_PAD_X_PX +
-        LAN_TAG_BADGE_CHROME_PX +
-        textWidth(tagBadge(a), LAN_TAG_BADGE_FONT) +
-        textWidth(text, LAN_TAG_FONT),
+        (2 * LAN_TAG_PAD_X_PX +
+          LAN_TAG_BADGE_CHROME_PX +
+          textWidth(tagBadge(a), LAN_TAG_BADGE_FONT) +
+          textWidth(text, LAN_TAG_FONT)) *
+        k,
     });
   }
   // Avatar tags (one per person): always shown, one line, after the agents' so they stack below.
@@ -163,7 +168,7 @@ export function LanOverlay({
         y: project.toScreenY(
           ch.y + (ch.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0),
         ),
-        w: 2 * LAN_TAG_PAD_X_PX + textWidth(av.label, LAN_TAG_FONT),
+        w: (2 * LAN_TAG_PAD_X_PX + textWidth(av.label, LAN_TAG_FONT)) * k,
       },
     });
   }
@@ -171,8 +176,8 @@ export function LanOverlay({
   const shown = boxes.map((_, i) => i).filter((i) => tags[i].show);
   const stacked = stackTags(
     [...shown.map((i) => boxes[i]), ...avatarTags.map((v) => v.box)],
-    Math.max(LAN_TAG_HEIGHT_PX, AVATAR_TAG_HEIGHT_PX),
-    LAN_TAG_STACK_GAP_PX,
+    Math.max(LAN_TAG_HEIGHT_PX, AVATAR_TAG_HEIGHT_PX) * k,
+    LAN_TAG_STACK_GAP_PX * k,
   );
   const tops: number[] = [];
   shown.forEach((i, k) => (tops[i] = stacked[k]));
@@ -220,6 +225,7 @@ export function LanOverlay({
           background: v.tagColors?.bg ?? 'var(--avatar-tag-bg)',
           color: v.tagColors?.fg ?? 'var(--avatar-tag-fg)',
           border: v.self ? '2px solid var(--avatar-tag-self-border)' : undefined,
+          ...tagScale,
           zIndex: lit ? LAN_PERMISSION_Z_INDEX : LAN_TAG_Z_INDEX,
         }}
       >
@@ -241,6 +247,7 @@ export function LanOverlay({
           style={{
             left: x,
             top: tops[i],
+            ...tagScale,
             ...(own && { background: own.bg, color: own.fg }),
             zIndex: lit ? LAN_PERMISSION_Z_INDEX : LAN_TAG_Z_INDEX,
           }}
@@ -267,6 +274,7 @@ export function LanOverlay({
       text: string;
       x: number;
       head: number;
+      w0: number;
       w: number;
       h: number;
       bottom: number;
@@ -287,28 +295,31 @@ export function LanOverlay({
         text,
         x: project.toScreenX(ch.x),
         head,
-        w: Math.min(
+        // Unscaled size; w/h/bottom below are on screen (× k).
+        w0: Math.min(
           LAN_ACTIVITY_MAX_WIDTH_PX,
           2 * (LAN_ACTIVITY_PAD_X_PX + CHAT_BORDER_PX) +
             LAN_TAG_BADGE_CHROME_PX +
             textWidth(providerName(a), LAN_TAG_BADGE_FONT) +
             textWidth(text, LAN_TAG_FONT),
         ),
-        h: LAN_TAG_LINE_PX + 2 * (LAN_ACTIVITY_PAD_Y_PX + CHAT_BORDER_PX),
-        bottom: head - CHAT_TAIL_PX,
+        w: 0,
+        h: (LAN_TAG_LINE_PX + 2 * (LAN_ACTIVITY_PAD_Y_PX + CHAT_BORDER_PX)) * k,
+        bottom: head - CHAT_TAIL_PX * k,
       });
     }
-    const bottoms = stackBubbles(lines, LAN_TAG_STACK_GAP_PX);
-    lines.forEach((l, k) =>
+    for (const l of lines) l.w = l.w0 * k;
+    const bottoms = stackBubbles(lines, LAN_TAG_STACK_GAP_PX * k);
+    lines.forEach((l, i) =>
       nodes.push(
         <div
           key={`act-tail:${l.key}`}
           className="absolute pointer-events-none"
           style={{
-            left: l.x - CHAT_BORDER_PX / 2,
-            top: bottoms[k],
-            width: CHAT_BORDER_PX,
-            height: Math.max(0, l.head - bottoms[k]),
+            left: l.x - (CHAT_BORDER_PX * k) / 2,
+            top: bottoms[i],
+            width: CHAT_BORDER_PX * k,
+            height: Math.max(0, l.head - bottoms[i]),
             background: 'var(--agent-bubble-border)',
             zIndex: LAN_TAG_Z_INDEX,
           }}
@@ -319,9 +330,11 @@ export function LanOverlay({
           className="bubble-agent flex items-center gap-4 whitespace-nowrap text-sm leading-none pointer-events-none"
           style={{
             left: l.x - l.w / 2,
-            top: bottoms[k] - l.h,
-            width: l.w,
-            height: l.h,
+            top: bottoms[i] - l.h,
+            width: l.w0,
+            height: l.h / k,
+            transform: `scale(${k})`,
+            transformOrigin: '0 0',
             padding: `${LAN_ACTIVITY_PAD_Y_PX}px ${LAN_ACTIVITY_PAD_X_PX}px`,
             zIndex: LAN_TAG_Z_INDEX,
           }}

@@ -25,7 +25,7 @@ import { onFrame } from '../office/engine/gameLoop.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { overlayProjection } from '../office/projection.js';
 import { CharacterState } from '../office/types.js';
-import { type ChatBubbles, stackBubbles, wrapLines } from './chat.js';
+import { bubbleScale, type ChatBubbles, stackBubbles, wrapLines } from './chat.js';
 import type { LanAgents } from './lanAgents.js';
 import { textWidth } from './textWidth.js';
 
@@ -119,13 +119,15 @@ export function ChatLayer({
 
   const el = containerRef.current;
   if (!el) return null;
+  const dpr = window.devicePixelRatio || 1;
   const project = overlayProjection(
     officeState.getLayout(),
     el.getBoundingClientRect(),
     zoom,
     panRef.current,
-    window.devicePixelRatio || 1,
+    dpr,
   );
+  const k = bubbleScale(zoom, dpr);
 
   const avatarOf = new Map(lan.avatars().map((a) => [a.peerId, a.id] as const));
   const bubbles = chats.active().flatMap((b) => {
@@ -148,18 +150,19 @@ export function ChatLayer({
       {
         b,
         at,
+        // On screen (× k); the bubble itself is laid out unscaled and transformed.
         box: {
           x: at.x,
-          bottom: at.y - CHAT_TAIL_PX,
-          w: inner + 2 * (CHAT_PAD_X_PX + CHAT_BORDER_PX),
-          h: lines.length * CHAT_LINE_PX + 2 * (CHAT_PAD_Y_PX + CHAT_BORDER_PX),
+          bottom: at.y - CHAT_TAIL_PX * k,
+          w: (inner + 2 * (CHAT_PAD_X_PX + CHAT_BORDER_PX)) * k,
+          h: (lines.length * CHAT_LINE_PX + 2 * (CHAT_PAD_Y_PX + CHAT_BORDER_PX)) * k,
         },
       },
     ];
   });
   const bottoms = stackBubbles(
     bubbles.map((x) => x.box),
-    CHAT_STACK_GAP_PX,
+    CHAT_STACK_GAP_PX * k,
   );
 
   const nodes = bubbles.map(({ b, at, box }, i) => (
@@ -168,9 +171,9 @@ export function ChatLayer({
       <div
         className="absolute"
         style={{
-          left: at.x - CHAT_BORDER_PX / 2,
+          left: at.x - (CHAT_BORDER_PX * k) / 2,
           top: bottoms[i],
-          width: CHAT_BORDER_PX,
+          width: CHAT_BORDER_PX * k,
           height: Math.max(0, at.y - bottoms[i]),
           background: 'var(--chat-bubble-border)',
           zIndex: CHAT_Z_INDEX,
@@ -181,7 +184,9 @@ export function ChatLayer({
         style={{
           left: box.x - box.w / 2,
           top: bottoms[i] - box.h,
-          width: box.w,
+          width: box.w / k,
+          transform: `scale(${k})`,
+          transformOrigin: '0 0',
           padding: `${CHAT_PAD_Y_PX}px ${CHAT_PAD_X_PX}px`,
           gap: CHAT_DELETE_GAP_PX,
           zIndex: CHAT_Z_INDEX,
