@@ -178,7 +178,9 @@ test('removing its chair sends a character to another seat in its room on foot',
 
 test('furniture dropped on a standing character moves it to the nearest free tile', () => {
   const { os, ch } = seated();
-  os.moveToArea(ID, '자료실', true);
+  // 자료실 full: it stands on a free tile there.
+  for (const [uid, seat] of os.seats) if (os.seatZone(uid) === '자료실') seat.assigned = true;
+  os.moveToArea(ID, '자료실');
   walkOut(os, ch);
   assert.equal(ch.seatId, null);
   const here = { col: ch.tileCol, row: ch.tileRow };
