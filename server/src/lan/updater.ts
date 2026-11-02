@@ -55,9 +55,15 @@ const downloadOrigin = (): string => {
   const api = testApi();
   return api ? new URL(api).origin : GITHUB_ORIGIN;
 };
-/** The only place an installer is ever downloaded from (github.com + this path). */
-const DOWNLOAD_PATH = '/YOOJUNGYU/pixel-office-lan/releases/download/';
-const NOTES_PATH = '/YOOJUNGYU/pixel-office-lan/releases/';
+/**
+ * This repo under its current and its planned name: once GitHub renames it, the API
+ * (old URL redirected) returns asset URLs under the new name, so both must be allowed
+ * before the rename or installed PCs could never update again.
+ */
+const REPO_PATHS = ['/YOOJUNGYU/pixel-office-lan/', '/YOOJUNGYU/pixel-office/'];
+/** The only places an installer is ever downloaded from (github.com + these paths). */
+const DOWNLOAD_PATH = REPO_PATHS.map((p) => `${p}releases/download/`);
+const NOTES_PATH = REPO_PATHS.map((p) => `${p}releases/`);
 const RELEASES_PAGE = 'https://github.com/YOOJUNGYU/pixel-office-lan/releases';
 
 /**
@@ -108,14 +114,19 @@ interface Release {
 }
 
 /**
- * Normalized href when `raw` is on github.com under `pathPrefix`, else null.
+ * Normalized href when `raw` is on github.com under (one of) `pathPrefix`, else null.
  * Parsed, not startsWith: `PREFIX/../../evil/...` normalizes out of the repo.
  */
-export function repoUrl(raw: string, pathPrefix: string, origin = GITHUB_ORIGIN): string | null {
+export function repoUrl(
+  raw: string,
+  pathPrefix: string | string[],
+  origin = GITHUB_ORIGIN,
+): string | null {
+  const prefixes = typeof pathPrefix === 'string' ? [pathPrefix] : pathPrefix;
   if (/\.\.|%2e/i.test(raw)) return null; // dot segments, raw or encoded
   try {
     const u = new URL(raw);
-    return u.origin === origin && u.pathname.startsWith(pathPrefix) ? u.href : null;
+    return u.origin === origin && prefixes.some((p) => u.pathname.startsWith(p)) ? u.href : null;
   } catch {
     return null;
   }
