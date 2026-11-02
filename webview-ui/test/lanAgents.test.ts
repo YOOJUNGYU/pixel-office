@@ -165,8 +165,36 @@ test('more lounge agents than lounge seats all land inside 대기실', () => {
 const cheb = (a: Character, b: Character) =>
   Math.max(Math.abs(a.tileCol - b.tileCol), Math.abs(a.tileRow - b.tileRow));
 
-test("a child in the parent's room follows the parent", () => {
+test("a child in the parent's room sits at the free seat closest to the parent", () => {
   const { os, lan } = setup();
+  lan.apply([agent('a', 'coding'), child('s1', 'a', 'coding'), child('s2', 'a', 'coding')]);
+  const p = os.characters.get(lan.idFor('p1:a')!)!;
+  const seatOf = (c: Character) => os.seats.get(c.seatId!)!;
+  for (const key of ['p1:s1', 'p1:s2']) {
+    const c = os.characters.get(lan.idFor(key)!)!;
+    assert.equal(c.followId, undefined);
+    assert.ok(c.seatId);
+    assert.equal(os.seatZone(c.seatId), '코딩실');
+    const d =
+      Math.abs(seatOf(c).seatCol - seatOf(p).seatCol) +
+      Math.abs(seatOf(c).seatRow - seatOf(p).seatRow);
+    assert.ok(d <= 4, `next to the parent (${d})`);
+  }
+  // Re-applying keeps the seats (no reshuffle every snapshot).
+  const seats = [lan.idFor('p1:s1'), lan.idFor('p1:s2')].map(
+    (id) => os.characters.get(id!)!.seatId,
+  );
+  lan.apply([agent('a', 'coding'), child('s1', 'a', 'coding'), child('s2', 'a', 'coding')]);
+  assert.deepEqual(
+    [lan.idFor('p1:s1'), lan.idFor('p1:s2')].map((id) => os.characters.get(id!)!.seatId),
+    seats,
+  );
+});
+
+test('a full room: the child stands beside the parent, and sits once a seat frees up', () => {
+  const { os, lan } = setup();
+  lan.apply([agent('a', 'coding')]);
+  for (const seat of os.seats.values()) seat.assigned = true;
   lan.apply([agent('a', 'coding'), child('s1', 'a', 'coding')]);
   const s1 = os.characters.get(lan.idFor('p1:s1')!)!;
   assert.equal(s1.followId, lan.idFor('p1:a'));
@@ -176,9 +204,29 @@ test("a child in the parent's room follows the parent", () => {
     '코딩실',
     'materializes by the parent',
   );
+  const free = [...os.seats.entries()].find(
+    ([uid]) =>
+      os.seatZone(uid) === '코딩실' && uid !== os.characters.get(lan.idFor('p1:a')!)!.seatId,
+  )!;
+  free[1].assigned = false;
+  lan.apply([agent('a', 'coding'), child('s1', 'a', 'coding')]);
+  assert.equal(s1.followId, undefined);
+  assert.equal(s1.seatId, free[0]);
 });
 
-test('a child in another room has no leader and no ghost exists; it follows once it joins the parent', () => {
+test('a main agent standing in a full room sits once a seat frees up', () => {
+  const { os, lan } = setup();
+  for (const seat of os.seats.values()) seat.assigned = true;
+  lan.apply([agent('a', 'coding')]);
+  const a = os.characters.get(lan.idFor('p1:a')!)!;
+  assert.equal(a.seatId, null);
+  const free = [...os.seats.entries()].find(([uid]) => os.seatZone(uid) === '코딩실')!;
+  free[1].assigned = false;
+  lan.apply([agent('a', 'coding')]);
+  assert.equal(a.seatId, free[0]);
+});
+
+test('a child in another room has no leader and no ghost exists; it sits by the parent once it joins', () => {
   const { os, lan } = setup();
   lan.apply([agent('a', 'coding'), child('s1', 'a', 'library'), child('s2', 'a', 'library')]);
   const parent = os.characters.get(lan.idFor('p1:a')!)!;
@@ -192,8 +240,10 @@ test('a child in another room has no leader and no ghost exists; it follows once
   assert.equal(areaOf(target(os, parent)), '코딩실');
 
   lan.apply([agent('a', 'coding'), child('s1', 'a', 'coding'), child('s2', 'a', 'library')]);
-  assert.equal(s1.followId, parent.id);
-  assert.equal(s2.followId, undefined);
+  assert.equal(s1.followId, undefined);
+  assert.equal(s1.homeArea, '코딩실');
+  assert.equal(os.seatZone(s1.seatId!), '코딩실');
+  assert.equal(s2.homeArea, '자료실');
   // And back: leaving the parent's room, the child takes a place in its own.
   lan.apply([agent('a', 'coding'), child('s1', 'a', 'server'), child('s2', 'a', 'library')]);
   assert.equal(s1.followId, undefined);
@@ -201,7 +251,7 @@ test('a child in another room has no leader and no ghost exists; it follows once
   assert.equal(os.characters.size, 3);
 });
 
-test('nobody wanders: a parked lounge agent stays put, its followers line up beside it', () => {
+test('nobody wanders: a parked lounge agent and its seated children stay put', () => {
   const { os, lan } = setup();
   lan.apply([agent('a', 'lounge'), child('s1', 'a', 'lounge'), child('s2', 'a', 'lounge')]);
   for (let i = 0; i < 2000; i++) os.update(0.05);
@@ -215,9 +265,9 @@ test('nobody wanders: a parked lounge agent stays put, its followers line up bes
   assert.deepEqual([p, s1, s2].map(at), before);
   assert.equal(p.path.length, 0);
   assert.equal(areaOf({ col: p.tileCol, row: p.tileRow }), '대기실');
-  assert.ok(cheb(s1, p) <= 1, `s1 next to parent (${cheb(s1, p)})`);
-  assert.ok(cheb(s2, s1) <= 1, `s2 next to s1 (${cheb(s2, s1)})`);
-  assert.equal(s1.seatId, null);
+  assert.ok(cheb(s1, p) <= 4, `s1 near parent (${cheb(s1, p)})`);
+  assert.ok(cheb(s2, p) <= 4, `s2 near parent (${cheb(s2, p)})`);
+  assert.equal(os.seatZone(s1.seatId!), '대기실');
 });
 
 test('a vanished parent is removed; the orphan acts on its own in its room', () => {

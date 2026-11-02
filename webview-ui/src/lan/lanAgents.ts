@@ -301,12 +301,18 @@ export class LanAgents {
     }
     this.agents = agents;
 
-    // Everyone sits in the room of its own state; a child in the same room as
-    // its parent walks hand in hand with it, a child elsewhere acts on its own.
+    // Everyone sits in the room of its own state whenever a seat is free there (standing only
+    // in a full room); a child in its parent's room takes the free seat closest to the parent
+    // (hand in hand only when the room is full), a child elsewhere acts on its own.
     const byKey = new Map<string, OfficeAgent>();
     for (const a of agents) byKey.set(a.key, a);
     os.roomCounts = roomCounts(agents);
-    for (const a of agents) {
+    // Parents first: a child picks the seat closest to where its parent sits now.
+    const depth = (a: OfficeAgent, n = 0): number => {
+      const p = a.parentKey !== undefined ? byKey.get(a.parentKey) : undefined;
+      return p && n < agents.length ? depth(p, n + 1) : n;
+    };
+    for (const a of [...agents].sort((x, y) => depth(x) - depth(y))) {
       if (!shown.has(a.key)) continue;
       const id = this.ids.get(a.key)!;
       const partner = talkOf.get(a.key);
@@ -317,13 +323,28 @@ export class LanAgents {
       }
       const parent = a.parentKey !== undefined ? byKey.get(a.parentKey) : undefined;
       if (parent?.room === a.room && shown.has(parent.key)) {
-        os.setFollowTarget(id, this.ids.get(parent.key)!);
+        const ch = os.characters.get(id);
+        const label = ROOM_LABELS[a.room];
+        // Already seated here (since the last snapshot): stay put.
+        if (ch && ch.followId === undefined && ch.homeArea === label && ch.seatId) continue;
+        const parentId = this.ids.get(parent.key)!;
+        const seat = os.freeSeatNear(label, parentId);
+        if (seat === null) {
+          os.setFollowTarget(id, parentId);
+          continue;
+        }
+        os.setFollowTarget(id, null);
+        this.enterRoom(id, a.room, seat);
         continue;
       }
       os.setFollowTarget(id, null);
       const ch = os.characters.get(id);
       if (ch && (prevByKey.get(a.key)?.room !== a.room || ch.homeArea === undefined)) {
         this.enterRoom(id, a.room);
+      } else if (ch && !ch.seatId) {
+        // Standing because the room was full: take the seat that freed up closest to it.
+        const seat = os.freeSeatNear(ROOM_LABELS[a.room], id);
+        if (seat !== null) this.enterRoom(id, a.room, seat);
       }
     }
     requestRender('snapshot');
@@ -339,12 +360,12 @@ export class LanAgents {
   }
 
   /** Lounge idles (seated, or standing still when the room is full); every other room works at a desk. */
-  private enterRoom(id: number, room: Room): void {
+  private enterRoom(id: number, room: Room, seat?: string): void {
     const tool = LAN_ROOM_TOOL[room];
     // Before moveToArea: deactivating clears the path it is about to set.
     this.os.setAgentActive(id, tool !== null);
     this.os.setAgentTool(id, tool);
-    this.os.moveToArea(id, ROOM_LABELS[room]);
+    this.os.moveToArea(id, ROOM_LABELS[room], seat);
   }
 
   /** PCs (peerId) with an agent folded into their avatar that waits for an answer. */

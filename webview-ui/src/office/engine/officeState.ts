@@ -318,6 +318,24 @@ export class OfficeState {
     return out;
   }
 
+  /** The free seat in `areaLabel` closest (Manhattan) to `anchorId`'s seat, else its tile;
+   *  null = the room is full. */
+  freeSeatNear(areaLabel: string, anchorId: number): string | null {
+    const at = anchorTile(this.characters.get(anchorId), this.seats);
+    if (!at) return null;
+    let best: string | null = null;
+    let bestDist = Infinity;
+    for (const [uid, seat] of this.seats) {
+      if (seat.assigned || this.seatZone(uid) !== areaLabel) continue;
+      const d = Math.abs(seat.seatCol - at.col) + Math.abs(seat.seatRow - at.row);
+      if (d < bestDist) {
+        best = uid;
+        bestDist = d;
+      }
+    }
+    return best;
+  }
+
   /** Find the area label assigned to a seat's tile, or null. Public for e2e
    *  observability (getAgentSeats hook reads a seated agent's area). */
   seatZone(uid: string): string | null {
@@ -725,17 +743,17 @@ export class OfficeState {
   }
 
   /**
-   * Send a character to a room (area): free its seat, take a free seat there
-   * (PC-facing first) unless `standing`, else a free floor tile there, and
+   * Send a character to a room (area): free its seat, take `seatHint` or a free seat there
+   * (PC-facing first), else (room full) a free floor tile there, and
    * walk. A character still materializing is placed directly. `homeArea`
    * keeps it in the room.
    */
-  moveToArea(id: number, areaLabel: string, standing = false): void {
+  moveToArea(id: number, areaLabel: string, seatHint?: string): void {
     const ch = this.characters.get(id);
     if (!ch) return;
     this.releaseSeat(ch);
     ch.homeArea = areaLabel;
-    const seatId = standing ? null : this.findFreeSeat(areaLabel);
+    const seatId = seatHint ?? this.findFreeSeat(areaLabel);
     const seat = seatId ? this.seats.get(seatId)! : null;
     let target: { col: number; row: number } | null;
     if (seat) {
