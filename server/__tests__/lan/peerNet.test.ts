@@ -4,9 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as zlib from 'zlib';
 
 import type { PeerPacket } from '../../../core/src/lan.js';
-import { MAX_PACKET_BYTES, PUBLIC_VIEW } from '../../../core/src/lan.js';
+import { MAX_PACKET_BYTES, parsePeerPacket, PUBLIC_VIEW } from '../../../core/src/lan.js';
 import {
   MAX_DATAGRAM_BYTES,
+  MAX_HELLO_PEERS,
   MAX_PRESENCE_ASSEMBLIES,
   MAX_PRESENCE_PARTS,
   MAX_WARN_KEYS,
@@ -431,7 +432,7 @@ describe('PeerNet team offices', () => {
 });
 
 describe('PeerNet personal mode (offline)', () => {
-  it('sends no datagram at all, answers nothing, sees no one; back online sees again', async () => {
+  it('sends only watch, answers a hello with a watch, sees no one; back online sees again', async () => {
     const raw = await rawSocket();
     const [a, b] = await mkNodes(['A', 'B'], [`127.0.0.1:${raw.port}`]);
     a.offices = [channel(newInviteCode().secret)]; // a kept team membership stays silent too
@@ -442,7 +443,7 @@ describe('PeerNet personal mode (offline)', () => {
     a.offline = true;
     const sock = (a.net as unknown as { sock: dgram.Socket }).sock;
     const sent = vi.spyOn(sock, 'send');
-    b.offices = []; // B also tries the public office: its hellos must get no reply
+    b.offices = []; // B also tries the public office: A answers its hellos with a watch only
     await pump([a, b], () => false, 10);
     const x = createIdentity('X');
     raw.sock.send(
@@ -451,7 +452,15 @@ describe('PeerNet personal mode (offline)', () => {
       '127.0.0.1',
     );
     await pump([a, b], () => false, 10);
-    expect(sent).not.toHaveBeenCalled();
+    const types = sent.mock.calls.map((c) => (JSON.parse(String(c[0])) as { t: string }).t);
+    expect(types.length).toBeGreaterThan(0);
+    expect(new Set(types)).toEqual(new Set(['watch']));
+    const toX = sent.mock.calls.filter((c) => c[1] === raw.port);
+    expect(toX.length).toBeGreaterThan(0);
+    expect(toX.every((c) => (JSON.parse(String(c[0])) as { t: string }).t === 'watch')).toBe(true);
+    // An offline PC still receives and stores public hellos, but peers() stays empty.
+    const hellos = (a.net as unknown as { hellos: Map<string, unknown> }).hellos;
+    expect(hellos.has('B')).toBe(true);
     expect(a.net.peers(PUBLIC_VIEW)).toEqual([]);
     expect(a.net.peers(a.offices[0].tag)).toEqual([]);
     b.t += PEER_TTL_MS + 1;
@@ -464,9 +473,190 @@ describe('PeerNet personal mode (offline)', () => {
       [a, b],
       () => b.net.peers(PUBLIC_VIEW).length > 0 && a.net.peers(PUBLIC_VIEW).length > 0,
     );
-    expect(sent).toHaveBeenCalled();
     expect(ids(b.net.peers(PUBLIC_VIEW))).toEqual(['A']);
     expect(ids(a.net.peers(PUBLIC_VIEW))).toEqual(['B']);
+  });
+});
+
+describe('PeerNet directory: watchers', () => {
+  const pids = (ps: { id: string }[]) => ps.map((p) => p.id).sort();
+  type Internals = {
+    receive(text: string, rinfo: { address: string; port: number }): void;
+    hellos: Map<string, unknown>;
+    watchers: Map<string, unknown>;
+    opts: {
+      getPacket: () => PeerPacket;
+      pins: Map<string, string>;
+      layouts?: unknown;
+    };
+  };
+  const inner = (n: Node) => n.net as unknown as Internals;
+
+  it('a team PC watches: lists public PCs, which never count it', async () => {
+    const [t, b] = await mkNodes(['T', 'B']);
+    t.offices = [channel(newInviteCode().secret)];
+    const { tag } = t.offices[0];
+    await pump([t, b], () => t.net.directory().public.length > 0);
+    expect(pids(t.net.directory().public)).toEqual(['B']);
+    await pump([t, b], () => false, 5);
+    expect(b.net.peers(PUBLIC_VIEW)).toEqual([]);
+    expect(b.net.directory().public).toEqual([]);
+    expect(inner(b).hellos.has('T')).toBe(false);
+    expect(inner(b).watchers.has('T')).toBe(true);
+    expect(t.net.peers(PUBLIC_VIEW)).toEqual([]);
+    expect(t.net.directory().teams[tag]).toEqual([]);
+    expect(t.net.directory().personal).toEqual([]);
+  });
+
+  it('a personal PC watches: lists public PCs and sends no hello, pub or team', async () => {
+    const [a, b] = await mkNodes(['A', 'B']);
+    a.offline = true;
+    a.offices = [channel(newInviteCode().secret)];
+    const sent = vi.spyOn((a.net as unknown as { sock: dgram.Socket }).sock, 'send');
+    await pump([a, b], () => a.net.directory().public.length > 0);
+    expect(pids(a.net.directory().public)).toEqual(['B']);
+    const types = new Set(
+      sent.mock.calls.map((c) => (JSON.parse(String(c[0])) as { t: string }).t),
+    );
+    expect(types).toEqual(new Set(['watch']));
+    expect(b.net.peers(PUBLIC_VIEW)).toEqual([]);
+    expect(a.net.peers(PUBLIC_VIEW)).toEqual([]);
+    expect(inner(b).hellos.has('A')).toBe(false);
+  });
+
+  it('a watcher keeps only the person: no agents, chat, avatar or layout', async () => {
+    const [t, b] = await mkNodes(['T', 'B']);
+    t.offices = [channel(newInviteCode().secret)];
+    const full = {
+      ...pkt('B'),
+      views: [
+        {
+          id: 's1',
+          provider: 'claude',
+          kind: 'main',
+          num: 1,
+          room: 'coding',
+          permission: false,
+          act: 'run',
+          target: 'ls',
+          reason: 'r',
+        },
+      ],
+      chat: { id: 'abcd1234', text: 'hi', ts: 1 },
+      avatar: { col: 1, row: 2, dir: 'up' },
+      layout: { rev: 1, by: 'B', h: '0123456789abcdef' },
+    } as PeerPacket;
+    // Valid as sent: what the watcher drops it drops on purpose.
+    const parsed = parsePeerPacket(JSON.stringify(full));
+    expect(parsed?.views).toHaveLength(1);
+    expect(parsed?.chat && parsed.avatar && parsed.layout).toBeTruthy();
+    inner(b).opts.getPacket = () => full;
+    inner(b).opts.layouts = {
+      rev: () => ({ rev: 1, by: 'B', h: '0123456789abcdef' }),
+      blob: () => zlib.deflateSync('{}'),
+      receive: () => {},
+    };
+    const received = vi.fn();
+    inner(t).opts.layouts = {
+      rev: () => ({ rev: 0, by: '', h: '' }),
+      blob: () => null,
+      receive: received,
+    };
+    await pump([t, b], () => t.net.directory().public.length > 0);
+    await pump([t, b], () => false, 5);
+    const [person] = t.net.directory().public;
+    expect(person.id).toBe('B');
+    const allowed = [
+      'id',
+      'account',
+      'nickname',
+      'nickSince',
+      'palette',
+      'hueShift',
+      'pet',
+      'tagColors',
+    ];
+    for (const k of Object.keys(person)) expect(allowed).toContain(k);
+    expect(received).not.toHaveBeenCalled();
+  });
+
+  it('a busy public PC (split presence) still reaches a watcher', async () => {
+    const [t, b] = await mkNodes(['T', 'B']);
+    t.offices = [channel(newInviteCode().secret)];
+    const big: PeerPacket = {
+      ...pkt('B'),
+      views: Array.from({ length: 40 }, (_, i) => ({
+        id: `session-${i}-${randomUUID()}`,
+        provider: 'claude' as const,
+        kind: 'main' as const,
+        num: i + 1,
+        room: 'coding' as const,
+        permission: false,
+        act: 'run' as const,
+        target: `npm run build -- --filter ${randomUUID()}`,
+        reason: `${randomUUID()} 긴 설명 `.repeat(4).slice(0, 200),
+      })),
+    };
+    expect(Buffer.byteLength(JSON.stringify(big))).toBeGreaterThan(MAX_DATAGRAM_BYTES);
+    inner(b).opts.getPacket = () => big;
+    await pump([t, b], () => t.net.directory().public.length > 0);
+    expect(pids(t.net.directory().public)).toEqual(['B']);
+  });
+
+  it('manual peer on one side: a watcher and a public PC still find each other', async () => {
+    const [pa, pb] = await Promise.all([freePort(), freePort()]);
+    const mk = (name: string, port: number, targets: string[], offline: boolean) => {
+      const id = createIdentity(name);
+      const net = new PeerNet({
+        port,
+        identity: id,
+        getPacket: () => pkt(id.id),
+        manualPeers: () => [],
+        offices: () => [],
+        offline: () => offline,
+        pins: new Map<string, string>(),
+        targets: () => targets,
+        now: () => 1000,
+      });
+      nets.push(net);
+      return net;
+    };
+    const a = mk('A', pa, [`127.0.0.1:${pb}`], true); // A (personal) lists B
+    const b = mk('B', pb, [], false); // B lists nobody: it only answers A's watch
+    await Promise.all([a.start(), b.start()]);
+    await pump([{ net: a }, { net: b }] as Node[], () => a.directory().public.length > 0);
+    expect(pids(a.directory().public)).toEqual(['B']);
+    expect(b.peers(PUBLIC_VIEW)).toEqual([]);
+  });
+
+  it('a watch with a changed key is ignored', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const [b] = await mkNodes(['B']);
+    const raw = await rawSocket();
+    const [x1, x2] = [createIdentity('X'), createIdentity('X')];
+    inner(b).opts.pins.set('X', x1.publicKey);
+    const watch = JSON.stringify({ v: 2, t: 'watch', id: 'X', pk: x2.publicKey });
+    raw.sock.send(watch, b.port, '127.0.0.1');
+    raw.sock.send(watch, b.port, '127.0.0.1');
+    await until(() => warn.mock.calls.some((c) => String(c[0]).includes('PC X ')));
+    await pump([b], () => false, 5);
+    const pubToX = raw.got.filter((g) => {
+      const w = JSON.parse(g) as { t: string; to?: string };
+      return w.t === 'pub' && w.to === 'X';
+    });
+    expect(pubToX).toEqual([]);
+    expect(inner(b).watchers.size).toBe(0);
+    expect(warn.mock.calls.filter((c) => String(c[0]).includes('PC X ')).length).toBe(1);
+  });
+
+  it('watchers are bounded like hellos', async () => {
+    const [b] = await mkNodes(['B']);
+    const x = createIdentity('X');
+    const rinfo = { address: '127.0.0.1', port: 9 };
+    for (let i = 0; i < MAX_HELLO_PEERS + 10; i++)
+      inner(b).receive(JSON.stringify({ v: 2, t: 'watch', id: `W${i}`, pk: x.publicKey }), rinfo);
+    expect(inner(b).watchers.size).toBe(MAX_HELLO_PEERS);
+    expect(inner(b).hellos.size).toBe(0);
   });
 });
 

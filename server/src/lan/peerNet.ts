@@ -2,7 +2,7 @@ import * as dgram from 'dgram';
 import * as os from 'os';
 import * as zlib from 'zlib';
 
-import type { LayoutRev, PeerPacket } from '../../../core/src/lan.js';
+import type { LayoutRev, PeerInfo, PeerPacket } from '../../../core/src/lan.js';
 import {
   MAX_PACKET_BYTES,
   newerLayout,
@@ -45,6 +45,26 @@ export interface TeamChannel {
   tag: string;
   key: Buffer;
   name: string;
+}
+
+/** Who this PC can list per area (people panel). Never fed into the office or snapshot. */
+export interface NetDirectory {
+  /** Public-office people heard: in the public office = live peers(PUBLIC_VIEW); otherwise
+   *  the person of every live pub sent to this watcher. */
+  public: PeerInfo[];
+  /** Joined tag → live members heard on it (also while personal). */
+  teams: Record<string, PeerInfo[]>;
+  /** Personal-mode PCs whose card arrived (Task 5; [] until then). */
+  personal: PeerInfo[];
+}
+
+interface Heard {
+  pk: string;
+  key: Buffer | null;
+  address: string;
+  port: number;
+  at: number;
+  replied: number;
 }
 
 /** Encrypted payload of `pub` and `team` datagrams (single form). */
@@ -214,18 +234,22 @@ function parseInner(text: string | null): Inner | null {
 }
 
 /**
- * v2 LAN protocol. Public office (no team joined): plaintext `hello {id, pk}`
- * broadcast, encrypted pairwise `pub` unicast to every live hello'd peer.
- * Team offices: one encrypted `team` broadcast per joined office, nothing else.
+ * v2 LAN protocol. Public office (no team joined, not personal): plaintext `hello {id, pk}`
+ * broadcast, encrypted pairwise `pub` unicast to every live hello'd peer and watcher.
+ * Everyone else broadcasts `watch {id, pk}` instead (heard by public PCs, never counted
+ * there) and gets the public PCs' pub; a team PC also sends one encrypted `team`
+ * broadcast per joined office.
  */
 export class PeerNet {
   private sock: dgram.Socket | null = null;
   private timer: NodeJS.Timeout | null = null;
-  /** Public-office peers from their hello: key cached per pk, reply address from rinfo, last hello reply. */
-  private readonly hellos = new Map<
-    string,
-    { pk: string; key: Buffer | null; address: string; port: number; at: number; replied: number }
-  >();
+  /** Public-office PCs from their hello (heard in every mode): key cached per pk, reply
+   *  address from rinfo, last reply. */
+  private readonly hellos = new Map<string, Heard>();
+  /** PCs outside the public office from their watch: get our pub, never listed or counted. */
+  private readonly watchers = new Map<string, Heard>();
+  /** As a watcher: the person (only) of every public PC whose pub reached us. */
+  private readonly heardPublic = new Map<string, { peer: PeerInfo; at: number }>();
   /** channel (PUBLIC_VIEW | tag) → sender id → last packet. */
   private readonly seen = new Map<string, Map<string, { packet: PeerPacket; at: number }>>();
   /** `${channel}|${sender}` → last accepted seq. */
@@ -307,14 +331,16 @@ export class PeerNet {
     const sock = this.sock;
     if (!sock) return;
     this.prune();
-    if (this.isOffline()) return;
     const { identity } = this.opts;
     const offices = this.opts.offices();
     const broadcast = this.opts.targets?.() ?? [
       ...broadcastAddresses(),
       ...this.opts.manualPeers(),
     ];
-    if (offices.length) {
+    if (!this.inPublic()) {
+      const watch = this.discovery();
+      for (const t of broadcast) this.send(sock, watch, t);
+      if (this.isOffline()) return;
       for (const o of offices) {
         const inner: Inner = {
           seq: ++this.seq,
@@ -335,23 +361,31 @@ export class PeerNet {
       }
       return;
     }
-    const hello: Wire = { v: 2, t: 'hello', id: identity.id, pk: identity.publicKey };
+    const hello = this.discovery();
     for (const t of broadcast) this.send(sock, hello, t);
     // One presence (one seq, deflated once) sealed per peer; sized for the longest peer id.
+    const watchers = [...this.watchers].filter(([id]) => !this.hellos.has(id));
     const inner: Inner = { seq: ++this.seq, packet: this.opts.getPacket(PUBLIC_VIEW) };
     const longest = { v: 2, t: 'pub', from: identity.id, to: 'x'.repeat(WIRE_MAX_ID) };
-    const plains = this.hellos.size ? presencePlains(inner, identity.id, envelope(longest)) : [];
-    for (const [id, h] of this.hellos) {
+    const plains =
+      this.hellos.size || watchers.length
+        ? presencePlains(inner, identity.id, envelope(longest))
+        : [];
+    const pubTo = (id: string, h: Heard, extra: string[]) => {
       h.key ??= pairKey(identity.privateKeyPem, h.pk, identity.id, id);
-      if (!h.key) continue;
-      const peer = this.seen.get(PUBLIC_VIEW)?.get(id);
-      const lay = peer ? this.layoutToPush(PUBLIC_VIEW, `pub|${id}`, [peer]) : [];
-      for (const plain of [...plains, ...lay]) {
+      if (!h.key) return;
+      for (const plain of [...plains, ...extra]) {
         const sealed = seal(h.key, pubAad(identity.id, id), plain);
         const wire: Wire = { v: 2, t: 'pub', from: identity.id, to: id, ...sealed };
         this.send(sock, wire, `${h.address}:${h.port.toString()}`);
       }
+    };
+    for (const [id, h] of this.hellos) {
+      const peer = this.seen.get(PUBLIC_VIEW)?.get(id);
+      pubTo(id, h, peer ? this.layoutToPush(PUBLIC_VIEW, `pub|${id}`, [peer]) : []);
     }
+    // Watchers get the same presence, never a layout.
+    for (const [id, h] of watchers) pubTo(id, h, []);
   }
 
   /** This PC's layout parts for `channel` when one of `peers` (live) has an older version,
@@ -387,6 +421,24 @@ export class PeerNet {
     return out;
   }
 
+  /** People heard per area, for the people panel (display only). */
+  directory(): NetDirectory {
+    const t = this.now();
+    const live = <T extends { at: number }>(e: T) => t - e.at <= PEER_TTL_MS;
+    const teams: Record<string, PeerInfo[]> = {};
+    for (const o of this.opts.offices())
+      teams[o.tag] = [...(this.seen.get(o.tag)?.values() ?? [])]
+        .filter(live)
+        .map((e) => e.packet.peer);
+    return {
+      public: this.inPublic()
+        ? this.peers(PUBLIC_VIEW).map((p) => p.peer)
+        : [...this.heardPublic.values()].filter(live).map((e) => e.peer),
+      teams,
+      personal: [],
+    };
+  }
+
   /** The name a member last announced for a team office. */
   teamName(tag: string): string | undefined {
     return this.names.get(tag);
@@ -394,6 +446,16 @@ export class PeerNet {
 
   private isOffline(): boolean {
     return this.opts.offline?.() === true;
+  }
+
+  private inPublic(): boolean {
+    return !this.isOffline() && this.opts.offices().length === 0;
+  }
+
+  /** What this PC broadcasts to be found: hello in the public office, else a watch. */
+  private discovery(): Wire {
+    const { id, publicKey: pk } = this.opts.identity;
+    return this.inPublic() ? { v: 2, t: 'hello', id, pk } : { v: 2, t: 'watch', id, pk };
   }
 
   private isJoined(tag: string): boolean {
@@ -427,8 +489,6 @@ export class PeerNet {
 
   /** Untrusted datagram: anything off is dropped silently, never throws. */
   private receive(text: string, rinfo: { address: string; port: number }): void {
-    // Personal mode listens only (team presence is still decrypted): no hello reply, no pub, so it stays invisible.
-    const offline = this.isOffline();
     const w = parseWire(text);
     if (!w) {
       if (text.startsWith('{"v":1,'))
@@ -436,50 +496,30 @@ export class PeerNet {
       return;
     }
     const me = this.opts.identity.id;
-    const inTeam = this.opts.offices().length > 0;
-    if (w.t === 'hello') {
-      if (inTeam || w.id === me) return;
-      const pinned = this.opts.pins.get(w.id);
-      if (pinned !== undefined && pinned !== w.pk) {
-        this.warnOnce(
-          `pin:${w.id}`,
-          `[Pixel Office] PC ${w.id} 의 키가 바뀌어 무시합니다 (사칭 의심).`,
-        );
-        return;
-      }
-      const prev = this.hellos.get(w.id);
-      if (!prev && this.hellos.size >= MAX_HELLO_PEERS) return;
-      if (pinned === undefined) this.opts.pins.set(w.id, w.pk);
-      // Answer with our own hello (1:1, rate-limited): a peer that reaches us only via
-      // its manual-peer list would otherwise never get our hello, and pub needs both.
-      const t = this.now();
-      const reply = !offline && (!prev || t - prev.replied >= HELLO_REPLY_MS);
-      this.hellos.set(w.id, {
-        pk: w.pk,
-        key: prev?.pk === w.pk ? prev.key : null,
-        address: rinfo.address,
-        port: rinfo.port,
-        at: t,
-        replied: reply ? t : (prev?.replied ?? 0),
-      });
-      if (reply && this.sock) {
-        const hello: Wire = { v: 2, t: 'hello', id: me, pk: this.opts.identity.publicKey };
-        this.send(this.sock, hello, `${rinfo.address}:${rinfo.port.toString()}`);
-      }
+    if (w.t === 'hello' || w.t === 'watch') {
+      if (w.id !== me) this.heard(w.t === 'hello' ? this.hellos : this.watchers, w.id, w.pk, rinfo);
       return;
     }
     if (w.t === 'pub') {
       const h = this.hellos.get(w.from);
-      if (offline || inTeam || w.to !== me || !h) return;
+      if (w.to !== me || !h) return;
       h.key ??= pairKey(this.opts.identity.privateKeyPem, h.pk, me, w.from);
       if (!h.key) return;
       const plain = open(h.key, pubAad(w.from, w.to), w.n, w.c);
-      if (this.layoutPart(PUBLIC_VIEW, plain)) return;
+      if (this.inPublic()) {
+        if (this.layoutPart(PUBLIC_VIEW, plain)) return;
+        const inner = this.unpack(PUBLIC_VIEW, plain, w.from);
+        if (inner?.packet.peer.id === w.from) this.accept(PUBLIC_VIEW, inner);
+        return;
+      }
+      // Watcher: the person only — no agents, chat, avatar, and never a layout.
+      if (plain === null || plain.startsWith('{"lay":')) return;
       const inner = this.unpack(PUBLIC_VIEW, plain, w.from);
-      if (inner?.packet.peer.id === w.from) this.accept(PUBLIC_VIEW, inner);
+      if (inner?.packet.peer.id === w.from && this.fresh(`${PUBLIC_VIEW}|${w.from}`, inner.seq))
+        this.heardPublic.set(w.from, { peer: inner.packet.peer, at: this.now() });
       return;
     }
-    if (w.t !== 'team') return; // watch / card: handled in a later task
+    if (w.t !== 'team') return; // card: handled in a later task
     const office = this.opts.offices().find((o) => o.tag === w.tag);
     if (!office) return;
     const plain = open(office.key, teamAad(w.tag), w.n, w.c);
@@ -487,6 +527,39 @@ export class PeerNet {
     const inner = this.unpack(w.tag, plain);
     if (!inner || inner.packet.peer.id === me) return;
     if (this.accept(w.tag, inner) && inner.office?.name) this.names.set(w.tag, inner.office.name);
+  }
+
+  /**
+   * A hello or watch: TOFU pin check, at most MAX_HELLO_PEERS ids (a full map ignores new
+   * ones), recorded in `map`. Answered 1:1 with our discovery() (rate-limited): a peer that
+   * reaches us only via its manual-peer list would otherwise never hear us.
+   */
+  private heard(
+    map: Map<string, Heard>,
+    id: string,
+    pk: string,
+    rinfo: { address: string; port: number },
+  ): void {
+    const pinned = this.opts.pins.get(id);
+    if (pinned !== undefined && pinned !== pk) {
+      this.warnOnce(`pin:${id}`, `[Pixel Office] PC ${id} 의 키가 바뀌어 무시합니다 (사칭 의심).`);
+      return;
+    }
+    const prev = map.get(id);
+    if (!prev && map.size >= MAX_HELLO_PEERS) return;
+    if (pinned === undefined) this.opts.pins.set(id, pk);
+    const t = this.now();
+    const reply = !prev || t - prev.replied >= HELLO_REPLY_MS;
+    map.set(id, {
+      pk,
+      key: prev?.pk === pk ? prev.key : null,
+      address: rinfo.address,
+      port: rinfo.port,
+      at: t,
+      replied: reply ? t : prev.replied,
+    });
+    if (reply && this.sock)
+      this.send(this.sock, this.discovery(), `${rinfo.address}:${rinfo.port.toString()}`);
   }
 
   /**
@@ -575,11 +648,8 @@ export class PeerNet {
   /** Stores the packet unless its seq is not newer than the sender's last on this channel. */
   private accept(channel: string, inner: Inner): boolean {
     const id = inner.packet.peer.id;
-    const key = `${channel}|${id}`;
+    if (!this.fresh(`${channel}|${id}`, inner.seq)) return false;
     const at = this.now();
-    const last = this.lastSeq.get(key);
-    if (last && inner.seq <= last.seq) return false;
-    this.lastSeq.set(key, { seq: inner.seq, at });
     let ch = this.seen.get(channel);
     if (!ch) this.seen.set(channel, (ch = new Map()));
     const before = ch.get(id)?.packet.avatar;
@@ -594,14 +664,21 @@ export class PeerNet {
     return true;
   }
 
-  /** Drops expired peers and all public-office state while in a team or of left teams.
-   *  Offline keeps listening state; peers() hides it. */
+  /** Records `seq` as the sender's last on `key` (`${channel}|${sender}`) unless it is not newer. */
+  private fresh(key: string, seq: number): boolean {
+    const last = this.lastSeq.get(key);
+    if (last && seq <= last.seq) return false;
+    this.lastSeq.set(key, { seq, at: this.now() });
+    return true;
+  }
+
+  /** Drops expired peers/watchers and state of left teams. Hellos are kept in every mode
+   *  (a watcher needs the public PCs' keys); peers() hides what the mode does not show. */
   private prune(): void {
     const t = this.now();
-    const offices = this.opts.offices();
-    const live = new Set(offices.length ? offices.map((o) => o.tag) : [PUBLIC_VIEW]);
-    if (offices.length) this.hellos.clear();
-    for (const [id, h] of this.hellos) if (t - h.at > PEER_TTL_MS) this.hellos.delete(id);
+    const live = new Set([PUBLIC_VIEW, ...this.opts.offices().map((o) => o.tag)]);
+    for (const m of [this.hellos, this.watchers, this.heardPublic])
+      for (const [id, e] of m) if (t - e.at > PEER_TTL_MS) m.delete(id);
     for (const [ch, peers] of this.seen) {
       if (!live.has(ch)) this.seen.delete(ch);
       else for (const [id, e] of peers) if (t - e.at > PEER_TTL_MS) peers.delete(id);
