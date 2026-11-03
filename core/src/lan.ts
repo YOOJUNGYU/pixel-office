@@ -410,38 +410,46 @@ function parseView(raw: unknown): AgentView | null {
   return view;
 }
 
+/** Untrusted peer info (a presence's `peer`, a card's `peer`) → fresh PeerInfo, else null. */
+export function parsePeerInfo(raw: unknown): PeerInfo | null {
+  if (!isObj(raw)) return null;
+  const id = str(raw.id, Infinity);
+  const rawNickname = str(raw.nickname, MAX_NICKNAME);
+  const palette = int(raw.palette, 0, 5);
+  const hueShift = int(raw.hueShift, 0, 360);
+  if (!id || id.length > MAX_PEER_ID || rawNickname === null) return null;
+  if (palette === null || hueShift === null) return null;
+  let nickname = cleanNickname(rawNickname);
+  let account = cleanAccount(raw.account);
+  if (account === null) {
+    // 0.3.x peers send no account: their nickname (or short id) stands in, shown once.
+    account = cleanAccount(nickname) ?? id.slice(0, SHORT_PEER_ID);
+    nickname = '';
+  }
+  const peer: PeerInfo = { id, account, nickname, palette, hueShift };
+  if (isPetId(raw.pet)) peer.pet = raw.pet;
+  const tagColors = parseTagColors(raw.tagColors);
+  if (tagColors) peer.tagColors = tagColors;
+  const since = raw.nickSince;
+  if (typeof since === 'number' && Number.isSafeInteger(since) && since >= 0) {
+    peer.nickSince = since;
+  }
+  return peer;
+}
+
 /** Parse untrusted UDP text. Never throws; returns a freshly built object or null. */
 export function parsePeerPacket(text: string): PeerPacket | null {
   if (typeof text !== 'string' || text.length > MAX_PACKET_BYTES) return null;
   try {
     const raw: unknown = JSON.parse(text);
     if (!isObj(raw) || raw.v !== 1 || !isObj(raw.peer) || !Array.isArray(raw.views)) return null;
-    const id = str(raw.peer.id, Infinity);
-    const rawNickname = str(raw.peer.nickname, MAX_NICKNAME);
-    const palette = int(raw.peer.palette, 0, 5);
-    const hueShift = int(raw.peer.hueShift, 0, 360);
-    if (!id || id.length > MAX_PEER_ID || rawNickname === null) return null;
-    if (palette === null || hueShift === null) return null;
+    const peer = parsePeerInfo(raw.peer);
+    if (!peer) return null;
     const views: AgentView[] = [];
     for (const r of raw.views.slice(0, MAX_VIEWS)) {
       const v = parseView(r);
       if (!v) return null;
       views.push(v);
-    }
-    let nickname = cleanNickname(rawNickname);
-    let account = cleanAccount(raw.peer.account);
-    if (account === null) {
-      // 0.3.x peers send no account: their nickname (or short id) stands in, shown once.
-      account = cleanAccount(nickname) ?? id.slice(0, SHORT_PEER_ID);
-      nickname = '';
-    }
-    const peer: PeerInfo = { id, account, nickname, palette, hueShift };
-    if (isPetId(raw.peer.pet)) peer.pet = raw.peer.pet;
-    const tagColors = parseTagColors(raw.peer.tagColors);
-    if (tagColors) peer.tagColors = tagColors;
-    const since = raw.peer.nickSince;
-    if (typeof since === 'number' && Number.isSafeInteger(since) && since >= 0) {
-      peer.nickSince = since;
     }
     const chat = parseChat(raw.chat);
     const avatar = parseAvatar(raw.avatar);

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { AgentView, PeerPacket } from '../../../core/src/lan.js';
-import { MAX_PACKET_BYTES, parsePeerPacket } from '../../../core/src/lan.js';
+import { MAX_PACKET_BYTES, parsePeerInfo, parsePeerPacket } from '../../../core/src/lan.js';
 
 const view = (over: Partial<AgentView> = {}): AgentView => ({
   id: 's1',
@@ -142,5 +142,22 @@ describe('parsePeerPacket', () => {
   it('never throws on garbage', () => {
     expect(parsePeerPacket('{nope')).toBeNull();
     expect(parsePeerPacket('')).toBeNull();
+  });
+});
+
+describe('parsePeerInfo', () => {
+  it('parsePeerInfo: same rules as a presence peer', () => {
+    const base = { id: 'p', nickname: 'n', palette: 0, hueShift: 0 };
+    expect(parsePeerInfo(base)).toEqual({
+      id: 'p',
+      account: 'n',
+      nickname: '',
+      palette: 0,
+      hueShift: 0,
+    });
+    const r = parsePeerInfo({ ...base, pet: 'bogus', views: [] });
+    expect(r).not.toHaveProperty('pet');
+    expect(r).not.toHaveProperty('views');
+    expect(parsePeerInfo({ ...base, palette: 9 })).toBeNull();
   });
 });

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { MAX_PACKET_BYTES } from '../../../core/src/lan.js';
 import {
+  cardAad,
   createIdentity,
   inviteText,
   isWireId,
@@ -11,6 +12,7 @@ import {
   pairKey,
   parseInviteCode,
   parseWire,
+  pubAad,
   publicKeyOf,
   seal,
   teamKey,
@@ -142,6 +144,20 @@ describe('parseWire', () => {
     expect(parseWire(JSON.stringify({ ...hello, x: 1 }))).toEqual(hello);
     expect(parseWire(JSON.stringify(pub))).toEqual(pub);
     expect(parseWire(JSON.stringify(team))).toEqual(team);
+  });
+  it('watch and card: fresh objects, same checks as hello and pub', () => {
+    const watch = { ...hello, t: 'watch' };
+    const card = { ...pub, t: 'card' };
+    expect(parseWire(JSON.stringify({ ...watch, extra: 1 }))).toEqual(watch);
+    expect(parseWire(JSON.stringify({ ...card, extra: 1 }))).toEqual(card);
+    expect(parseWire(JSON.stringify({ ...watch, pk: b64(31) }))).toBeNull();
+    expect(parseWire(JSON.stringify({ ...card, from: 'a|b' }))).toBeNull();
+    expect(parseWire(JSON.stringify({ ...card, n: b64(16) }))).toBeNull();
+  });
+  it('peers before watch/card drop them: an unknown t is null', () => {
+    expect(parseWire(JSON.stringify({ ...hello, t: 'x' }))).toBeNull();
+    expect(parseWire(JSON.stringify({ ...pub, t: 'x' }))).toBeNull();
+    expect(cardAad('a', 'b')).not.toBe(pubAad('a', 'b'));
   });
   it('rejects bad shapes', () => {
     for (const w of [

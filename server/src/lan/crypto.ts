@@ -33,7 +33,9 @@ export interface InviteCode {
 
 export type Wire =
   | { v: 2; t: 'hello'; id: string; pk: string }
+  | { v: 2; t: 'watch'; id: string; pk: string }
   | { v: 2; t: 'pub'; from: string; to: string; n: string; c: string }
+  | { v: 2; t: 'card'; from: string; to: string; n: string; c: string }
   | { v: 2; t: 'team'; tag: string; n: string; c: string };
 
 const ID = new RegExp(`^[A-Za-z0-9_.-]{1,${WIRE_MAX_ID}}$`);
@@ -163,6 +165,7 @@ export function seal(key: Buffer, aad: string, plaintext: string): { n: string; 
 }
 
 export const pubAad = (from: string, to: string): string => `pub|${from}|${to}`;
+export const cardAad = (from: string, to: string): string => `card|${from}|${to}`;
 export const teamAad = (tag: string): string => `team|${tag}`;
 
 export function open(key: Buffer, aad: string, n: string, c: string): string | null {
@@ -202,12 +205,14 @@ export function parseWire(text: string): Wire | null {
   if (o.v !== 2) return null;
   switch (o.t) {
     case 'hello':
+    case 'watch':
       return isWireId(o.id) && b64(o.pk)?.length === X25519_PUBLIC_KEY_BYTES
-        ? { v: 2, t: 'hello', id: o.id, pk: o.pk as string }
+        ? { v: 2, t: o.t, id: o.id, pk: o.pk as string }
         : null;
     case 'pub':
+    case 'card':
       return isWireId(o.from) && isWireId(o.to) && isNonce(o.n) && isCipher(o.c)
-        ? { v: 2, t: 'pub', from: o.from, to: o.to, n: o.n, c: o.c }
+        ? { v: 2, t: o.t, from: o.from, to: o.to, n: o.n, c: o.c }
         : null;
     case 'team':
       return typeof o.tag === 'string' && TAG.test(o.tag) && isNonce(o.n) && isCipher(o.c)

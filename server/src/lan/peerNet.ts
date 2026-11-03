@@ -479,6 +479,7 @@ export class PeerNet {
       if (inner?.packet.peer.id === w.from) this.accept(PUBLIC_VIEW, inner);
       return;
     }
+    if (w.t !== 'team') return; // watch / card: handled in a later task
     const office = this.opts.offices().find((o) => o.tag === w.tag);
     if (!office) return;
     const plain = open(office.key, teamAad(w.tag), w.n, w.c);
