@@ -17,6 +17,7 @@ import type { Identity } from '../../src/lan/crypto.js';
 import {
   createIdentity,
   newInviteCode,
+  open,
   pairKey,
   parseWire,
   pubAad,
@@ -578,6 +579,57 @@ describe('PeerNet directory: watchers', () => {
     ];
     for (const k of Object.keys(person)) expect(allowed).toContain(k);
     expect(received).not.toHaveBeenCalled();
+  });
+
+  it("a watcher is sent the person only; a hello'd public peer still gets everything", async () => {
+    const [a, b] = await mkNodes(['A', 'B']);
+    const raw = await rawSocket();
+    const x = createIdentity('X');
+    const full = {
+      ...pkt('B'),
+      views: [
+        {
+          id: 's1',
+          provider: 'claude',
+          kind: 'main',
+          num: 1,
+          room: 'coding',
+          permission: false,
+          act: 'run',
+          target: 'ls',
+          reason: 'r',
+        },
+      ],
+      chat: { id: 'abcd1234', text: 'hi', ts: 1 },
+      avatar: { col: 1, row: 2, dir: 'up' },
+      layout: { rev: 1, by: 'B', h: '0123456789abcdef' },
+    } as PeerPacket;
+    inner(b).opts.getPacket = () => full;
+    const watch = JSON.stringify({ v: 2, t: 'watch', id: 'X', pk: x.publicKey });
+    const key = pairKey(x.privateKeyPem, b.id.publicKey, 'X', 'B')!;
+    const toX = () =>
+      raw.got
+        .map((g) => JSON.parse(g) as { t: string; from: string; to: string; n: string; c: string })
+        .filter((w) => w.t === 'pub' && w.to === 'X');
+    await pump([a, b], () => {
+      raw.sock.send(watch, b.port, '127.0.0.1');
+      return toX().length > 0 && (a.net.peers(PUBLIC_VIEW)[0]?.views.length ?? 0) > 0;
+    });
+    expect(toX().length).toBeGreaterThan(0);
+    for (const w of toX()) {
+      const plain = open(key, pubAad(w.from, w.to), w.n, w.c);
+      const got = JSON.parse(plain!) as { packet: PeerPacket };
+      expect(got.packet.views).toHaveLength(0);
+      expect(got.packet).not.toHaveProperty('chat');
+      expect(got.packet).not.toHaveProperty('avatar');
+      expect(got.packet).not.toHaveProperty('layout');
+      expect(got.packet.peer.id).toBe('B');
+    }
+    const seenByA = a.net.peers(PUBLIC_VIEW)[0];
+    expect(seenByA.views).toHaveLength(1);
+    expect(seenByA.chat).toEqual(full.chat);
+    expect(seenByA.avatar).toEqual(full.avatar);
+    expect(seenByA.layout).toEqual(full.layout);
   });
 
   it('a busy public PC (split presence) still reaches a watcher', async () => {

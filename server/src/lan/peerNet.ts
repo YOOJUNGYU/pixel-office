@@ -367,14 +367,20 @@ export class PeerNet {
     const watchers = [...this.watchers].filter(([id]) => !this.hellos.has(id));
     const inner: Inner = { seq: ++this.seq, packet: this.opts.getPacket(PUBLIC_VIEW) };
     const longest = { v: 2, t: 'pub', from: identity.id, to: 'x'.repeat(WIRE_MAX_ID) };
-    const plains =
-      this.hellos.size || watchers.length
-        ? presencePlains(inner, identity.id, envelope(longest))
-        : [];
-    const pubTo = (id: string, h: Heard, extra: string[]) => {
+    const around = envelope(longest);
+    const plains = this.hellos.size ? presencePlains(inner, identity.id, around) : [];
+    // Watchers get the person only (no agents, chat, avatar, layout). Same seq as the full
+    // presence: a receiver gets only one of the two per tick (hello'd ids skip this list),
+    // so its `public|from` replay guard sees one increasing seq either way.
+    const personOnly: Inner = {
+      seq: inner.seq,
+      packet: { v: 1, peer: inner.packet.peer, views: [] },
+    };
+    const watcherPlains = watchers.length ? presencePlains(personOnly, identity.id, around) : [];
+    const pubTo = (id: string, h: Heard, texts: string[]) => {
       h.key ??= pairKey(identity.privateKeyPem, h.pk, identity.id, id);
       if (!h.key) return;
-      for (const plain of [...plains, ...extra]) {
+      for (const plain of texts) {
         const sealed = seal(h.key, pubAad(identity.id, id), plain);
         const wire: Wire = { v: 2, t: 'pub', from: identity.id, to: id, ...sealed };
         this.send(sock, wire, `${h.address}:${h.port.toString()}`);
@@ -382,10 +388,12 @@ export class PeerNet {
     };
     for (const [id, h] of this.hellos) {
       const peer = this.seen.get(PUBLIC_VIEW)?.get(id);
-      pubTo(id, h, peer ? this.layoutToPush(PUBLIC_VIEW, `pub|${id}`, [peer]) : []);
+      pubTo(id, h, [
+        ...plains,
+        ...(peer ? this.layoutToPush(PUBLIC_VIEW, `pub|${id}`, [peer]) : []),
+      ]);
     }
-    // Watchers get the same presence, never a layout.
-    for (const [id, h] of watchers) pubTo(id, h, []);
+    for (const [id, h] of watchers) pubTo(id, h, watcherPlains);
   }
 
   /** This PC's layout parts for `channel` when one of `peers` (live) has an older version,
