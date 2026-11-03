@@ -15,6 +15,7 @@ import {
 } from '../../src/constants.js';
 import type { Identity } from '../../src/lan/crypto.js';
 import {
+  cardAad,
   createIdentity,
   newInviteCode,
   open,
@@ -30,6 +31,7 @@ import type { Inner, TeamChannel } from '../../src/lan/peerNet.js';
 import {
   broadcastAddresses,
   fitPacket,
+  parseCard,
   PEER_TTL_MS,
   PeerNet,
   presencePlains,
@@ -455,10 +457,12 @@ describe('PeerNet personal mode (offline)', () => {
     await pump([a, b], () => false, 10);
     const types = sent.mock.calls.map((c) => (JSON.parse(String(c[0])) as { t: string }).t);
     expect(types.length).toBeGreaterThan(0);
-    expect(new Set(types)).toEqual(new Set(['watch']));
+    expect(new Set(types)).toEqual(new Set(['watch', 'card']));
     const toX = sent.mock.calls.filter((c) => c[1] === raw.port);
     expect(toX.length).toBeGreaterThan(0);
-    expect(toX.every((c) => (JSON.parse(String(c[0])) as { t: string }).t === 'watch')).toBe(true);
+    expect(
+      toX.every((c) => ['watch', 'card'].includes((JSON.parse(String(c[0])) as { t: string }).t)),
+    ).toBe(true);
     // An offline PC still receives and stores public hellos, but peers() stays empty.
     const hellos = (a.net as unknown as { hellos: Map<string, unknown> }).hellos;
     expect(hellos.has('B')).toBe(true);
@@ -519,7 +523,7 @@ describe('PeerNet directory: watchers', () => {
     const types = new Set(
       sent.mock.calls.map((c) => (JSON.parse(String(c[0])) as { t: string }).t),
     );
-    expect(types).toEqual(new Set(['watch']));
+    expect(types).toEqual(new Set(['watch', 'card']));
     expect(b.net.peers(PUBLIC_VIEW)).toEqual([]);
     expect(a.net.peers(PUBLIC_VIEW)).toEqual([]);
     expect(inner(b).hellos.has('A')).toBe(false);
@@ -709,6 +713,257 @@ describe('PeerNet directory: watchers', () => {
       inner(b).receive(JSON.stringify({ v: 2, t: 'watch', id: `W${i}`, pk: x.publicKey }), rinfo);
     expect(inner(b).watchers.size).toBe(MAX_HELLO_PEERS);
     expect(inner(b).hellos.size).toBe(0);
+  });
+});
+
+describe('PeerNet directory: cards', () => {
+  const pids = (ps: { id: string }[]) => ps.map((p) => p.id).sort();
+  type Internals = {
+    receive(text: string, rinfo: { address: string; port: number }): void;
+    hellos: Map<string, unknown>;
+    cards: Map<string, { peer: { nickname: string } }>;
+    seen: Map<string, Map<string, unknown>>;
+    opts: { getPacket: () => PeerPacket };
+  };
+  const inner = (n: Node) => n.net as unknown as Internals;
+  const sentBy = (n: Node) => vi.spyOn((n.net as unknown as { sock: dgram.Socket }).sock, 'send');
+  const full = (id: string): PeerPacket =>
+    ({
+      ...pkt(id),
+      views: [
+        {
+          id: 's1',
+          provider: 'claude',
+          kind: 'main',
+          num: 1,
+          room: 'coding',
+          permission: false,
+          act: 'run',
+          target: 'ls',
+          reason: 'r',
+        },
+      ],
+      chat: { id: 'abcd1234', text: 'hi', ts: 1 },
+      avatar: { col: 1, row: 2, dir: 'up' },
+      layout: { rev: 1, by: id, h: '0123456789abcdef' },
+    }) as PeerPacket;
+
+  it('personal A + public B: each lists the other by name', async () => {
+    const [a, b] = await mkNodes(['A', 'B']);
+    a.offline = true;
+    a.nickname = 'alice';
+    await pump(
+      [a, b],
+      () => b.net.directory().personal.length > 0 && a.net.directory().public.length > 0,
+    );
+    expect(pids(b.net.directory().personal)).toEqual(['A']);
+    expect(b.net.directory().personal[0].nickname).toBe('alice');
+    expect(pids(a.net.directory().public)).toEqual(['B']);
+    expect(ids(b.net.peers(PUBLIC_VIEW))).toEqual([]);
+    expect(b.net.directory().public).toEqual([]);
+  });
+
+  it('two personal PCs list each other', async () => {
+    const [a, c] = await mkNodes(['A', 'C']);
+    a.offline = true;
+    c.offline = true;
+    await pump(
+      [a, c],
+      () => a.net.directory().personal.length > 0 && c.net.directory().personal.length > 0,
+    );
+    expect(pids(a.net.directory().personal)).toEqual(['C']);
+    expect(pids(c.net.directory().personal)).toEqual(['A']);
+  });
+
+  it('manual peer on one side: two personal PCs still list each other (watch reply)', async () => {
+    const [pa, pc] = await Promise.all([freePort(), freePort()]);
+    const mk = (name: string, port: number, targets: string[]) => {
+      const id = createIdentity(name);
+      const net = new PeerNet({
+        port,
+        identity: id,
+        getPacket: () => pkt(id.id),
+        manualPeers: () => [],
+        offices: () => [],
+        offline: () => true,
+        pins: new Map<string, string>(),
+        targets: () => targets,
+        now: () => 1000,
+      });
+      nets.push(net);
+      return net;
+    };
+    const a = mk('A', pa, [`127.0.0.1:${pc}`]);
+    const c = mk('C', pc, []);
+    await Promise.all([a.start(), c.start()]);
+    await pump(
+      [{ net: a }, { net: c }] as Node[],
+      () => a.directory().personal.length > 0 && c.directory().personal.length > 0,
+    );
+    expect(pids(a.directory().personal)).toEqual(['C']);
+    expect(pids(c.directory().personal)).toEqual(['A']);
+  });
+
+  it('a team PC lists a personal PC; the personal PC lists no one in that team unless it is a member', async () => {
+    const [t, a] = await mkNodes(['T', 'A']);
+    const s1 = channel(newInviteCode().secret);
+    t.offices = [s1];
+    a.offline = true;
+    await pump([t, a], () => t.net.directory().personal.length > 0);
+    expect(pids(t.net.directory().personal)).toEqual(['A']);
+    expect(a.net.directory().teams).toEqual({});
+    a.offices = [s1];
+    await pump([t, a], () => (a.net.directory().teams[s1.tag]?.length ?? 0) > 0);
+    expect(pids(a.net.directory().teams[s1.tag])).toEqual(['T']);
+    expect(pids(t.net.directory().teams[s1.tag])).toEqual([]);
+    expect(pids(t.net.directory().personal)).toEqual(['A']);
+  });
+
+  it('a card carries the person only, never a team', async () => {
+    const raw = await rawSocket();
+    const [a] = await mkNodes(['A'], [`127.0.0.1:${raw.port}`]);
+    const secret = channel(newInviteCode().secret, '비밀팀');
+    a.offline = true;
+    a.offices = [secret];
+    inner(a).opts.getPacket = () => full('A');
+    const sent = sentBy(a);
+    const x = createIdentity('X');
+    const watch = JSON.stringify({ v: 2, t: 'watch', id: 'X', pk: x.publicKey });
+    const cards = () =>
+      raw.got
+        .map((g) => JSON.parse(g) as { t: string; from: string; to: string; n: string; c: string })
+        .filter((w) => w.t === 'card');
+    await pump([a], () => {
+      raw.sock.send(watch, a.port, '127.0.0.1');
+      return cards().length > 0;
+    });
+    expect(cards().length).toBeGreaterThan(0);
+    const key = pairKey(x.privateKeyPem, a.id.publicKey, 'X', 'A')!;
+    const allowed = [
+      'id',
+      'account',
+      'nickname',
+      'nickSince',
+      'palette',
+      'hueShift',
+      'pet',
+      'tagColors',
+    ];
+    for (const w of cards()) {
+      expect(w.from).toBe('A');
+      expect(w.to).toBe('X');
+      const plain = JSON.parse(open(key, cardAad('A', 'X'), w.n, w.c)!) as {
+        peer: Record<string, unknown>;
+      };
+      expect(Object.keys(plain)).toEqual(['seq', 'peer']);
+      for (const k of Object.keys(plain.peer)) expect(allowed).toContain(k);
+      expect(plain.peer.id).toBe('A');
+    }
+    expect(sent.mock.calls.length).toBeGreaterThan(0);
+    for (const c of sent.mock.calls) {
+      const text = String(c[0]);
+      expect(text).not.toContain(secret.tag);
+      expect(text).not.toContain('비밀팀');
+      expect(['watch', 'card']).toContain((JSON.parse(text) as { t: string }).t);
+    }
+  });
+
+  it('every watch and card fits one datagram', async () => {
+    const raw = await rawSocket();
+    const longId = 'A'.repeat(64);
+    const [a] = await mkNodes([longId], [`127.0.0.1:${raw.port}`]);
+    a.offline = true;
+    const big: PeerPacket = {
+      ...full(longId),
+      peer: {
+        id: longId,
+        account: '😀'.repeat(32),
+        nickname: 'ㅎ'.repeat(20),
+        nickSince: Number.MAX_SAFE_INTEGER,
+        palette: 5,
+        hueShift: 360,
+        pet: 'claudio',
+        // eslint-disable-next-line pixel-agents/no-inline-colors -- test fixture
+        tagColors: { bg: '#FFFFFF', fg: '#000000' },
+      },
+    };
+    inner(a).opts.getPacket = () => big;
+    const xId = 'X'.repeat(64);
+    const x = createIdentity(xId);
+    const watch = JSON.stringify({ v: 2, t: 'watch', id: xId, pk: x.publicKey });
+    const has = (t: string) => raw.got.some((g) => (JSON.parse(g) as { t: string }).t === t);
+    await pump([a], () => {
+      raw.sock.send(watch, a.port, '127.0.0.1');
+      return has('card') && has('watch');
+    });
+    expect(has('card') && has('watch')).toBe(true);
+    for (const g of raw.got) expect(Buffer.byteLength(g)).toBeLessThanOrEqual(MAX_DATAGRAM_BYTES);
+    const w = raw.got.map((g) => JSON.parse(g) as { t: string; n: string; c: string });
+    const card = w.find((d) => d.t === 'card')!;
+    const key = pairKey(x.privateKeyPem, a.id.publicKey, xId, longId)!;
+    expect(parseCard(open(key, cardAad(longId, xId), card.n, card.c))?.peer).toEqual(big.peer);
+  });
+
+  it('forged cards are dropped', async () => {
+    const raw = await rawSocket();
+    const [b] = await mkNodes(['B']);
+    const [x, y] = [createIdentity('X'), createIdentity('Y')];
+    const rinfo = { address: '127.0.0.1', port: raw.port };
+    const key = pairKey(x.privateKeyPem, b.id.publicKey, 'X', 'B')!;
+    const wrongKey = pairKey(y.privateKeyPem, b.id.publicKey, 'X', 'B')!;
+    const card = (
+      seq: number,
+      nickname: string,
+      o: { to?: string; k?: Buffer; aad?: string; id?: string } = {},
+    ) => {
+      const to = o.to ?? 'B';
+      const plain = JSON.stringify({ seq, peer: pkt(o.id ?? 'X', nickname).peer });
+      const sealed = seal(o.k ?? key, o.aad ?? cardAad('X', to), plain);
+      inner(b).receive(JSON.stringify({ v: 2, t: 'card', from: 'X', to, ...sealed }), rinfo);
+    };
+    const nickOf = () => b.net.directory().personal.find((p) => p.id === 'X')?.nickname;
+    card(1, 'nowatch');
+    expect(b.net.directory().personal).toEqual([]);
+    inner(b).receive(JSON.stringify({ v: 2, t: 'watch', id: 'X', pk: x.publicKey }), rinfo);
+    card(2, 'toZ', { to: 'Z' });
+    card(3, 'wrongkey', { k: wrongKey });
+    card(4, 'pubaad', { aad: pubAad('X', 'B') });
+    card(5, 'other', { id: 'Y' });
+    expect(b.net.directory().personal).toEqual([]);
+    card(5, 'one');
+    expect(nickOf()).toBe('one');
+    card(5, 'replay');
+    card(4, 'older');
+    expect(nickOf()).toBe('one');
+    b.t += PEER_TTL_MS + 1;
+    card(6, 'late');
+    expect(inner(b).cards.get('X')?.peer.nickname).toBe('one');
+    expect(b.net.directory().personal).toEqual([]);
+  });
+
+  it('a PC that switches personal → public is listed once, where it was heard last', async () => {
+    const [a, b] = await mkNodes(['A', 'B']);
+    a.offline = true;
+    await pump([a, b], () => b.net.directory().personal.length > 0);
+    expect(pids(b.net.directory().personal)).toEqual(['A']);
+    b.t += 1000;
+    a.offline = false;
+    await pump([a, b], () => b.net.directory().public.length > 0);
+    expect(pids(b.net.directory().public)).toEqual(['A']);
+    expect(b.net.directory().personal).toEqual([]);
+  });
+
+  it('a watch drops its sender from the public office at once', async () => {
+    const [a, b] = await mkNodes(['A', 'B']);
+    await pump([a, b], () => b.net.peers(PUBLIC_VIEW).length > 0);
+    expect(ids(b.net.peers(PUBLIC_VIEW))).toEqual(['A']);
+    a.offline = true;
+    await pump([a, b], () => b.net.peers(PUBLIC_VIEW).length === 0);
+    expect(b.net.peers(PUBLIC_VIEW)).toEqual([]);
+    expect(inner(b).hellos.has('A')).toBe(false);
+    expect(inner(b).seen.get(PUBLIC_VIEW)?.has('A')).toBe(false);
+    expect(b.net.directory().public).toEqual([]);
+    expect(pids(b.net.directory().personal)).toEqual(['A']);
   });
 });
 
