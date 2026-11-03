@@ -361,6 +361,14 @@ function App() {
   const tr = useTranscript();
   const { close: closeTranscript } = tr;
   const transcriptOpen = tr.state !== null;
+  // My characters: only the one whose transcript is open is outlined (never all of mine).
+  const selfPeer = people.find((p) => p.self)?.peerId ?? null;
+  const transcriptId = tr.state?.id;
+  useEffect(() => {
+    officeState.ownPeer = selfPeer;
+    const a = transcriptId === undefined ? undefined : lan.all().find((x) => x.id === transcriptId);
+    officeState.transcriptCharId = a ? (lan.idFor(a.key) ?? null) : null;
+  }, [officeState, lan, selfPeer, transcriptId]);
   // The list of my lounge agents beside my avatar (click my avatar): closed like
   // the panel, by a click elsewhere (AvatarAgentList) and when a card opens one.
   const [listPeer, setListPeer] = useState<string | null>(null);

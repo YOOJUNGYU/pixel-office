@@ -1,5 +1,10 @@
 import type { TranscriptEntry, TranscriptInfo } from '../../../core/src/messages.js';
-import { TRANSCRIPT_FOLLOW_SLACK_PX } from '../constants.js';
+import {
+  TRANSCRIPT_FOLLOW_SLACK_PX,
+  TRANSCRIPT_PANEL_EDGE_PX,
+  TRANSCRIPT_PANEL_MIN_WIDTH_PX,
+  TRANSCRIPT_PANEL_WIDTH_PX,
+} from '../constants.js';
 
 export interface TranscriptState {
   id: string;
@@ -67,4 +72,11 @@ export function listSide(
   gap: number,
 ): 'right' | 'left' {
   return avatarScreenX + gap + listWidth <= viewportWidth ? 'right' : 'left';
+}
+
+/** A dragged / saved panel width kept between the minimum and the window (a bad value → the default). */
+export function clampPanelWidth(width: number, viewport: number): number {
+  if (!Number.isFinite(width)) width = TRANSCRIPT_PANEL_WIDTH_PX;
+  const max = Math.max(TRANSCRIPT_PANEL_MIN_WIDTH_PX, viewport - TRANSCRIPT_PANEL_EDGE_PX);
+  return Math.round(Math.min(max, Math.max(TRANSCRIPT_PANEL_MIN_WIDTH_PX, width)));
 }

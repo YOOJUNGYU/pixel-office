@@ -11,14 +11,27 @@ import {
   TRANSCRIPT_PANEL_TOP_PX,
   TRANSCRIPT_PANEL_WIDTH_PX,
   TRANSCRIPT_PANEL_Z_INDEX,
+  TRANSCRIPT_RESIZE_HANDLE_PX,
+  TRANSCRIPT_RESIZE_STEP_PX,
+  TRANSCRIPT_WIDTH_KEY,
 } from '../constants.js';
 import { t, useLang } from '../i18n.js';
 import { badgeColors } from './badgeColors.js';
 import type { TranscriptState } from './transcript.js';
-import { foldText, isAtBottom } from './transcript.js';
+import { clampPanelWidth, foldText, isAtBottom } from './transcript.js';
+import {
+  headingText,
+  prettyResult,
+  splitFences,
+  splitInline,
+  toolFields,
+} from './transcriptFormat.js';
 
 const BYTES_PER_KB = 1024;
-const PRE = 'm-0 px-6 py-4 font-mono text-xs whitespace-pre-wrap break-words border-2';
+const PRE = 'm-0 px-8 py-6 font-mono text-xs leading-relaxed pixel-scrollbar border-2 [tab-size:2]';
+/** Code from a reply keeps its lines (scrolls sideways); tool input / output wraps to the panel. */
+const PRE_LINES = 'whitespace-pre overflow-x-auto';
+const PRE_WRAP = 'whitespace-pre-wrap break-words';
 const CODE_STYLE = { background: 'var(--transcript-code-bg)' };
 
 /**
@@ -26,7 +39,8 @@ const CODE_STYLE = { background: 'var(--transcript-code-bg)' };
  * provider, title, folder, ×), then every entry. Opens at the bottom, follows new
  * entries while scrolled to the bottom (else a "new below" button), loads earlier
  * pages at the top (and by itself while it does not fill the panel) and keeps the
- * reading position when they arrive. Memoized: its props only change with the transcript.
+ * reading position when they arrive. The right edge is a splitter (drag, arrow keys,
+ * double-click = default width); the width is kept per viewer. Memoized: its props only change with the transcript.
  */
 export const TranscriptPanel = memo(function TranscriptPanel({
   state,
@@ -45,6 +59,14 @@ export const TranscriptPanel = memo(function TranscriptPanel({
   const lastHeight = useRef(0);
   const [newBelow, setNewBelow] = useState(false);
   const { info, entries } = state;
+  const panel = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(readWidth);
+  const [dragging, setDragging] = useState(false);
+  const resize = (next: number, save: boolean) => {
+    const w = clampPanelWidth(next, window.innerWidth);
+    setWidth(w);
+    if (save) saveWidth(w);
+  };
 
   // Entries changed: keep the reading position, follow the bottom, or flag new ones below.
   const { start, error, more, loading } = state;
@@ -84,12 +106,13 @@ export const TranscriptPanel = memo(function TranscriptPanel({
 
   return (
     <div
+      ref={panel}
       data-transcript-panel={state.id}
-      className="absolute left-8 pixel-panel flex flex-col"
+      className={`absolute left-8 pixel-panel flex flex-col${dragging ? ' select-none' : ''}`}
       style={{
         top: TRANSCRIPT_PANEL_TOP_PX,
         bottom: TRANSCRIPT_PANEL_BOTTOM_PX,
-        width: `min(${TRANSCRIPT_PANEL_WIDTH_PX}px, 100vw - 16px)`,
+        width: `min(${width}px, 100vw - 16px)`,
         zIndex: TRANSCRIPT_PANEL_Z_INDEX,
       }}
       onWheel={(e) => e.stopPropagation()}
@@ -143,7 +166,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({
         <div
           ref={scroller}
           tabIndex={0}
-          className="absolute inset-0 overflow-y-auto px-8 py-6 flex flex-col gap-8 text-sm leading-normal"
+          className="absolute inset-0 overflow-y-auto pixel-scrollbar px-8 py-6 flex flex-col gap-8 text-sm leading-normal"
           onScroll={(e) => {
             const el = e.currentTarget;
             atBottom.current = isAtBottom(el.scrollTop, el.clientHeight, el.scrollHeight);
@@ -171,9 +194,63 @@ export const TranscriptPanel = memo(function TranscriptPanel({
           </button>
         )}
       </div>
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={t('transcript.resize')}
+        aria-valuenow={width}
+        tabIndex={0}
+        title={t('transcript.resize')}
+        className="group absolute top-0 bottom-0 flex justify-center cursor-ew-resize touch-none outline-none"
+        style={{ right: -TRANSCRIPT_RESIZE_HANDLE_PX / 2 - 2, width: TRANSCRIPT_RESIZE_HANDLE_PX }}
+        onPointerDown={(e) => {
+          if (e.button !== 0) return;
+          e.preventDefault();
+          e.currentTarget.setPointerCapture(e.pointerId);
+          setDragging(true);
+        }}
+        onPointerMove={(e) => {
+          const el = panel.current;
+          if (dragging && el) resize(e.clientX - el.getBoundingClientRect().left, false);
+        }}
+        onPointerUp={() => {
+          if (!dragging) return;
+          setDragging(false);
+          saveWidth(width);
+        }}
+        onLostPointerCapture={() => setDragging(false)}
+        onDoubleClick={() => resize(TRANSCRIPT_PANEL_WIDTH_PX, true)}
+        onKeyDown={(e) => {
+          const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+          if (!step) return;
+          e.preventDefault();
+          resize(width + step * TRANSCRIPT_RESIZE_STEP_PX, true);
+        }}
+      >
+        <span
+          className={`w-2 h-full ${dragging ? 'bg-accent' : 'bg-transparent group-hover:bg-accent group-focus-visible:bg-accent'}`}
+        />
+      </div>
     </div>
   );
 });
+
+function readWidth(): number {
+  try {
+    const saved = Number(localStorage.getItem(TRANSCRIPT_WIDTH_KEY) ?? TRANSCRIPT_PANEL_WIDTH_PX);
+    return clampPanelWidth(saved, window.innerWidth);
+  } catch {
+    return TRANSCRIPT_PANEL_WIDTH_PX;
+  }
+}
+
+function saveWidth(width: number): void {
+  try {
+    localStorage.setItem(TRANSCRIPT_WIDTH_KEY, String(width));
+  } catch {
+    // Storage blocked: the width just is not kept.
+  }
+}
 
 function Note({ children }: { children: string }) {
   return <div className="text-center text-xs text-text-muted">{children}</div>;
@@ -191,21 +268,23 @@ function Entry({ e }: { e: TranscriptEntry }) {
     case 'user':
       return (
         <div
-          title={label}
-          className="px-8 py-4 border-2 whitespace-pre-wrap break-words"
+          className="mt-8 px-8 py-6 border-l-4 flex flex-col gap-4"
           style={{
             background: 'var(--transcript-user-bg)',
             borderColor: 'var(--transcript-user-border)',
           }}
         >
-          {e.text}
+          <span className={LABEL} style={{ color: 'var(--transcript-user-border)' }}>
+            {label}
+          </span>
+          <Rich text={e.text} />
           {clipped}
         </div>
       );
     case 'assistant':
       return (
-        <div title={label} className="whitespace-pre-wrap break-words">
-          {e.text}
+        <div title={label} className="flex flex-col gap-6">
+          <Rich text={e.text} />
           {clipped}
         </div>
       );
@@ -213,27 +292,116 @@ function Entry({ e }: { e: TranscriptEntry }) {
     case 'meta':
       return <Muted label={label} text={e.text} clipped={clipped} />;
     case 'tool':
+      return (
+        <div title={label} className="flex flex-col gap-3 items-start">
+          <span
+            className="px-4 text-2xs font-bold leading-normal"
+            style={{ background: 'var(--transcript-chip-bg)', color: 'var(--transcript-chip-fg)' }}
+          >
+            {e.tool ?? label}
+          </span>
+          <ToolInput text={e.text} />
+          {clipped}
+        </div>
+      );
     case 'result':
       return (
         <div title={label} className="flex flex-col gap-2 items-start">
-          {e.kind === 'tool' && (
-            <span
-              className="px-4 text-2xs font-bold leading-normal"
-              style={{
-                background: 'var(--transcript-chip-bg)',
-                color: 'var(--transcript-chip-fg)',
-              }}
-            >
-              {e.tool ?? label}
-            </span>
-          )}
-          <Code text={e.text} error={e.kind === 'result' && e.error === true} />
+          <span
+            className={LABEL}
+            style={{ color: e.error ? 'var(--transcript-error-border)' : undefined }}
+          >
+            ↳ {label}
+          </span>
+          <Code text={prettyResult(e.text)} error={e.error === true} />
           {clipped}
         </div>
       );
     default:
       return null;
   }
+}
+
+const LABEL = 'text-2xs font-bold uppercase tracking-wide text-text-muted';
+
+/** Prose with ``` code blocks, `inline code`, **bold** and # headings; line breaks kept. */
+function Rich({ text }: { text: string }) {
+  const blocks = useMemo(() => splitFences(text), [text]);
+  return (
+    <>
+      {blocks.map((b, i) =>
+        b.kind === 'code' ? (
+          <Code key={i} text={b.text} lang={b.lang} keepLines />
+        ) : (
+          <div key={i} className="whitespace-pre-wrap break-words leading-relaxed">
+            {b.text.split('\n').map((line, j) => {
+              const h = headingText(line);
+              return (
+                <span
+                  key={j}
+                  className={h ? 'block font-bold text-base mt-4' : 'block min-h-[1lh]'}
+                >
+                  <Marks text={h ?? line} />
+                </span>
+              );
+            })}
+          </div>
+        ),
+      )}
+    </>
+  );
+}
+
+function Marks({ text }: { text: string }) {
+  return (
+    <>
+      {splitInline(text).map((m, i) =>
+        m.kind === 'code' ? (
+          <code
+            key={i}
+            className="px-2 font-mono text-xs"
+            style={{
+              background: 'var(--transcript-code-bg)',
+              color: 'var(--transcript-inline-code-fg)',
+            }}
+          >
+            {m.text}
+          </code>
+        ) : m.kind === 'bold' ? (
+          <strong key={i}>{m.text}</strong>
+        ) : (
+          m.text
+        ),
+      )}
+    </>
+  );
+}
+
+/** A tool input: JSON objects as key / value fields (long ones as code blocks), else raw. */
+function ToolInput({ text }: { text: string }) {
+  const fields = useMemo(() => toolFields(text), [text]);
+  if (!fields) return <Code text={text} />;
+  return (
+    <div className="self-stretch flex flex-col gap-3">
+      {fields.map((f) =>
+        f.block ? (
+          <div key={f.key} className="flex flex-col gap-1">
+            <span className="font-mono text-2xs" style={{ color: 'var(--transcript-key-fg)' }}>
+              {f.key}
+            </span>
+            <Code text={f.value} tone={f.tone} />
+          </div>
+        ) : (
+          <div key={f.key} className="flex gap-6 font-mono text-xs min-w-0">
+            <span className="shrink-0" style={{ color: 'var(--transcript-key-fg)' }}>
+              {f.key}
+            </span>
+            <span className="break-all">{f.value}</span>
+          </div>
+        ),
+      )}
+    </div>
+  );
 }
 
 /** Thinking / meta: one muted line, click to read it all. */
@@ -243,31 +411,58 @@ function Muted({ label, text, clipped }: { label: string; text: string; clipped:
     <button
       type="button"
       aria-expanded={open}
-      className={`text-left text-xs text-text-muted bg-transparent border-0 p-0 cursor-pointer ${open ? 'whitespace-pre-wrap break-words' : 'truncate'}`}
+      className={`text-left text-xs italic text-text-muted bg-transparent border-0 p-0 cursor-pointer ${open ? 'whitespace-pre-wrap break-words leading-relaxed' : 'truncate'}`}
       onClick={() => setOpen((o) => !o)}
     >
-      <span className="font-bold">{label} · </span>
+      <span className="font-bold not-italic">{label} · </span>
       {text}
       {open && clipped}
     </button>
   );
 }
 
-/** A tool input / result block, folded past TRANSCRIPT_FOLD_LINES lines. */
-function Code({ text, error }: { text: string; error: boolean }) {
+const TONE_BORDER = {
+  old: 'var(--transcript-old-border)',
+  new: 'var(--transcript-new-border)',
+} as const;
+
+/** A code block (indentation kept), folded past TRANSCRIPT_FOLD_LINES lines. */
+function Code({
+  text,
+  error = false,
+  lang,
+  tone,
+  keepLines = false,
+}: {
+  text: string;
+  error?: boolean;
+  lang?: string;
+  tone?: 'old' | 'new';
+  keepLines?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const fold = useMemo(() => foldText(text, TRANSCRIPT_FOLD_LINES), [text]);
+  const edge = error ? 'var(--transcript-error-border)' : tone ? TONE_BORDER[tone] : undefined;
   return (
-    <>
-      <pre
-        className={`${PRE} self-stretch`}
-        style={{
-          ...CODE_STYLE,
-          borderColor: error ? 'var(--transcript-error-border)' : 'transparent',
-        }}
-      >
-        {open || fold.hidden === 0 ? text : fold.shown}
-      </pre>
+    <div className="self-stretch flex flex-col gap-2 items-start min-w-0">
+      <div className="relative self-stretch min-w-0">
+        {lang && (
+          <span className="absolute top-0 right-0 px-4 text-2xs text-text-muted pointer-events-none">
+            {lang}
+          </span>
+        )}
+        <pre
+          className={`${PRE} ${keepLines ? PRE_LINES : PRE_WRAP}`}
+          style={{
+            ...CODE_STYLE,
+            borderColor: 'transparent',
+            borderLeftColor: edge ?? 'transparent',
+            borderLeftWidth: edge ? 4 : 2,
+          }}
+        >
+          {open || fold.hidden === 0 ? text : fold.shown}
+        </pre>
+      </div>
       {fold.hidden > 0 && (
         <button
           type="button"
@@ -277,6 +472,6 @@ function Code({ text, error }: { text: string; error: boolean }) {
           {open ? t('transcript.collapse') : t('transcript.expand', { n: String(fold.hidden) })}
         </button>
       )}
-    </>
+    </div>
   );
 }

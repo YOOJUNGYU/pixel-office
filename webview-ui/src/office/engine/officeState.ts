@@ -98,6 +98,18 @@ export class OfficeState {
     this._selectedPeer = peerId;
     requestRender('selection');
   }
+  /** This PC's peer id: my characters never get the per-PC outline, only `transcriptCharId`'s. */
+  ownPeer: string | null = null;
+  private _transcriptCharId: number | null = null;
+  /** My character whose transcript panel is open (outlined; folded into the lounge → my avatar). */
+  get transcriptCharId(): number | null {
+    return this._transcriptCharId;
+  }
+  set transcriptCharId(id: number | null) {
+    if (this._transcriptCharId === id) return;
+    this._transcriptCharId = id;
+    requestRender('selection');
+  }
   cameraFollowId: number | null = null;
   hoveredAgentId: number | null = null;
   hoveredTile: { col: number; row: number } | null = null;

@@ -71,6 +71,7 @@ import { getCharacterSprite, getPetCharacterSprite } from './characters.js';
 import type { FloorData } from './floorChunks.js';
 import { changedFloorChunks } from './floorChunks.js';
 import { renderMatrixEffect } from './matrixEffect.js';
+import { ownOutlined } from './ownOutline.js';
 
 // ── Settings ────────────────────────────────────────────────────
 
@@ -453,6 +454,11 @@ export function renderScene(
   wallCount = 0,
   /** Every character of this PC (avatar + agents) gets the selected outline. */
   selectedPeer: string | null = null,
+  /** My own characters: only the one whose transcript is open is outlined (see ownOutlined). */
+  own: { peer: string | null; transcriptCharId: number | null } = {
+    peer: null,
+    transcriptCharId: null,
+  },
 ): void {
   const drawables: ZDrawable[] = [];
   const theme = getTheme();
@@ -541,9 +547,12 @@ export function renderScene(
     }
 
     // White outline: full opacity for selected, 50% for hover
+    const owner = ch.peerId ?? ch.avatarOf;
     const isSelected =
-      (selectedAgentId !== null && ch.id === selectedAgentId) ||
-      (selectedPeer !== null && (ch.peerId ?? ch.avatarOf) === selectedPeer);
+      own.peer !== null && owner === own.peer
+        ? ownOutlined(ch, characters, own.transcriptCharId)
+        : (selectedAgentId !== null && ch.id === selectedAgentId) ||
+          (selectedPeer !== null && owner === selectedPeer);
     const isHovered = hoveredAgentId !== null && ch.id === hoveredAgentId;
     if (isSelected || isHovered) {
       const outlineAlpha = isSelected ? SELECTED_OUTLINE_ALPHA : HOVERED_OUTLINE_ALPHA;
@@ -862,6 +871,8 @@ export interface EditorRenderState {
 export interface SelectionRenderState {
   selectedAgentId: number | null;
   selectedPeer?: string | null;
+  ownPeer?: string | null;
+  transcriptCharId?: number | null;
   hoveredAgentId: number | null;
   hoveredTile: { col: number; row: number } | null;
   seats: Map<string, Seat>;
@@ -967,6 +978,7 @@ export function renderFrame(
     hoveredId,
     wallInstances.length,
     selection?.selectedPeer ?? null,
+    { peer: selection?.ownPeer ?? null, transcriptCharId: selection?.transcriptCharId ?? null },
   );
 
   // Editor overlays

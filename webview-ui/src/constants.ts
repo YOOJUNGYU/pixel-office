@@ -486,8 +486,18 @@ export const VOID_TILE_OUTLINE_COLORS = {
 
 /** Transcript panel: within this many px of the bottom counts as "at the bottom" (keeps following new entries). */
 export const TRANSCRIPT_FOLLOW_SLACK_PX = 24;
-/** Transcript panel (left side, my agents only): width; narrow screens use `100vw - 16px`. */
+/** Transcript panel (left side, my agents only): default width; narrow screens use `100vw - 16px`. */
 export const TRANSCRIPT_PANEL_WIDTH_PX = 480;
+/** Narrowest width the right-edge splitter drags the transcript panel to. */
+export const TRANSCRIPT_PANEL_MIN_WIDTH_PX = 320;
+/** Space the panel keeps free at the window's right edge (its 8px left offset + 8px). */
+export const TRANSCRIPT_PANEL_EDGE_PX = 16;
+/** Arrow keys on the focused splitter change the width by this much. */
+export const TRANSCRIPT_RESIZE_STEP_PX = 32;
+/** The splitter's grab area (straddles the panel's right border), CSS px. */
+export const TRANSCRIPT_RESIZE_HANDLE_PX = 8;
+/** localStorage key: this viewer's transcript panel width, px. */
+export const TRANSCRIPT_WIDTH_KEY = 'pixel-office.transcript.width';
 /** A tool input/result longer than this many lines is folded behind [더 보기]. */
 export const TRANSCRIPT_FOLD_LINES = 12;
 /** Gap the panel keeps to the top-left name-tag toggle and the bottom-left toolbar. */

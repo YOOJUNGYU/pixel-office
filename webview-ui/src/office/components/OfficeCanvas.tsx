@@ -229,6 +229,8 @@ export function OfficeCanvas({
         const selectionRender: SelectionRenderState = {
           selectedAgentId: officeState.selectedAgentId,
           selectedPeer: officeState.selectedPeer,
+          ownPeer: officeState.ownPeer,
+          transcriptCharId: officeState.transcriptCharId,
           hoveredAgentId: officeState.hoveredAgentId,
           hoveredTile: officeState.hoveredTile,
           seats: officeState.seats,

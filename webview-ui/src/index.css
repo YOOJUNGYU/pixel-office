@@ -75,6 +75,14 @@
   --transcript-chip-bg: #3a3a5c;
   --transcript-chip-fg: rgba(255, 255, 255, 0.92);
   --transcript-error-border: #d14249;
+  --transcript-key-fg: #9ea3e0;
+  --transcript-inline-code-fg: #f5a3c7;
+  --transcript-old-border: #d14249;
+  --transcript-new-border: #3fb36b;
+  /* .pixel-scrollbar: a track in the panel's own background, a muted thumb, accent on hover. */
+  --scrollbar-track: var(--color-bg-dark);
+  --scrollbar-thumb: #3e3e60;
+  --scrollbar-thumb-hover: #5c5c88;
 }
 
 /* Light theme (Settings → 테마 / Theme, or the top-left toggle): near-white
@@ -129,6 +137,13 @@
   --transcript-chip-bg: #e3e5ed;
   --transcript-chip-fg: #181628;
   --transcript-error-border: #b8323a;
+  --transcript-key-fg: #4f55a0;
+  --transcript-inline-code-fg: #a3265b;
+  --transcript-old-border: #b8323a;
+  --transcript-new-border: #1f8a4c;
+  --scrollbar-track: var(--color-bg-dark);
+  --scrollbar-thumb: #c4c7d6;
+  --scrollbar-thumb-hover: #9396b0;
 }
 
 @theme inline {
@@ -318,26 +333,30 @@
     display: none;
   }
 
-  /* Pixel-style thin scrollbar utility — used by the Area card folder list
-     where the mapped-folder count can exceed the card height. */
+  /* Pixel-style scrollbar utility — the Area card folder list and the transcript panel.
+     Colors are theme tokens (--scrollbar-*). Chromium/Firefox use the standard
+     properties; the ::-webkit-scrollbar rules are for Safari. */
+  .pixel-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+  .pixel-scrollbar:hover {
+    scrollbar-color: var(--scrollbar-thumb-hover) var(--scrollbar-track);
+  }
   .pixel-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
   .pixel-scrollbar::-webkit-scrollbar-track {
-    background: var(--color-bg-dark);
+    background: var(--scrollbar-track);
   }
   .pixel-scrollbar::-webkit-scrollbar-thumb {
-    background: var(--color-border);
+    background: var(--scrollbar-thumb);
+    border: 2px solid var(--scrollbar-track);
     border-radius: 0;
   }
   .pixel-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: var(--color-accent);
-  }
-  /* Firefox fallback */
-  .pixel-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-border) var(--color-bg-dark);
+    background: var(--scrollbar-thumb-hover);
   }
 }
 
