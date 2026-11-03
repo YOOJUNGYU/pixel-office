@@ -101,9 +101,9 @@ export function AvatarAgentList({
       }}
       onWheel={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
-        // Keys on a card (arrows, Enter) never move my avatar; Esc closes the list.
-        e.stopPropagation();
-        if (e.key === 'Escape') onClose();
+        // Keys on a card (arrows, Enter) never move my avatar; Esc goes on to App's
+        // window handler, which closes the list and drops the selection.
+        if (e.key !== 'Escape') e.stopPropagation();
       }}
     >
       {agents.map((a) => {

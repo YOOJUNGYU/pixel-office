@@ -370,13 +370,16 @@ function App() {
       const el = document.activeElement;
       if (e.key !== 'Escape' || el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)
         return;
-      // The list first when both are open.
-      if (listPeer !== null) setListPeer(null);
-      else closeTranscript();
+      // The list first when both are open. Esc also drops my PC's selection, so the
+      // next click on my avatar opens the list again (not the click-again "off").
+      if (listPeer !== null) {
+        officeState.selectedPeer = null; // the setter requests a render
+        setListPeer(null);
+      } else closeTranscript();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [transcriptOpen, listPeer, closeTranscript]);
+  }, [transcriptOpen, listPeer, closeTranscript, officeState]);
 
   // My avatar and the chat bar: only in an office this PC is live in (I am in its
   // snapshot), never while editing, touring or read-only.
