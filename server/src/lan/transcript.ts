@@ -33,12 +33,20 @@ type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 
-/** Concatenate the `text` of a block array. */
-function blocksText(v: unknown, image = false): string {
+const IMAGE_BLOCKS = ['image', 'input_image'];
+
+/** The `text` of a block array, one line per block; a block without text shows as `[type]`. */
+function blocksText(v: unknown): string {
   if (!Array.isArray(v)) return '';
   return v
-    .map((b) => (isObj(b) ? (image && b.type === 'image' ? '[image]' : (str(b.text) ?? '')) : ''))
-    .join('');
+    .map((b) => {
+      if (!isObj(b)) return '';
+      const t = str(b.text);
+      if (t !== undefined) return t;
+      if (IMAGE_BLOCKS.includes(b.type as string)) return '[image]';
+      return typeof b.type === 'string' ? `[${b.type}]` : '';
+    })
+    .join('\n');
 }
 
 function make(
@@ -60,20 +68,31 @@ function claude(o: Obj, ts: string | undefined, out: TranscriptEntry[]): void {
   switch (o.type) {
     case 'user':
       if (typeof c === 'string') out.push(make(o.isMeta === true ? 'meta' : 'user', c, ts));
-      else if (Array.isArray(c))
+      else if (Array.isArray(c)) {
+        // Prompt blocks (text, image, …) between tool results make one entry.
+        let prompt: unknown[] = [];
+        const flush = () => {
+          if (prompt.length > 0)
+            out.push(make(o.isMeta === true ? 'meta' : 'user', blocksText(prompt), ts));
+          prompt = [];
+        };
         for (const b of c) {
           if (!isObj(b)) continue;
-          if (b.type === 'text' && typeof b.text === 'string') out.push(make('user', b.text, ts));
-          else if (b.type === 'tool_result') {
-            const text = typeof b.content === 'string' ? b.content : blocksText(b.content, true);
-            out.push(
-              make('result', text, ts, {
-                callId: str(b.tool_use_id),
-                ...(b.is_error === true ? { error: true as const } : {}),
-              }),
-            );
+          if (b.type !== 'tool_result') {
+            prompt.push(b);
+            continue;
           }
+          flush();
+          const text = typeof b.content === 'string' ? b.content : blocksText(b.content);
+          out.push(
+            make('result', text, ts, {
+              callId: str(b.tool_use_id),
+              ...(b.is_error === true ? { error: true as const } : {}),
+            }),
+          );
         }
+        flush();
+      }
       break;
     case 'assistant':
       if (!Array.isArray(c)) break;
@@ -145,7 +164,7 @@ function codex(o: Obj, ts: string | undefined, out: TranscriptEntry[]): void {
           : Array.isArray(out_)
             ? blocksText(out_)
             : isObj(out_)
-              ? (str(out_.content) ?? '')
+              ? (str(out_.content) ?? JSON.stringify(out_, null, 2))
               : '';
       out.push(make('result', text, ts, { callId }));
       break;
@@ -264,7 +283,14 @@ export class TranscriptService {
     }
     const req = {};
     this.opening.set(client, req);
-    const { file, ...info } = src;
+    const { file } = src;
+    const info: TranscriptInfo = {
+      kind: src.kind,
+      provider: src.provider,
+      num: src.num,
+      title: src.title,
+      folder: src.folder,
+    };
     let page: TranscriptPage;
     try {
       page = await readPage(file, src.provider, (await stat(file)).size);

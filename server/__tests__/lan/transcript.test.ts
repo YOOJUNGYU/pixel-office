@@ -77,6 +77,65 @@ describe('parseLines', () => {
     expect(e[0].text).toBe('[image]');
   });
 
+  it('claude: array-content isMeta prompt is meta', () => {
+    const e = parseLines('claude', [
+      j({
+        type: 'user',
+        isMeta: true,
+        message: { content: [{ type: 'text', text: 'Base directory for this skill: /x' }] },
+      }),
+    ]);
+    expect(e).toEqual([{ kind: 'meta', text: 'Base directory for this skill: /x' }]);
+  });
+
+  it('claude: non-text blocks become placeholders, never dropped', () => {
+    const e = parseLines('claude', [
+      j({
+        type: 'user',
+        message: {
+          content: [
+            { type: 'text', text: 'look' },
+            { type: 'image', source: {} },
+          ],
+        },
+      }),
+      j({
+        type: 'user',
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 't',
+              content: [{ type: 'text', text: 'found' }, { type: 'tool_reference' }],
+            },
+          ],
+        },
+      }),
+    ]);
+    expect(e.map((x) => [x.kind, x.text])).toEqual([
+      ['user', 'look\n[image]'],
+      ['result', 'found\n[tool_reference]'],
+    ]);
+  });
+
+  it('codex: input_image and an object output without content', () => {
+    const ri = (payload: unknown) => j({ type: 'response_item', payload });
+    const output = { stdout: 'o', code: 0 };
+    const e = parseLines('codex', [
+      ri({
+        type: 'message',
+        role: 'user',
+        content: [
+          { type: 'input_text', text: 'see' },
+          { type: 'input_image', image_url: 'data:' },
+        ],
+      }),
+      ri({ type: 'function_call_output', call_id: 'c', output }),
+    ]);
+    expect(e[0]).toMatchObject({ kind: 'user', text: 'see\n[image]' });
+    expect(e[1]).toMatchObject({ kind: 'result', text: JSON.stringify(output, null, 2) });
+  });
+
   it('codex: message, reasoning, call and output', () => {
     const ri = (payload: unknown) => j({ timestamp: 'T', type: 'response_item', payload });
     const e = parseLines('codex', [
@@ -233,8 +292,8 @@ describe('TranscriptService', () => {
     await t.svc.open(t.client, 'a', t.send);
     expect(t.sent[0].type).toBe('transcriptLoaded');
     const info = t.sent[0].info as Record<string, unknown>;
-    expect(info.title).toBe('T-a');
-    expect(info).not.toHaveProperty('file');
+    // Exactly the info fields: nothing else from the source (no file path).
+    expect(info).toEqual({ kind: 'main', provider: 'claude', num: 1, title: 'T-a', folder: 'f' });
     expect((t.sent[0].entries as TranscriptEntry[]).length).toBe(2);
   });
 
