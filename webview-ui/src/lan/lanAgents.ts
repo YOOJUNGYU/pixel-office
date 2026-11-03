@@ -238,6 +238,22 @@ export class LanAgents {
     this.reconcile();
   }
 
+  /** This PC's peer id (the `self` person of the snapshot). */
+  selfPeerId(): string | undefined {
+    return this.people.find((p) => p.self)?.peerId;
+  }
+
+  isMine(a: OfficeAgent): boolean {
+    const me = this.selfPeerId();
+    return me !== undefined && a.peer.id === me;
+  }
+
+  /** Agents of a PC folded into its avatar (room lounge, avatar shown), in `roomAgents` order. */
+  loungeAgentsOf(peerId: string): OfficeAgent[] {
+    if (!this.avatarIds.has(peerId)) return [];
+    return roomAgents(this.real, 'lounge').filter((a) => a.peer.id === peerId);
+  }
+
   /** Snapshot agents only (no tour demos). */
   realAgents(): OfficeAgent[] {
     return this.real;

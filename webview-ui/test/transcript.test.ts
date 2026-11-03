@@ -1,0 +1,76 @@
+import assert from 'node:assert/strict';
+
+import { test } from 'vitest';
+
+import { isAtBottom, openState, reduceTranscript } from '../src/lan/transcript.js';
+
+const e = (text: string) => ({ kind: 'user' as const, text });
+const info = { kind: 'main', provider: 'claude', num: 1, title: 't', folder: 'f' };
+
+test('loaded replaces, earlier prepends, append appends', () => {
+  let s = reduceTranscript(openState('a'), {
+    type: 'transcriptLoaded',
+    id: 'a',
+    info,
+    entries: [e('2'), e('3')],
+    start: 5,
+    more: true,
+  });
+  assert.equal(s?.loading, false);
+  assert.equal(s?.start, 5);
+  s = reduceTranscript(s, {
+    type: 'transcriptEarlier',
+    id: 'a',
+    entries: [e('1')],
+    start: 2,
+    more: false,
+  });
+  assert.deepEqual(
+    s?.entries.map((x) => x.text),
+    ['1', '2', '3'],
+  );
+  assert.equal(s?.start, 2);
+  assert.equal(s?.more, false);
+  s = reduceTranscript(s, { type: 'transcriptAppend', id: 'a', entries: [e('4')] });
+  assert.deepEqual(
+    s?.entries.map((x) => x.text),
+    ['1', '2', '3', '4'],
+  );
+  s = reduceTranscript(s, {
+    type: 'transcriptLoaded',
+    id: 'a',
+    info,
+    entries: [e('x')],
+    start: 0,
+    more: false,
+  });
+  assert.deepEqual(
+    s?.entries.map((x) => x.text),
+    ['x'],
+  );
+});
+
+test('messages for another id are ignored', () => {
+  const s = openState('a');
+  assert.equal(reduceTranscript(s, { type: 'transcriptAppend', id: 'b', entries: [e('1')] }), s);
+  assert.equal(reduceTranscript(null, { type: 'transcriptAppend', id: 'a', entries: [] }), null);
+});
+
+test('ended keeps entries and sets error', () => {
+  let s = reduceTranscript(openState('a'), {
+    type: 'transcriptLoaded',
+    id: 'a',
+    info,
+    entries: [e('1')],
+    start: 0,
+    more: false,
+  });
+  s = reduceTranscript(s, { type: 'transcriptError', id: 'a', reason: 'ended' });
+  assert.equal(s?.error, 'ended');
+  assert.equal(s?.entries.length, 1);
+});
+
+test('isAtBottom within slack', () => {
+  assert.equal(isAtBottom(76, 100, 200), true);
+  assert.equal(isAtBottom(50, 100, 200), false);
+});

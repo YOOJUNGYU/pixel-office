@@ -483,3 +483,6 @@ export const VOID_TILE_OUTLINE_COLORS = {
   dark: VOID_TILE_OUTLINE_COLOR,
   light: 'rgba(0,0,0,0.12)',
 } as const;
+
+/** Transcript panel: within this many px of the bottom counts as "at the bottom" (keeps following new entries). */
+export const TRANSCRIPT_FOLLOW_SLACK_PX = 24;

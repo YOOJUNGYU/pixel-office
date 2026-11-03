@@ -582,3 +582,40 @@ test('a key reported twice is kept once (duplicate keys orphan overlay nodes)', 
   assert.equal(lan.all().length, 1);
   assert.equal(lan.all()[0].room, 'coding');
 });
+
+test('isMine only for the self person', () => {
+  const { lan } = setup();
+  assert.equal(lan.selfPeerId(), undefined);
+  assert.equal(lan.isMine(agent('a', 'coding')), false);
+  lan.applyPeople([
+    { peerId: 'p2', account: 'o', palette: 1, hueShift: 0 },
+    { peerId: 'p1', account: 'yoo', palette: 2, hueShift: 30, self: true },
+  ]);
+  assert.equal(lan.selfPeerId(), 'p1');
+  assert.equal(lan.isMine(agent('a', 'coding')), true);
+  assert.equal(lan.isMine({ ...agent('b', 'coding'), peer: { ...peer, id: 'p2' } }), false);
+});
+
+test('loungeAgentsOf lists folded lounge agents of that PC only', () => {
+  const { lan } = setup();
+  const other = { ...peer, id: 'p2' };
+  lan.applyPeople([
+    { peerId: 'p1', account: 'yoo', palette: 2, hueShift: 30, self: true },
+    { peerId: 'p2', account: 'o', palette: 1, hueShift: 0 },
+  ]);
+  lan.apply([
+    agent('a', 'lounge'),
+    child('c', 'a', 'lounge'),
+    agent('b', 'coding'),
+    { ...agent('z', 'lounge'), key: 'p2:z', peer: other },
+  ]);
+  assert.deepEqual(
+    lan.loungeAgentsOf('p1').map((a) => a.id),
+    ['a', 'c'],
+  );
+  assert.deepEqual(
+    lan.loungeAgentsOf('p2').map((a) => a.id),
+    ['z'],
+  );
+  assert.deepEqual(lan.loungeAgentsOf('p3'), []);
+});
