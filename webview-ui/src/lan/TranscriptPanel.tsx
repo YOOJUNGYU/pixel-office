@@ -17,6 +17,8 @@ import {
 } from '../constants.js';
 import { t, useLang } from '../i18n.js';
 import { badgeColors } from './badgeColors.js';
+import type { Family } from './highlight.js';
+import { highlight, languageOf } from './highlight.js';
 import type { TranscriptState } from './transcript.js';
 import { clampPanelWidth, foldText, isAtBottom } from './transcript.js';
 import {
@@ -300,7 +302,7 @@ function Entry({ e }: { e: TranscriptEntry }) {
           >
             {e.tool ?? label}
           </span>
-          <ToolInput text={e.text} />
+          <ToolInput text={e.text} tool={e.tool} />
           {clipped}
         </div>
       );
@@ -331,7 +333,7 @@ function Rich({ text }: { text: string }) {
     <>
       {blocks.map((b, i) =>
         b.kind === 'code' ? (
-          <Code key={i} text={b.text} lang={b.lang} keepLines />
+          <Code key={i} text={b.text} lang={b.lang} family={languageOf(b.lang)} keepLines />
         ) : (
           <div key={i} className="whitespace-pre-wrap break-words leading-relaxed">
             {b.text.split('\n').map((line, j) => {
@@ -378,9 +380,16 @@ function Marks({ text }: { text: string }) {
 }
 
 /** A tool input: JSON objects as key / value fields (long ones as code blocks), else raw. */
-function ToolInput({ text }: { text: string }) {
+/** Fields holding source code take their language from the call's path field. */
+const CODE_FIELDS = new Set(['content', 'old_string', 'new_string', 'new_source', 'code']);
+
+function ToolInput({ text, tool }: { text: string; tool?: string }) {
   const fields = useMemo(() => toolFields(text), [text]);
-  if (!fields) return <Code text={text} />;
+  const shell = tool !== undefined && /^(bash|shell|exec_command|local_shell)$/i.test(tool);
+  if (!fields) return <Code text={text} family={shell ? 'sh' : undefined} />;
+  const path = fields.find((f) => /^(file_path|path|notebook_path)$/.test(f.key))?.value;
+  const familyOf = (key: string) =>
+    key === 'command' || key === 'cmd' ? 'sh' : CODE_FIELDS.has(key) ? languageOf(path) : undefined;
   return (
     <div className="self-stretch flex flex-col gap-3">
       {fields.map((f) =>
@@ -389,7 +398,7 @@ function ToolInput({ text }: { text: string }) {
             <span className="font-mono text-2xs" style={{ color: 'var(--transcript-key-fg)' }}>
               {f.key}
             </span>
-            <Code text={f.value} tone={f.tone} />
+            <Code text={f.value} tone={f.tone} family={familyOf(f.key)} />
           </div>
         ) : (
           <div key={f.key} className="flex gap-6 font-mono text-xs min-w-0">
@@ -433,15 +442,19 @@ function Code({
   lang,
   tone,
   keepLines = false,
+  family,
 }: {
   text: string;
   error?: boolean;
   lang?: string;
   tone?: 'old' | 'new';
   keepLines?: boolean;
+  family?: Family;
 }) {
   const [open, setOpen] = useState(false);
   const fold = useMemo(() => foldText(text, TRANSCRIPT_FOLD_LINES), [text]);
+  const shown = open || fold.hidden === 0 ? text : fold.shown;
+  const tokens = useMemo(() => highlight(shown, family), [shown, family]);
   const edge = error ? 'var(--transcript-error-border)' : tone ? TONE_BORDER[tone] : undefined;
   return (
     <div className="self-stretch flex flex-col gap-2 items-start min-w-0">
@@ -460,7 +473,15 @@ function Code({
             borderLeftWidth: edge ? 4 : 2,
           }}
         >
-          {open || fold.hidden === 0 ? text : fold.shown}
+          {tokens.map((tk, i) =>
+            tk.kind === 'plain' ? (
+              tk.text
+            ) : (
+              <span key={i} style={{ color: `var(--syntax-${tk.kind})` }}>
+                {tk.text}
+              </span>
+            ),
+          )}
         </pre>
       </div>
       {fold.hidden > 0 && (

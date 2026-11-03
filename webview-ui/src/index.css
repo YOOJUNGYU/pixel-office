@@ -79,6 +79,14 @@
   --transcript-inline-code-fg: #f5a3c7;
   --transcript-old-border: #d14249;
   --transcript-new-border: #3fb36b;
+  /* Syntax colours in transcript code blocks (lan/highlight.ts token kinds). */
+  --syntax-kw: #c792ea;
+  --syntax-str: #a5d68a;
+  --syntax-num: #f7a36b;
+  --syntax-com: #7a7f9e;
+  --syntax-fn: #82aaff;
+  --syntax-type: #ffcb6b;
+  --syntax-prop: #89ddff;
   /* .pixel-scrollbar: a track in the panel's own background, a muted thumb, accent on hover. */
   --scrollbar-track: var(--color-bg-dark);
   --scrollbar-thumb: #3e3e60;
@@ -141,6 +149,13 @@
   --transcript-inline-code-fg: #a3265b;
   --transcript-old-border: #b8323a;
   --transcript-new-border: #1f8a4c;
+  --syntax-kw: #7c3aad;
+  --syntax-str: #2f7d32;
+  --syntax-num: #b3541e;
+  --syntax-com: #7d8096;
+  --syntax-fn: #2456c4;
+  --syntax-type: #9a6700;
+  --syntax-prop: #0b7285;
   --scrollbar-track: var(--color-bg-dark);
   --scrollbar-thumb: #c4c7d6;
   --scrollbar-thumb-hover: #9396b0;
@@ -211,6 +226,10 @@
 
   * {
     @apply font-ui;
+  }
+  /* Children of monospace blocks (syntax-coloured spans, tool field values) keep it. */
+  .font-mono * {
+    font-family: inherit;
   }
 }
 
