@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import type { DirectoryPersonMessage } from '../../../core/src/messages.js';
 import {
   MOBILE_MEDIA_QUERY,
   PEOPLE_COLLAPSED_KEY,
@@ -9,9 +10,11 @@ import {
   PEOPLE_PET_FACE_CROP,
   PEOPLE_WIDE_MIN_PX,
 } from '../constants.js';
-import { t, useLang } from '../i18n.js';
+import { type Key, t, useLang } from '../i18n.js';
 import type { OfficeState } from '../office/engine/officeState.js';
+import { type AreaSection, totalPeople, viewedExtras } from './directoryModel.js';
 import type { LanAgents } from './lanAgents.js';
+import { peerLabel } from './nicknames.js';
 import { focusHintKey, inFrozenOrder, type PersonRow } from './peopleModel.js';
 import { CharacterPreview } from './ProfileModal.js';
 
@@ -53,8 +56,39 @@ function StatusMark({ status }: { status: PersonRow['status'] }) {
   );
 }
 
+function Face({ person }: { person: DirectoryPersonMessage }) {
+  return (
+    <span className="shrink-0 flex bg-bg-dark border-2 border-border">
+      <CharacterPreview
+        palette={person.palette}
+        hueShift={person.hueShift}
+        pet={person.pet}
+        scale={PEOPLE_FACE_SCALE}
+        crop={person.pet ? PEOPLE_PET_FACE_CROP : PEOPLE_FACE_CROP}
+      />
+    </span>
+  );
+}
+
+/** A person outside the viewed office (or not in its snapshot): face + name, no actions. */
+function PlainRow({ person }: { person: DirectoryPersonMessage }) {
+  return (
+    <li className="flex items-center gap-8 py-3 px-8 text-text">
+      <Face person={person} />
+      <span className="flex-1 min-w-0 truncate">
+        {peerLabel(person)}
+        {person.self && ` ${t('people.you')}`}
+      </span>
+    </li>
+  );
+}
+
+const AREA_HEADING = 'text-xs font-bold py-3 px-8 border-t-2 border-border';
+
 interface PeoplePanelProps {
   rows: PersonRow[];
+  /** Public / team / personal areas (areaSections); the viewed one shows `rows`. */
+  sections: AreaSection[];
   lan: LanAgents;
   officeState: OfficeState;
   /** The tour's people step shows it expanded regardless of the viewer's choice. */
@@ -62,10 +96,17 @@ interface PeoplePanelProps {
 }
 
 /**
- * Right-edge list of everyone in the viewed office. Click = camera follows the
- * person's agent; hover = their name tags light up (LanAgents.highlightPeer).
+ * Right-edge list of people by area (public office, team, personal). The viewed
+ * office's rows: click = camera follows the person's agent; hover = their name
+ * tags light up (LanAgents.highlightPeer). Other areas: face + name only.
  */
-export function PeoplePanel({ rows: live, lan, officeState, forceOpen }: PeoplePanelProps) {
+export function PeoplePanel({
+  rows: live,
+  sections,
+  lan,
+  officeState,
+  forceOpen,
+}: PeoplePanelProps) {
   useLang();
   // Rows must not jump under a resting pointer: while it is over the list the order is frozen.
   const [hovered, setHovered] = useState(false);
@@ -105,7 +146,65 @@ export function PeoplePanel({ rows: live, lan, officeState, forceOpen }: PeopleP
     else officeState.selectAndFollow(id);
   };
 
-  const count = t('people.title', { n: String(rows.length) });
+  const count = t('people.title', { n: String(totalPeople(sections, live)) });
+
+  const liveRows = rows.map((r) => (
+    <li key={r.person.peerId}>
+      <button
+        type="button"
+        onClick={() => focus(r)}
+        onMouseEnter={() => (lan.highlightPeer = r.person.peerId)}
+        onMouseLeave={() => (lan.highlightPeer = null)}
+        onFocus={() => (lan.highlightPeer = r.person.peerId)}
+        onBlur={() => (lan.highlightPeer = null)}
+        className="w-full flex items-center gap-8 py-3 px-8 bg-transparent border-0 text-left text-text cursor-pointer hover:bg-btn-hover"
+      >
+        <Face person={r.person} />
+        <span className="flex-1 min-w-0 flex flex-col">
+          <span className="truncate">
+            {r.person.account}
+            {r.person.nickname && <span className="text-text-muted"> ({r.person.nickname})</span>}
+            {r.person.self && ` ${t('people.you')}`}
+          </span>
+          <span
+            className={`text-xs truncate ${hint === r.person.peerId ? 'text-warning' : 'text-text-muted'}`}
+          >
+            {hint === r.person.peerId ? t(focusHintKey(r)) : counts(r)}
+          </span>
+        </span>
+        <StatusMark status={r.status} />
+      </button>
+    </li>
+  ));
+
+  /** One area: its people (the viewed one = live rows + directory people missing from them). */
+  const area = (s: AreaSection, heading: Key) => {
+    const extras = s.viewed ? viewedExtras(s, live) : s.people;
+    const n = (s.viewed ? live.length : 0) + extras.length;
+    return (
+      <li key={s.view}>
+        <div className={AREA_HEADING}>
+          {t(heading, { n: String(n), name: s.name || t('office.unnamed') })}
+        </div>
+        <ul className="m-0 p-0 list-none">
+          {s.viewed && liveRows}
+          {extras.map((p) => (
+            <PlainRow key={p.peerId} person={p} />
+          ))}
+          {n === 0 && (
+            <li className="py-3 px-8 text-xs text-text-muted">{t('people.area.empty')}</li>
+          )}
+        </ul>
+      </li>
+    );
+  };
+  const teams = sections.filter((s) => s.area === 'team');
+  const teamCount = new Set(
+    teams.flatMap((s) => [
+      ...s.people.map((p) => p.peerId),
+      ...(s.viewed ? live.map((r) => r.person.peerId) : []),
+    ]),
+  ).size;
 
   return (
     // Whatever height the top-right stack leaves below the popups; the panel centres in it.
@@ -128,46 +227,20 @@ export function PeoplePanel({ rows: live, lan, officeState, forceOpen }: PeopleP
           <ul
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
-            className="m-0 p-0 list-none overflow-y-auto border-t-2 border-border"
+            className="m-0 p-0 list-none overflow-y-auto"
           >
-            {rows.map((r) => (
-              <li key={r.person.peerId}>
-                <button
-                  type="button"
-                  onClick={() => focus(r)}
-                  onMouseEnter={() => (lan.highlightPeer = r.person.peerId)}
-                  onMouseLeave={() => (lan.highlightPeer = null)}
-                  onFocus={() => (lan.highlightPeer = r.person.peerId)}
-                  onBlur={() => (lan.highlightPeer = null)}
-                  className="w-full flex items-center gap-8 py-3 px-8 bg-transparent border-0 text-left text-text cursor-pointer hover:bg-btn-hover"
-                >
-                  <span className="shrink-0 flex bg-bg-dark border-2 border-border">
-                    <CharacterPreview
-                      palette={r.person.palette}
-                      hueShift={r.person.hueShift}
-                      pet={r.person.pet}
-                      scale={PEOPLE_FACE_SCALE}
-                      crop={r.person.pet ? PEOPLE_PET_FACE_CROP : PEOPLE_FACE_CROP}
-                    />
-                  </span>
-                  <span className="flex-1 min-w-0 flex flex-col">
-                    <span className="truncate">
-                      {r.person.account}
-                      {r.person.nickname && (
-                        <span className="text-text-muted"> ({r.person.nickname})</span>
-                      )}
-                      {r.person.self && ` ${t('people.you')}`}
-                    </span>
-                    <span
-                      className={`text-xs truncate ${hint === r.person.peerId ? 'text-warning' : 'text-text-muted'}`}
-                    >
-                      {hint === r.person.peerId ? t(focusHintKey(r)) : counts(r)}
-                    </span>
-                  </span>
-                  <StatusMark status={r.status} />
-                </button>
-              </li>
-            ))}
+            {sections.flatMap((s) =>
+              s.area !== 'team'
+                ? area(s, s.area === 'public' ? 'people.area.public' : 'people.area.personal')
+                : [
+                    s === teams[0] && (
+                      <li key="team" className={AREA_HEADING}>
+                        {t('people.area.team', { n: String(teamCount) })}
+                      </li>
+                    ),
+                    area(s, 'people.area.teamName'),
+                  ],
+            )}
           </ul>
         )}
       </div>

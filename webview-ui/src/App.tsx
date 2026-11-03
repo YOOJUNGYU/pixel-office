@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { OfficeAgent } from '../../core/src/lan.js';
-import { fillMissingRooms, isLayoutGrid, ROOM_LABELS, ROOM_ORDER } from '../../core/src/lan.js';
+import {
+  fillMissingRooms,
+  isLayoutGrid,
+  PUBLIC_VIEW,
+  ROOM_LABELS,
+  ROOM_ORDER,
+} from '../../core/src/lan.js';
 import type { ProfileMessage } from '../../core/src/messages.js';
 import { BottomToolbar } from './components/BottomToolbar.js';
 import { ConnectionIndicator } from './components/ConnectionIndicator.js';
@@ -31,6 +37,7 @@ import { t, useLang } from './i18n.js';
 import { AvatarAgentList } from './lan/AvatarAgentList.js';
 import { useAvatarKeys } from './lan/avatarKeys.js';
 import { ChatLayer } from './lan/ChatLayer.js';
+import { areaSections } from './lan/directoryModel.js';
 import { InstallPrompt } from './lan/InstallPrompt.js';
 import { LanOverlay } from './lan/LanOverlay.js';
 import { NicknameNotice } from './lan/NicknameNotice.js';
@@ -116,6 +123,7 @@ function App() {
     lan,
     chats,
     people,
+    directory,
     notify,
     setNotify,
     profileError,
@@ -724,6 +732,7 @@ function App() {
           {!editor.isEditMode && (
             <PeoplePanel
               rows={peopleRows(people, lan.all())}
+              sections={areaSections(directory, offices?.activeView ?? PUBLIC_VIEW)}
               lan={lan}
               officeState={officeState}
               forceOpen={scene?.people === true}

@@ -10,6 +10,7 @@ import type {
   OfficePersonMessage,
   OfficeSnapshot,
   OfficesState,
+  PeopleDirectory,
   ProfileError,
   ProfileErrorReason,
   ProfileLoaded,
@@ -18,6 +19,7 @@ import type {
 } from '../../../core/src/messages.js';
 import { LAN_READING_TOOLS } from '../constants.js';
 import { ChatBubbles } from '../lan/chat.js';
+import { EMPTY_DIRECTORY } from '../lan/directoryModel.js';
 import { avatarDirName, LanAgents } from '../lan/lanAgents.js';
 import { disambiguate } from '../lan/nicknames.js';
 import { requestRender } from '../office/engine/gameLoop.js';
@@ -83,7 +85,8 @@ interface ExtensionMessageState {
   lanVersion: number;
   /** Everyone in the viewed office (latest officeSnapshot). */
   people: OfficePersonMessage[];
-  /** People live per open office (view → count, me included); {} in personal mode. */
+  /** Public / team / personal people for the panel areas (latest peopleDirectory). */
+  directory: Omit<PeopleDirectory, 'type'>;
   /** This PC's profile and whether this browser may edit it; null until loaded. */
   profile: Omit<ProfileLoaded, 'type'> | null;
   /** Why the last saveProfile was refused (profileError); null = none / cleared. */
@@ -127,6 +130,7 @@ export function useExtensionMessages(
   const [restarting, setRestarting] = useState(false);
   const [lanVersion, setLanVersion] = useState(0);
   const [people, setPeople] = useState<OfficePersonMessage[]>([]);
+  const [directory, setDirectory] = useState<Omit<PeopleDirectory, 'type'>>(EMPTY_DIRECTORY);
   const [profile, setProfile] = useState<Omit<ProfileLoaded, 'type'> | null>(null);
   const [profileError, setProfileError] = useState<ProfileErrorReason | null>(null);
   const [layoutSaveRejections, setLayoutSaveRejections] = useState(0);
@@ -203,6 +207,9 @@ export function useExtensionMessages(
         setNicknames({ taken: snap.taken, selfLost: snap.selfLost });
         if (layoutReadyRef.current) applyAgents(agents, snap.people);
         else pendingAgentsRef.current = { agents, people: snap.people };
+      } else if (msg.type === 'peopleDirectory') {
+        const { public: pub, teams, personal } = msg as PeopleDirectory;
+        setDirectory({ public: pub, teams, personal });
       } else if (msg.type === 'profileLoaded') {
         const { profile, canEdit, account, firstRun } = msg as ProfileLoaded;
         setProfile({ profile, canEdit, account, firstRun });
@@ -316,6 +323,7 @@ export function useExtensionMessages(
     chats,
     lanVersion,
     people,
+    directory,
     notify,
     setNotify,
     profile,
