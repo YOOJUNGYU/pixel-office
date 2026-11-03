@@ -44,7 +44,7 @@ const ko = {
   'zones.tpl.grid': '격자',
   'zones.tpl.priority': '가운데 크게',
   'zones.editHint':
-    '미리보기: 경계선 끌기 = 크기, 클릭 = 위아래로 나누기, Shift+클릭 = 좌우로 나누기, Ctrl+클릭 = 지우기',
+    '미리보기나 화면 위 영역에서: 경계선 끌기 = 크기, 클릭 = 위아래로 나누기, Shift+클릭 = 좌우로 나누기, Ctrl+클릭 = 지우기',
   'zones.hint':
     '세션 창을 Shift를 누른 채 끌면 영역이 보이고, 놓으면 그 영역 크기로 맞춰집니다 (Ctrl: 여러 영역 합치기).',
   'transcript.dialog': '세션 상세',
@@ -438,7 +438,7 @@ const en: Record<Key, string> = {
   'zones.tpl.grid': 'Grid',
   'zones.tpl.priority': 'Priority',
   'zones.editHint':
-    'Preview: drag a divider to resize, click to split top/bottom, Shift+click to split left/right, Ctrl+click to remove',
+    'In the preview or on screen: drag a divider to resize, click to split top/bottom, Shift+click to split left/right, Ctrl+click to remove',
   'zones.hint':
     'Hold Shift while dragging a session window to see the zones; drop to fit it to one (Ctrl: span several).',
   'transcript.dialog': 'Session details',

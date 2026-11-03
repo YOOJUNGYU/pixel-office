@@ -526,6 +526,9 @@ export const ZONE_SNAP_SLACK_PX = 24;
 /** The zone overlay draws over the dialogs; the editor over everything but modals. */
 export const ZONE_OVERLAY_Z_INDEX = 47;
 export const ZONE_EDITOR_Z_INDEX = 48;
+/** Zone divider grab half-width: in the editor preview / on screen (CSS px). */
+export const ZONE_DIVIDER_PREVIEW_PX = 5;
+export const ZONE_DIVIDER_SCREEN_PX = 8;
 /** Editor preview width (its height follows the area's aspect), CSS px. */
 export const ZONE_PREVIEW_W_PX = 320;
 /** localStorage key: this viewer's zone layout. */

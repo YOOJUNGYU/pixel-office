@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 
 import {
   TRANSCRIPT_PANEL_TOP_PX,
+  ZONE_DIVIDER_PREVIEW_PX,
+  ZONE_DIVIDER_SCREEN_PX,
   ZONE_EDITOR_Z_INDEX,
   ZONE_MAX,
   ZONE_OVERLAY_Z_INDEX,
@@ -110,7 +112,15 @@ export function ZoneEditor() {
       </button>
       {open && (
         <>
-          <ZoneOverlay rects={zoneRects(layout, area)} />
+          <Preview
+            variant="screen"
+            origin={area}
+            layout={layout}
+            rects={zoneRects(layout, { x: 0, y: 0, w: area.w, h: area.h })}
+            w={area.w}
+            h={area.h}
+            onChange={change}
+          />
           <div
             role="dialog"
             aria-label={t('zones.title')}
@@ -197,20 +207,27 @@ export function ZoneEditor() {
   );
 }
 
-/** The layout at small scale: zones to click (split / remove), dividers to drag. */
+/** The layout to edit: zones to click (split / remove), dividers to drag. `preview` = small
+ *  in the editor; `screen` = full size over the office, at `origin` (like FancyZones' editor). */
 function Preview({
   layout,
   rects,
   w,
   h,
   onChange,
+  variant = 'preview',
+  origin,
 }: {
   layout: ZoneLayout;
   rects: Rect[];
   w: number;
   h: number;
   onChange(l: ZoneLayout): void;
+  variant?: 'preview' | 'screen';
+  origin?: Rect;
 }) {
+  const screen = variant === 'screen';
+  const bar = screen ? ZONE_DIVIDER_SCREEN_PX : ZONE_DIVIDER_PREVIEW_PX;
   const drag = useRef<{
     kind: 'col' | 'row';
     col: number;
@@ -263,16 +280,20 @@ function Preview({
 
   return (
     <div
-      data-zone-preview
-      className="relative bg-bg-dark border-2 border-border"
-      style={{ width: w + 4, height: h + 4 }}
+      data-zone-preview={variant}
+      className={screen ? 'fixed' : 'relative bg-bg-dark border-2 border-border'}
+      style={
+        screen && origin
+          ? { left: origin.x, top: origin.y, width: w, height: h, zIndex: ZONE_OVERLAY_Z_INDEX }
+          : { width: w + 4, height: h + 4 }
+      }
     >
       {rects.map((r, i) => (
         <button
           key={i}
           type="button"
           data-zone-cell={i}
-          className="absolute flex items-center justify-center text-xs font-bold border-2 cursor-pointer p-0"
+          className={`absolute flex items-center justify-center font-bold border-2 cursor-pointer p-0 ${screen ? 'text-2xl' : 'text-xs'}`}
           style={{
             left: r.x,
             top: r.y,
@@ -297,10 +318,15 @@ function Preview({
         <div
           key={`c${String(i)}`}
           data-zone-divider="col"
-          className="absolute top-0 bottom-0 cursor-ew-resize"
-          style={{ left: x - 4, width: 8 }}
+          className="group absolute top-0 bottom-0 flex justify-center cursor-ew-resize touch-none"
+          style={{ left: x - bar, width: bar * 2 }}
           onPointerDown={startDrag('col', 0, i)}
-        />
+        >
+          <span
+            className="h-full opacity-60 group-hover:opacity-100"
+            style={{ width: bar / 2, background: 'var(--zone-active-border)' }}
+          />
+        </div>
       ))}
       {(() => {
         const out: React.ReactNode[] = [];
@@ -313,10 +339,15 @@ function Preview({
               <div
                 key={`r${String(col)}-${String(i)}`}
                 data-zone-divider="row"
-                className="absolute cursor-ns-resize"
-                style={{ left: a.x, width: a.w, top: (a.y + a.h + b.y) / 2 - 4, height: 8 }}
+                className="group absolute flex flex-col justify-center cursor-ns-resize touch-none"
+                style={{ left: a.x, width: a.w, top: (a.y + a.h + b.y) / 2 - bar, height: bar * 2 }}
                 onPointerDown={startDrag('row', col, i)}
-              />,
+              >
+                <span
+                  className="w-full opacity-60 group-hover:opacity-100"
+                  style={{ height: bar / 2, background: 'var(--zone-active-border)' }}
+                />
+              </div>,
             );
           }
           base += c.rows.length;
