@@ -255,4 +255,6 @@ export const TRANSCRIPT_ENTRY_MAX_CHARS = 200_000;
 export const TRANSCRIPT_META_MAX_CHARS = 500;
 export const TRANSCRIPT_PAGE_BYTES = 512 * 1024;
 /** An open transcript is re-checked for new lines this often. */
+/** Transcripts one UI socket may follow at once (dialogs / popout windows); past it the oldest closes. */
+export const TRANSCRIPT_MAX_OPEN = 8;
 export const TRANSCRIPT_POLL_MS = 1000;

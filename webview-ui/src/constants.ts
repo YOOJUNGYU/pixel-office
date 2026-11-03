@@ -494,16 +494,6 @@ export const VOID_TILE_OUTLINE_COLORS = {
 export const TRANSCRIPT_FOLLOW_SLACK_PX = 24;
 /** Transcript panel (left side, my agents only): default width; narrow screens use `100vw - 16px`. */
 export const TRANSCRIPT_PANEL_WIDTH_PX = 480;
-/** Narrowest width the right-edge splitter drags the transcript panel to. */
-export const TRANSCRIPT_PANEL_MIN_WIDTH_PX = 320;
-/** Space the panel keeps free at the window's right edge (its 8px left offset + 8px). */
-export const TRANSCRIPT_PANEL_EDGE_PX = 16;
-/** Arrow keys on the focused splitter change the width by this much. */
-export const TRANSCRIPT_RESIZE_STEP_PX = 32;
-/** The splitter's grab area (straddles the panel's right border), CSS px. */
-export const TRANSCRIPT_RESIZE_HANDLE_PX = 8;
-/** A pointer moved further than this between press and click = a drag, not an outside click. */
-export const TRANSCRIPT_OUTSIDE_DRAG_PX = 5;
 /** Transcript content zoom (%), separate from the office zoom: slider range, step, default. */
 export const TRANSCRIPT_ZOOM_MIN = 50;
 export const TRANSCRIPT_ZOOM_MAX = 200;
@@ -511,8 +501,6 @@ export const TRANSCRIPT_ZOOM_STEP = 10;
 export const TRANSCRIPT_ZOOM_DEFAULT = 100;
 /** localStorage key: this viewer's transcript content zoom, %. */
 export const TRANSCRIPT_ZOOM_KEY = 'pixel-office.transcript.zoom';
-/** localStorage key: this viewer's transcript panel width, px. */
-export const TRANSCRIPT_WIDTH_KEY = 'pixel-office.transcript.width';
 /** A tool input/result longer than this many lines is folded behind [더 보기]. */
 export const TRANSCRIPT_FOLD_LINES = 12;
 /** Gap the panel keeps to the top-left name-tag toggle and the bottom-left toolbar. */
@@ -523,9 +511,27 @@ export const TAG_TOGGLE_HEIGHT_PX = 32;
 export const BOTTOM_TOOLBAR_RESERVE_PX = 56;
 export const TRANSCRIPT_PANEL_TOP_PX =
   TAG_TOGGLE_TOP_PX + TAG_TOGGLE_HEIGHT_PX + TRANSCRIPT_PANEL_GAP_PX;
-export const TRANSCRIPT_PANEL_BOTTOM_PX = BOTTOM_TOOLBAR_RESERVE_PX + TRANSCRIPT_PANEL_GAP_PX;
 /** Above name tags, bubbles and room plates (≤ 43) and the chat bar; below plate popups (46) and modals. */
 export const TRANSCRIPT_PANEL_Z_INDEX = 45;
+/** Transcript dialog: default / minimum size, each new one offset this much from the last. */
+export const TRANSCRIPT_DIALOG_HEIGHT_PX = 640;
+export const TRANSCRIPT_DIALOG_MIN_W_PX = 320;
+export const TRANSCRIPT_DIALOG_MIN_H_PX = 220;
+export const TRANSCRIPT_DIALOG_CASCADE_PX = 28;
+/** Part of a dialog that must stay on screen when it is dragged (CSS px). */
+export const TRANSCRIPT_DIALOG_KEEP_PX = 80;
+/** Resize grips along its right and bottom edges (CSS px). */
+export const TRANSCRIPT_DIALOG_GRIP_PX = 8;
+/** localStorage key: the size ({w, h}) new dialogs open at (the last one resized). */
+export const TRANSCRIPT_DIALOG_SIZE_KEY = 'pixel-office.transcript.size';
+/** localStorage key: open transcripts in an in-page dialog or a popout window. */
+export const TRANSCRIPT_OPEN_IN_KEY = 'pixel-office.transcript.openIn';
+/** Popout window: default size, and the BroadcastChannel its open ids are announced on. */
+export const TRANSCRIPT_WINDOW_W_PX = 640;
+export const TRANSCRIPT_WINDOW_H_PX = 820;
+export const TRANSCRIPT_CHANNEL = 'pixel-office.transcripts';
+/** A popout window re-announces its id this often; silent twice as long = gone. */
+export const TRANSCRIPT_HEARTBEAT_MS = 2000;
 
 // ── My avatar's lounge-agent list ─────────────────────────────
 /** The list beside my avatar (my agents folded into it, click one = its transcript), CSS px. */

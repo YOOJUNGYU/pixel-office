@@ -1349,7 +1349,8 @@ components:
     OpenTranscript:
       description: >-
         Show the transcript of this PC's agent `id` (loopback browser only).
-        Replaces this socket's open transcript; answered with transcriptLoaded
+        A socket may follow several at once (one per id, at most 8; past that
+        its oldest is closed); re-opening an id restarts it. Answered with transcriptLoaded
         then transcriptAppend as the file grows, or transcriptError.
       type: object
       additionalProperties: false
@@ -1376,10 +1377,14 @@ components:
           type: integer
 
     CloseTranscript:
-      description: Stop following this socket's open transcript (loopback browser only).
+      description: >-
+        Stop following transcript `id` of this socket, or all of them when `id`
+        is left out (loopback browser only).
       type: object
       additionalProperties: false
       required: [type]
       properties:
         type:
           const: closeTranscript
+        id:
+          type: string

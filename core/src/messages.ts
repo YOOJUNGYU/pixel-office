@@ -513,4 +513,5 @@ export interface LoadTranscriptBefore {
 
 export interface CloseTranscript {
   type: 'closeTranscript';
+  id?: string;
 }

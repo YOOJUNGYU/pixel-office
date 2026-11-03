@@ -230,7 +230,7 @@ export function OfficeCanvas({
           selectedAgentId: officeState.selectedAgentId,
           selectedPeer: officeState.selectedPeer,
           ownPeer: officeState.ownPeer,
-          transcriptCharId: officeState.transcriptCharId,
+          transcriptCharIds: officeState.transcriptCharIds,
           hoveredAgentId: officeState.hoveredAgentId,
           hoveredTile: officeState.hoveredTile,
           seats: officeState.seats,

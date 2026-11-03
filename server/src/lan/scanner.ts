@@ -18,7 +18,7 @@ import {
   TALK_MS,
   TALK_PENDING_MS,
 } from '../constants.js';
-import { applyClaudeLine } from './claudeParser.js';
+import { applyClaudeLine, hostPath } from './claudeParser.js';
 import { applyCodexLine, codexSessionMeta, parseCodexIndex } from './codexParser.js';
 import type { CheckPids, RegEntry } from './liveness.js';
 import { checkPids, domainOf, readRegistry } from './liveness.js';
@@ -312,7 +312,7 @@ export class Scanner {
       const sh = shellAt >= 0 ? s.shells.get(id.slice(shellAt + 4)) : undefined;
       if (sh) {
         // The shell's own output: Claude's output file, or its calls out of the Codex rollout.
-        const own = s.provider === 'claude' ? sh.output : file;
+        const own = s.provider === 'claude' ? sh.output && hostPath(file, sh.output) : file;
         if (own) {
           const shellId = id.slice(shellAt + 4);
           return {

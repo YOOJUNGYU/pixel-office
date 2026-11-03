@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 
 import {
-  clampPanelWidth,
   clampZoom,
   foldText,
   isAtBottom,
@@ -95,16 +94,6 @@ test('listSide: right when it fits, else left', () => {
   assert.equal(listSide(900, 260, 1000, 12), 'left');
   assert.equal(listSide(728, 260, 1000, 12), 'right');
   assert.equal(listSide(729, 260, 1000, 12), 'left');
-});
-
-test('clampPanelWidth keeps the width between the minimum and the window', () => {
-  assert.equal(clampPanelWidth(600, 1600), 600);
-  assert.equal(clampPanelWidth(100, 1600), 320);
-  assert.equal(clampPanelWidth(2000, 1000), 984);
-  assert.equal(clampPanelWidth(500.6, 1600), 501);
-  // A bad saved value → the default; a narrow window never goes under the minimum (CSS min() fits it).
-  assert.equal(clampPanelWidth(NaN, 1600), 480);
-  assert.equal(clampPanelWidth(480, 300), 320);
 });
 
 test('clampZoom keeps a whole percentage within 50–200', () => {

@@ -12,6 +12,7 @@ import type {
 import {
   directoryMessage,
   handleClientMessage,
+  handleTranscriptMessage,
   layoutMessage,
   officesMessage,
   profileMessage,
@@ -169,6 +170,9 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
   });
 
   const clients = new Set<WsLike>();
+  /** Popout transcript windows (/ws/transcript): never replace the page, get only their
+   *  transcripts and the snapshot tick (for the agent's status line). */
+  const popouts = new Set<WsLike>();
   if (lan) {
     // A team joined without a name learns it when a member announces it: re-send then.
     let lastOffices = JSON.stringify(officesMessage(lan));
@@ -184,6 +188,10 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
         } catch (err) {
           console.error('[Pixel Office] officeSnapshot failed:', err);
         }
+      }
+      if (popouts.size) {
+        const snap = snapshotMessage(lan);
+        for (const c of popouts) safeSend(c, snap);
       }
     }, SNAPSHOT_INTERVAL_MS);
     // A peer's avatar moved: one extra snapshot, coalesced to ≤ 5 per second.
@@ -275,6 +283,29 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     });
   });
 
+  app.get('/ws/transcript', { websocket: true }, (socket, request) => {
+    if (!isLoopback(request)) {
+      socket.close(WS_CLOSE_FORBIDDEN, 'forbidden');
+      return;
+    }
+    popouts.add(socket);
+    socket.on('close', () => {
+      popouts.delete(socket);
+      options.transcripts?.close(socket);
+    });
+    safeSend(socket, { type: 'officeAccess', readOnly: false, version: APP_VERSION });
+    if (lan) safeSend(socket, snapshotMessage(lan));
+    socket.on('message', (data: Buffer | string) => {
+      try {
+        const msg = JSON.parse(data.toString()) as Record<string, unknown>;
+        if (options.transcripts)
+          handleTranscriptMessage(msg, (m) => safeSend(socket, m), options.transcripts, socket);
+      } catch {
+        // Malformed JSON, ignore
+      }
+    });
+  });
+
   await app.listen({ host: options.host ?? '127.0.0.1', port: options.port ?? 0 });
   const address = app.server.address();
   const port = typeof address === 'object' ? (address?.port ?? 0) : 0;
@@ -283,7 +314,7 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     app,
     port,
     closeClients: (code) => {
-      for (const c of clients) c.close(code, 'quit');
+      for (const c of [...clients, ...popouts]) c.close(code, 'quit');
     },
   };
 }

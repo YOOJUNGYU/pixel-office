@@ -455,9 +455,9 @@ export function renderScene(
   /** Every character of this PC (avatar + agents) gets the selected outline. */
   selectedPeer: string | null = null,
   /** My own characters: only the one whose transcript is open is outlined (see ownOutlined). */
-  own: { peer: string | null; transcriptCharId: number | null } = {
+  own: { peer: string | null; transcriptCharIds: ReadonlySet<number> } = {
     peer: null,
-    transcriptCharId: null,
+    transcriptCharIds: new Set(),
   },
 ): void {
   const drawables: ZDrawable[] = [];
@@ -550,7 +550,7 @@ export function renderScene(
     const owner = ch.peerId ?? ch.avatarOf;
     const isSelected =
       own.peer !== null && owner === own.peer
-        ? ownOutlined(ch, characters, own.transcriptCharId)
+        ? ownOutlined(ch, characters, own.transcriptCharIds)
         : (selectedAgentId !== null && ch.id === selectedAgentId) ||
           (selectedPeer !== null && owner === selectedPeer);
     const isHovered = hoveredAgentId !== null && ch.id === hoveredAgentId;
@@ -872,7 +872,7 @@ export interface SelectionRenderState {
   selectedAgentId: number | null;
   selectedPeer?: string | null;
   ownPeer?: string | null;
-  transcriptCharId?: number | null;
+  transcriptCharIds?: ReadonlySet<number>;
   hoveredAgentId: number | null;
   hoveredTile: { col: number; row: number } | null;
   seats: Map<string, Seat>;
@@ -978,7 +978,10 @@ export function renderFrame(
     hoveredId,
     wallInstances.length,
     selection?.selectedPeer ?? null,
-    { peer: selection?.ownPeer ?? null, transcriptCharId: selection?.transcriptCharId ?? null },
+    {
+      peer: selection?.ownPeer ?? null,
+      transcriptCharIds: selection?.transcriptCharIds ?? new Set(),
+    },
   );
 
   // Editor overlays

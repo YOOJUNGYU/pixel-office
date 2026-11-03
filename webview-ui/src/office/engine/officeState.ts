@@ -98,16 +98,19 @@ export class OfficeState {
     this._selectedPeer = peerId;
     requestRender('selection');
   }
-  /** This PC's peer id: my characters never get the per-PC outline, only `transcriptCharId`'s. */
+  /** This PC's peer id: my characters never get the per-PC outline, only `transcriptCharIds`. */
   ownPeer: string | null = null;
-  private _transcriptCharId: number | null = null;
-  /** My character whose transcript panel is open (outlined; folded into the lounge → my avatar). */
-  get transcriptCharId(): number | null {
-    return this._transcriptCharId;
+  private _transcriptCharIds: ReadonlySet<number> = new Set();
+  /** My characters whose transcript is open (outlined; folded into the lounge → my avatar). */
+  get transcriptCharIds(): ReadonlySet<number> {
+    return this._transcriptCharIds;
   }
-  set transcriptCharId(id: number | null) {
-    if (this._transcriptCharId === id) return;
-    this._transcriptCharId = id;
+  set transcriptCharIds(ids: ReadonlySet<number>) {
+    const same =
+      ids.size === this._transcriptCharIds.size &&
+      [...ids].every((i) => this._transcriptCharIds.has(i));
+    if (same) return;
+    this._transcriptCharIds = ids;
     requestRender('selection');
   }
   cameraFollowId: number | null = null;

@@ -26,7 +26,6 @@ import {
   TOP_RIGHT_Z_INDEX,
   TOUR_AUTOSTART_DELAY_MS,
   TOUR_FIT_FILL,
-  TRANSCRIPT_OUTSIDE_DRAG_PX,
   ZOOM_MAX,
   ZOOM_MIN,
 } from './constants.js';
@@ -52,9 +51,10 @@ import { RoomPlates } from './lan/RoomPlates.js';
 import { TagToggle } from './lan/TagToggle.js';
 import { readTagsHidden, saveTagsHidden } from './lan/tagVisibility.js';
 import { transcriptStatus } from './lan/transcript.js';
-import { TranscriptPanel } from './lan/TranscriptPanel.js';
+import { TranscriptDialog } from './lan/TranscriptDialog.js';
+import { getOpenIn, openPopout, usePopoutIds } from './lan/transcriptWindows.js';
 import { UpdateBanner } from './lan/UpdateBanner.js';
-import { useTranscript } from './lan/useTranscript.js';
+import { useTranscripts } from './lan/useTranscript.js';
 import { OfficeCanvas } from './office/components/OfficeCanvas.js';
 import { EditorState } from './office/editor/editorState.js';
 import { EditorToolbar } from './office/editor/EditorToolbar.js';
@@ -124,6 +124,7 @@ function App() {
     officeReadOnly,
     restarting,
     lan,
+    lanVersion,
     chats,
     people,
     directory,
@@ -359,60 +360,64 @@ function App() {
 
   const touring = step !== null;
 
-  // My agent's transcript (left panel): opened by clicking one of my characters,
-  // closed by clicking it again, Esc (outside text fields), editing or the tour.
-  const tr = useTranscript();
-  const { close: closeTranscript } = tr;
-  const transcriptOpen = tr.state !== null;
-  // A click outside the panel closes it, unless that click itself opened / toggled a
-  // transcript (my agent on the canvas, the avatar list) or ended a drag (map pan).
-  const keepTranscriptRef = useRef(false);
-  useEffect(() => {
-    if (!transcriptOpen) return;
-    let down: { x: number; y: number } | null = null;
-    const onDown = (e: PointerEvent) => {
-      down = { x: e.clientX, y: e.clientY };
-      keepTranscriptRef.current = false;
-    };
-    const onClick = (e: MouseEvent) => {
-      const keep = keepTranscriptRef.current;
-      keepTranscriptRef.current = false;
-      if (keep) return;
-      if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > TRANSCRIPT_OUTSIDE_DRAG_PX)
+  // My agents' transcripts: opened by clicking one of my characters (or a card of the
+  // avatar list), each in its own dialog — or its own window (Settings → open in). They
+  // close only by their × (or Esc for the top dialog); editing or the tour closes the dialogs.
+  const tr = useTranscripts();
+  const { closeAll: closeTranscripts } = tr;
+  const transcriptOpen = tr.list.length > 0;
+  /** Dialog ids, back to front (pressed last = on top). */
+  const [front, setFront] = useState<string[]>([]);
+  const openTranscript = useCallback(
+    (id: string) => {
+      if (getOpenIn() === 'window') {
+        openPopout(id);
         return;
-      const inside =
-        e.target instanceof Element &&
-        e.target.closest('[data-transcript-panel], [data-avatar-agent-list]');
-      if (!inside) closeTranscript();
-    };
-    window.addEventListener('pointerdown', onDown, true);
-    window.addEventListener('click', onClick); // bubble: after React's onClick handlers
-    return () => {
-      window.removeEventListener('pointerdown', onDown, true);
-      window.removeEventListener('click', onClick);
-    };
-  }, [transcriptOpen, closeTranscript]);
+      }
+      tr.open(id);
+      setFront((f) => [...f.filter((x) => x !== id), id]);
+    },
+    [tr],
+  );
+  const closeTranscript = useCallback(
+    (id: string) => {
+      tr.close(id);
+      setFront((f) => f.filter((x) => x !== id));
+    },
+    [tr],
+  );
+  const popOut = useCallback(
+    (id: string) => {
+      closeTranscript(id);
+      openPopout(id);
+    },
+    [closeTranscript],
+  );
+  const popoutIds = usePopoutIds();
 
-  // My characters: only the one whose transcript is open is outlined (never all of mine).
+  // My characters: only the ones whose transcript is open (dialog or window) are outlined.
   const selfPeer = people.find((p) => p.self)?.peerId ?? null;
-  const transcriptId = tr.state?.id;
-  const trAgent =
-    transcriptId === undefined ? undefined : lan.all().find((x) => x.id === transcriptId);
+  const openIds = [...tr.list.map((s) => s.id), ...popoutIds].sort().join('\n');
   useEffect(() => {
     officeState.ownPeer = selfPeer;
-    const a = transcriptId === undefined ? undefined : lan.all().find((x) => x.id === transcriptId);
-    officeState.transcriptCharId = a ? (lan.idFor(a.key) ?? null) : null;
-  }, [officeState, lan, selfPeer, transcriptId]);
+    const ids = new Set(openIds ? openIds.split('\n') : []);
+    officeState.transcriptCharIds = new Set(
+      lan
+        .all()
+        .filter((a) => ids.has(a.id))
+        .flatMap((a) => lan.idFor(a.key) ?? []),
+    );
+  }, [officeState, lan, selfPeer, openIds, lanVersion]);
   // The list of my lounge agents beside my avatar (click my avatar): closed like
   // the panel, by a click elsewhere (AvatarAgentList) and when a card opens one.
   const [listPeer, setListPeer] = useState<string | null>(null);
   const closeList = useCallback(() => setListPeer(null), []);
   useEffect(() => {
     if (editor.isEditMode || touring) {
-      if (transcriptOpen) closeTranscript();
+      if (transcriptOpen) closeTranscripts();
       setListPeer(null);
     }
-  }, [transcriptOpen, editor.isEditMode, touring, closeTranscript]);
+  }, [transcriptOpen, editor.isEditMode, touring, closeTranscripts]);
   useEffect(() => {
     if (!transcriptOpen && listPeer === null) return;
     const onKey = (e: KeyboardEvent) => {
@@ -424,11 +429,11 @@ function App() {
       if (listPeer !== null) {
         officeState.selectedPeer = null; // the setter requests a render
         setListPeer(null);
-      } else closeTranscript();
+      } else if (front.length) closeTranscript(front[front.length - 1]); // the top dialog
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [transcriptOpen, listPeer, closeTranscript, officeState]);
+  }, [transcriptOpen, listPeer, closeTranscript, officeState, front]);
 
   // My avatar and the chat bar: only in an office this PC is live in (I am in its
   // snapshot), never while editing, touring or read-only.
@@ -613,9 +618,7 @@ function App() {
             // Only this PC's agents (never a peer's or a tour demo): the server checks again.
             const a = lan.agentFor(id);
             if (!a || !lan.isMine(a)) return;
-            keepTranscriptRef.current = true;
-            if (tr.state?.id === a.id) tr.close();
-            else tr.open(a.id);
+            openTranscript(a.id); // already open: brought to the front
           }}
           onAvatarClick={(peerId, selected) => {
             const mine = peerId === lan.selfPeerId();
@@ -632,9 +635,8 @@ function App() {
             zoom={editor.zoom}
             panRef={editor.panRef}
             onPick={(id) => {
-              keepTranscriptRef.current = true;
               setListPeer(null);
-              tr.open(id);
+              openTranscript(id);
             }}
             onClose={closeList}
           />
@@ -684,16 +686,27 @@ function App() {
 
         {!editor.isEditMode && <TagToggle tagsHidden={tagsHidden} onToggleTags={toggleTags} />}
 
-        {tr.state && !editor.isEditMode && (
-          <TranscriptPanel
-            key={tr.state.id}
-            state={tr.state}
-            status={transcriptStatus(trAgent)}
-            activity={trAgent ? activityText(trAgent) : ''}
-            onClose={tr.close}
-            onLoadEarlier={tr.loadEarlier}
-          />
-        )}
+        {!editor.isEditMode &&
+          front.map((id, n) => {
+            const st = tr.list.find((x) => x.id === id);
+            if (!st) return null;
+            const a = lan.all().find((x) => x.id === id);
+            return (
+              <TranscriptDialog
+                key={id}
+                index={tr.list.indexOf(st)}
+                state={st}
+                status={transcriptStatus(a)}
+                activity={a ? activityText(a) : ''}
+                onClose={() => closeTranscript(id)}
+                onLoadEarlier={() => tr.loadEarlier(id)}
+                onPopout={() => popOut(id)}
+                onFront={() =>
+                  n !== front.length - 1 && setFront((f) => [...f.filter((x) => x !== id), id])
+                }
+              />
+            );
+          })}
 
         {/* Vignette overlay */}
         <div

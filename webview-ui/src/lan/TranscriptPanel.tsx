@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import type { TranscriptEntry } from '../../../core/src/messages.js';
@@ -7,13 +7,6 @@ import {
   LAN_PROVIDER_BADGE_FG,
   LAN_PROVIDER_COLORS,
   TRANSCRIPT_FOLD_LINES,
-  TRANSCRIPT_PANEL_BOTTOM_PX,
-  TRANSCRIPT_PANEL_TOP_PX,
-  TRANSCRIPT_PANEL_WIDTH_PX,
-  TRANSCRIPT_PANEL_Z_INDEX,
-  TRANSCRIPT_RESIZE_HANDLE_PX,
-  TRANSCRIPT_RESIZE_STEP_PX,
-  TRANSCRIPT_WIDTH_KEY,
   TRANSCRIPT_ZOOM_DEFAULT,
   TRANSCRIPT_ZOOM_KEY,
   TRANSCRIPT_ZOOM_MAX,
@@ -25,7 +18,7 @@ import { badgeColors } from './badgeColors.js';
 import type { Family } from './highlight.js';
 import { highlight, languageOf } from './highlight.js';
 import type { TranscriptState, TranscriptStatus } from './transcript.js';
-import { clampPanelWidth, clampZoom, foldText, isAtBottom } from './transcript.js';
+import { clampZoom, foldText, isAtBottom } from './transcript.js';
 import {
   headingText,
   prettyResult,
@@ -41,13 +34,26 @@ const PRE_LINES = 'whitespace-pre overflow-x-auto';
 const PRE_WRAP = 'whitespace-pre-wrap break-words';
 const CODE_STYLE = { background: 'var(--transcript-code-bg)' };
 
+export interface TranscriptPanelProps {
+  state: TranscriptState;
+  /** Dialog only: move this transcript into its own window. */
+  onPopout?: () => void;
+  /** Dialog only: a press on the header (not its controls) starts a drag. */
+  onHeaderPointerDown?: (e: ReactPointerEvent) => void;
+  /** What the agent is doing now, and (working) its activity line. */
+  status: TranscriptStatus;
+  activity: string;
+  onClose(): void;
+  onLoadEarlier(): void;
+}
+
 /**
- * Left-side panel with one of my agents' full session transcript: header (badge, #n,
- * provider, title, folder, ×), then every entry. Opens at the bottom, follows new
- * entries while scrolled to the bottom (else a "new below" button), loads earlier
- * pages at the top (and by itself while it does not fill the panel) and keeps the
- * reading position when they arrive. The right edge is a splitter (drag, arrow keys,
- * double-click = default width); the width is kept per viewer. Memoized: its props only change with the transcript.
+ * One of my agents' full session transcript, filling its frame (a TranscriptDialog or a
+ * popout window): header (badge, #n, provider, title, folder, zoom, ⧉ popout, ×), a
+ * status line, then every entry. Opens at the bottom, follows new entries while scrolled
+ * to the bottom (else a "new below" button), loads earlier pages at the top (and by
+ * itself while it does not fill the panel) and keeps the reading position when they
+ * arrive. The header (outside its buttons) is the dialog's drag handle. Memoized.
  */
 export const TranscriptPanel = memo(function TranscriptPanel({
   state,
@@ -55,14 +61,9 @@ export const TranscriptPanel = memo(function TranscriptPanel({
   activity,
   onClose,
   onLoadEarlier,
-}: {
-  state: TranscriptState;
-  /** What the agent is doing now, and (working) its activity line. */
-  status: TranscriptStatus;
-  activity: string;
-  onClose(): void;
-  onLoadEarlier(): void;
-}) {
+  onPopout,
+  onHeaderPointerDown,
+}: TranscriptPanelProps) {
   useLang();
   const scroller = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
@@ -71,19 +72,11 @@ export const TranscriptPanel = memo(function TranscriptPanel({
   const lastHeight = useRef(0);
   const [newBelow, setNewBelow] = useState(false);
   const { info, entries } = state;
-  const panel = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(readWidth);
-  const [dragging, setDragging] = useState(false);
   const [zoom, setZoom] = useState(readZoom);
   const changeZoom = (z: number) => {
     const v = clampZoom(z);
     setZoom(v);
     store(TRANSCRIPT_ZOOM_KEY, String(v));
-  };
-  const resize = (next: number, save: boolean) => {
-    const w = clampPanelWidth(next, window.innerWidth);
-    setWidth(w);
-    if (save) saveWidth(w);
   };
 
   // Entries changed: keep the reading position, follow the bottom, or flag new ones below.
@@ -124,15 +117,8 @@ export const TranscriptPanel = memo(function TranscriptPanel({
 
   return (
     <div
-      ref={panel}
       data-transcript-panel={state.id}
-      className={`absolute left-8 pixel-panel flex flex-col${dragging ? ' select-none' : ''}`}
-      style={{
-        top: TRANSCRIPT_PANEL_TOP_PX,
-        bottom: TRANSCRIPT_PANEL_BOTTOM_PX,
-        width: `min(${width}px, 100vw - 16px)`,
-        zIndex: TRANSCRIPT_PANEL_Z_INDEX,
-      }}
+      className="pixel-panel flex flex-col w-full h-full min-w-0 min-h-0"
       onWheel={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
         // Keys pressed in the panel scroll it; they never move my avatar.
@@ -140,7 +126,12 @@ export const TranscriptPanel = memo(function TranscriptPanel({
         if (e.key === 'Escape') onClose();
       }}
     >
-      <div className="flex items-center gap-6 px-8 py-4 border-b-2 border-border min-w-0">
+      <div
+        className={`flex items-center gap-6 px-8 py-4 border-b-2 border-border min-w-0 select-none ${onHeaderPointerDown ? 'cursor-move' : ''}`}
+        onPointerDown={(e) => {
+          if (!(e.target as Element).closest('button, input')) onHeaderPointerDown?.(e);
+        }}
+      >
         {info && (
           <>
             <span
@@ -171,6 +162,17 @@ export const TranscriptPanel = memo(function TranscriptPanel({
           </>
         )}
         <ZoomControl zoom={zoom} onChange={changeZoom} />
+        {onPopout && (
+          <button
+            type="button"
+            className="shrink-0 px-4 text-sm text-text-muted hover:text-text cursor-pointer bg-transparent border-0"
+            title={t('transcript.popout')}
+            aria-label={t('transcript.popout')}
+            onClick={onPopout}
+          >
+            ⧉
+          </button>
+        )}
         <button
           type="button"
           className="shrink-0 px-6 text-base text-text-muted hover:text-text cursor-pointer bg-transparent border-0"
@@ -219,59 +221,9 @@ export const TranscriptPanel = memo(function TranscriptPanel({
           </button>
         )}
       </div>
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label={t('transcript.resize')}
-        aria-valuenow={width}
-        tabIndex={0}
-        title={t('transcript.resize')}
-        className="group absolute top-0 bottom-0 flex justify-center cursor-ew-resize touch-none outline-none"
-        style={{ right: -TRANSCRIPT_RESIZE_HANDLE_PX / 2 - 2, width: TRANSCRIPT_RESIZE_HANDLE_PX }}
-        onPointerDown={(e) => {
-          if (e.button !== 0) return;
-          e.preventDefault();
-          e.currentTarget.setPointerCapture(e.pointerId);
-          setDragging(true);
-        }}
-        onPointerMove={(e) => {
-          const el = panel.current;
-          if (dragging && el) resize(e.clientX - el.getBoundingClientRect().left, false);
-        }}
-        onPointerUp={() => {
-          if (!dragging) return;
-          setDragging(false);
-          saveWidth(width);
-        }}
-        onLostPointerCapture={() => setDragging(false)}
-        onDoubleClick={() => resize(TRANSCRIPT_PANEL_WIDTH_PX, true)}
-        onKeyDown={(e) => {
-          const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
-          if (!step) return;
-          e.preventDefault();
-          resize(width + step * TRANSCRIPT_RESIZE_STEP_PX, true);
-        }}
-      >
-        <span
-          className={`w-2 h-full ${dragging ? 'bg-accent' : 'bg-transparent group-hover:bg-accent group-focus-visible:bg-accent'}`}
-        />
-      </div>
     </div>
   );
 });
-
-function readWidth(): number {
-  try {
-    const saved = Number(localStorage.getItem(TRANSCRIPT_WIDTH_KEY) ?? TRANSCRIPT_PANEL_WIDTH_PX);
-    return clampPanelWidth(saved, window.innerWidth);
-  } catch {
-    return TRANSCRIPT_PANEL_WIDTH_PX;
-  }
-}
-
-function saveWidth(width: number): void {
-  store(TRANSCRIPT_WIDTH_KEY, String(width));
-}
 
 function store(key: string, value: string): void {
   try {

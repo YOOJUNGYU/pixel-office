@@ -1,10 +1,12 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import type { Lang } from '../../../core/src/lan.js';
 import type { AutostartState, OfficesState } from '../../../core/src/messages.js';
 import type { NotifySettings, OfficeReply } from '../hooks/useExtensionMessages.js';
 import { LANG_NAMES, setLang, t, useLang } from '../i18n.js';
 import { OfficeSettings } from '../lan/OfficeSettings.js';
+import type { OpenIn } from '../lan/transcriptWindows.js';
+import { getOpenIn, OPEN_IN, setOpenIn } from '../lan/transcriptWindows.js';
 import type { ThemePref } from '../theme.js';
 import { setThemePref, THEME_PREFS, useThemePref } from '../theme.js';
 import { transport } from '../transport/index.js';
@@ -54,6 +56,7 @@ export function SettingsModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lang = useLang();
   const themePref = useThemePref();
+  const [openIn, setOpenInState] = useState<OpenIn>(getOpenIn);
 
   const languageSelect = (
     <label
@@ -95,6 +98,27 @@ export function SettingsModal({
     </label>
   );
 
+  const openInSelect = (
+    <label className="flex items-center justify-between gap-8 py-4 px-10 text-base">
+      {t('settings.transcriptOpenIn')}
+      <select
+        value={openIn}
+        onChange={(e) => {
+          const v = e.target.value as OpenIn;
+          setOpenInState(v);
+          setOpenIn(v);
+        }}
+        className="py-2 px-4 bg-bg-dark border-2 border-border rounded-none text-text"
+      >
+        {OPEN_IN.map((v) => (
+          <option key={v} value={v}>
+            {t(`transcriptOpenIn.${v}`)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+
   const replayTour = <MenuItem onClick={onReplayTour}>{t('settings.replayTour')}</MenuItem>;
 
   if (readOnly) {
@@ -111,6 +135,7 @@ export function SettingsModal({
     <Modal isOpen={isOpen} onClose={onClose} title={t('toolbar.settings')}>
       {languageSelect}
       {themeSelect}
+      {openInSelect}
       {onOpenProfile && (
         <MenuItem
           onClick={() => {

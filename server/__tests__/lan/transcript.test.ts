@@ -4,8 +4,12 @@ import { join } from 'node:path';
 
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 
-import { TRANSCRIPT_ENTRY_MAX_CHARS, TRANSCRIPT_PAGE_BYTES } from '../../src/constants.js';
-import { shellOutput } from '../../src/lan/claudeParser.js';
+import {
+  TRANSCRIPT_ENTRY_MAX_CHARS,
+  TRANSCRIPT_MAX_OPEN,
+  TRANSCRIPT_PAGE_BYTES,
+} from '../../src/constants.js';
+import { hostPath, shellOutput } from '../../src/lan/claudeParser.js';
 import type { TranscriptSource } from '../../src/lan/scanner.js';
 import type { TranscriptEntry } from '../../src/lan/transcript.js';
 import {
@@ -363,7 +367,7 @@ describe('TranscriptService', () => {
     expect(t.sent).toHaveLength(2);
   });
 
-  it('close(client) stops polling; a second open replaces the first', async () => {
+  it('close(client) stops polling; several open side by side, close(client, id) stops one', async () => {
     const t = setup({ a: user('one'), b: user('bee') });
     await t.svc.open(t.client, 'a', t.send);
     t.svc.close(t.client);
@@ -375,11 +379,32 @@ describe('TranscriptService', () => {
     await t.svc.open(t.client, 'b', t.send);
     appendFileSync(t.file('a'), user('y'));
     appendFileSync(t.file('b'), user('bee2'));
+    await vi.waitFor(() => expect(ofType(t.sent, 'transcriptAppend')).toHaveLength(2));
+    expect(
+      ofType(t.sent, 'transcriptAppend')
+        .map((m) => m.id)
+        .sort(),
+    ).toEqual(['a', 'b']);
+
+    t.svc.close(t.client, 'a');
+    appendFileSync(t.file('a'), user('z'));
+    appendFileSync(t.file('b'), user('bee3'));
+    await vi.waitFor(() => expect(ofType(t.sent, 'transcriptAppend')).toHaveLength(3));
+    await sleep(POLL * 3);
+    expect(ofType(t.sent, 'transcriptAppend').map((m) => m.id)).toHaveLength(3);
+    expect(ofType(t.sent, 'transcriptAppend')[2]).toMatchObject({ id: 'b' });
+  });
+
+  it('past TRANSCRIPT_MAX_OPEN the oldest of a client is closed', async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i <= TRANSCRIPT_MAX_OPEN; i++) files[`f${i}`] = user(`x${i}`);
+    const t = setup(files);
+    for (let i = 0; i <= TRANSCRIPT_MAX_OPEN; i++) await t.svc.open(t.client, `f${i}`, t.send);
+    appendFileSync(t.file('f0'), user('gone'));
+    appendFileSync(t.file('f1'), user('kept'));
     await vi.waitFor(() => expect(ofType(t.sent, 'transcriptAppend')).toHaveLength(1));
     await sleep(POLL * 3);
-    const appends = ofType(t.sent, 'transcriptAppend');
-    expect(appends).toHaveLength(1);
-    expect(appends[0]).toMatchObject({ id: 'b' });
+    expect(ofType(t.sent, 'transcriptAppend')).toEqual([expect.objectContaining({ id: 'f1' })]);
   });
 
   it('two clients follow independently', async () => {
@@ -430,6 +455,19 @@ describe('shell output', () => {
     expect(shellOutput('tasks/abc.output', 'abc')).toBeUndefined();
     expect(shellOutput(join(tmpdir(), 'x', 'abc.output'), 'abc')).toBeUndefined();
     expect(shellOutput(undefined, 'abc')).toBeUndefined();
+  });
+
+  it('hostPath reaches the Linux output path of a WSL session through its distro share', () => {
+    const wslSession = String.raw`\\wsl.localhost\Ubuntu-24.04\home\me\.claude\projects\p\s.jsonl`;
+    expect(hostPath(wslSession, '/tmp/claude-1000/p/s/tasks/b1.output')).toBe(
+      String.raw`\\wsl.localhost\Ubuntu-24.04\tmp\claude-1000\p\s\tasks\b1.output`,
+    );
+    expect(hostPath(String.raw`\\wsl$\Debian\home\me\s.jsonl`, '/tmp/x.output')).toBe(
+      String.raw`\\wsl$\Debian\tmp\x.output`,
+    );
+    // Not a WSL session (or not a Linux path): unchanged.
+    expect(hostPath('/home/me/.claude/s.jsonl', '/tmp/x.output')).toBe('/tmp/x.output');
+    expect(hostPath(wslSession, String.raw`C:\Temp\x.output`)).toBe(String.raw`C:\Temp\x.output`);
   });
 
   it('rawParse keeps blank lines and splits at the entry cap', () => {

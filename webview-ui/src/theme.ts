@@ -65,6 +65,20 @@ apply();
 env.matchMedia?.(SYSTEM_LIGHT_QUERY).addEventListener('change', () => {
   if (pref === 'system') apply();
 });
+// Another window of this office (a popout transcript, or the office itself) switched
+// the theme: follow it at once.
+(
+  globalThis as {
+    addEventListener?: (
+      t: string,
+      l: (e: { key: string | null; newValue: string | null }) => void,
+    ) => void;
+  }
+).addEventListener?.('storage', (e) => {
+  if (e.key !== THEME_STORAGE_KEY) return;
+  pref = parseThemePref(e.newValue);
+  apply();
+});
 
 /** The theme in effect (renderer reads this every frame). */
 export function getTheme(): Theme {

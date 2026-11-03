@@ -6,6 +6,8 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { ReplacedPanel } from './lan/ReplacedPanel.js';
 import { ServerPanel } from './lan/ServerPanel.js';
+import { TranscriptWindow } from './lan/TranscriptWindow.js';
+import { popoutId } from './lan/transcriptWindows.js';
 import { initPwa } from './pwa.js';
 import { isBrowserRuntime } from './runtime';
 
@@ -16,6 +18,15 @@ async function main() {
   if (isBrowserRuntime && import.meta.env.DEV) {
     const { initBrowserMock } = await import('./browserMock.js');
     await initBrowserMock();
+  }
+  const popout = popoutId();
+  if (popout !== null) {
+    createRoot(document.getElementById('root')!).render(
+      <StrictMode>
+        <TranscriptWindow id={popout} />
+      </StrictMode>,
+    );
+    return;
   }
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

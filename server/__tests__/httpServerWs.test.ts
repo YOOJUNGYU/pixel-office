@@ -37,9 +37,13 @@ interface ConnectResult {
  * completes the upgrade before the route handler runs, so a rejected connection
  * still fires 'open' and is then closed with an application close code.
  */
-function connect(port: number, headers: Record<string, string> = {}): Promise<ConnectResult> {
+function connect(
+  port: number,
+  headers: Record<string, string> = {},
+  route = '/ws',
+): Promise<ConnectResult> {
   return new Promise((resolve, reject) => {
-    const socket = new WebSocket(`ws://127.0.0.1:${port.toString()}/ws`, { headers });
+    const socket = new WebSocket(`ws://127.0.0.1:${port.toString()}${route}`, { headers });
     let closeCode: number | undefined;
     const failTimer = setTimeout(() => {
       socket.terminate();
@@ -158,6 +162,23 @@ describe('/ws', () => {
     expect(second.accepted).toBe(true);
     expect(await closed).toBe(WS_CLOSE_REPLACED);
     expect(second.socket.readyState).toBe(WebSocket.OPEN);
+  });
+
+  it('a popout window (/ws/transcript) never replaces the page; a foreign Origin is refused', async () => {
+    const host = `localhost:${port.toString()}`;
+    const page = await connect(port, { Host: host, Origin: `http://${host}` });
+    sockets.push(page.socket);
+    const popout = await connect(port, { Host: host, Origin: `http://${host}` }, '/ws/transcript');
+    sockets.push(popout.socket);
+    expect(popout.accepted).toBe(true);
+    expect(page.socket.readyState).toBe(WebSocket.OPEN);
+    // Anything but transcript messages is ignored (a saveLayout gets no answer).
+    const rejected = waitForMessage(popout.socket, 'layoutSaveRejected', 500);
+    popout.socket.send(JSON.stringify({ type: 'saveLayout', layout: {} }));
+    expect(await rejected).toBeNull();
+    const evil = await connect(port, { Origin: 'http://evil.example' }, '/ws/transcript');
+    sockets.push(evil.socket);
+    expect(evil.accepted).toBe(false); // refused (by the route or before the upgrade)
   });
 
   it('closes a cross-origin handshake', async () => {

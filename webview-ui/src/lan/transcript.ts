@@ -1,10 +1,10 @@
 import type { OfficeAgent } from '../../../core/src/lan.js';
 import type { TranscriptEntry, TranscriptInfo } from '../../../core/src/messages.js';
 import {
+  TRANSCRIPT_DIALOG_KEEP_PX,
+  TRANSCRIPT_DIALOG_MIN_H_PX,
+  TRANSCRIPT_DIALOG_MIN_W_PX,
   TRANSCRIPT_FOLLOW_SLACK_PX,
-  TRANSCRIPT_PANEL_EDGE_PX,
-  TRANSCRIPT_PANEL_MIN_WIDTH_PX,
-  TRANSCRIPT_PANEL_WIDTH_PX,
   TRANSCRIPT_ZOOM_DEFAULT,
   TRANSCRIPT_ZOOM_MAX,
   TRANSCRIPT_ZOOM_MIN,
@@ -78,13 +78,6 @@ export function listSide(
   return avatarScreenX + gap + listWidth <= viewportWidth ? 'right' : 'left';
 }
 
-/** A dragged / saved panel width kept between the minimum and the window (a bad value → the default). */
-export function clampPanelWidth(width: number, viewport: number): number {
-  if (!Number.isFinite(width)) width = TRANSCRIPT_PANEL_WIDTH_PX;
-  const max = Math.max(TRANSCRIPT_PANEL_MIN_WIDTH_PX, viewport - TRANSCRIPT_PANEL_EDGE_PX);
-  return Math.round(Math.min(max, Math.max(TRANSCRIPT_PANEL_MIN_WIDTH_PX, width)));
-}
-
 /** A typed / saved content zoom (%) as a whole number within the range (bad → the default). */
 export function clampZoom(zoom: number): number {
   if (!Number.isFinite(zoom)) return TRANSCRIPT_ZOOM_DEFAULT;
@@ -101,4 +94,23 @@ export function transcriptStatus(
   if (a.act === 'idle') return 'idle';
   // A turn with no tool running yet (setThinking: act 'tool', no target) = thinking.
   return a.act === 'tool' && !a.target ? 'thinking' : 'working';
+}
+
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** A dialog's box kept usable: at least the minimum size, no bigger than the window, and
+ *  enough of it (its header) on screen to grab it again. */
+export function clampRect(r: Rect, view: { w: number; h: number }): Rect {
+  const w = Math.round(Math.max(TRANSCRIPT_DIALOG_MIN_W_PX, Math.min(r.w, view.w)));
+  const h = Math.round(Math.max(TRANSCRIPT_DIALOG_MIN_H_PX, Math.min(r.h, view.h)));
+  const x = Math.round(
+    Math.min(Math.max(r.x, TRANSCRIPT_DIALOG_KEEP_PX - w), view.w - TRANSCRIPT_DIALOG_KEEP_PX),
+  );
+  const y = Math.round(Math.min(Math.max(r.y, 0), view.h - TRANSCRIPT_DIALOG_KEEP_PX));
+  return { x, y, w, h };
 }

@@ -219,16 +219,9 @@ export function handleClientMessage(
 
     // This PC's agent transcript: answers go to this socket only (TranscriptService).
     case 'openTranscript':
-      if (typeof msg.id === 'string') void ctx.transcripts?.open(ctx.client ?? send, msg.id, send);
-      break;
-
     case 'loadTranscriptBefore':
-      if (typeof msg.id === 'string' && typeof msg.before === 'number')
-        void ctx.transcripts?.before(ctx.client ?? send, msg.id, msg.before, send);
-      break;
-
     case 'closeTranscript':
-      ctx.transcripts?.close(ctx.client ?? send);
+      if (ctx.transcripts) handleTranscriptMessage(msg, send, ctx.transcripts, ctx.client ?? send);
       break;
 
     default:
@@ -310,6 +303,21 @@ export function profileMessage(lan: LanService, privileged: boolean) {
 }
 
 /** officeSnapshot of the office this PC's browser has chosen. */
+/** openTranscript / loadTranscriptBefore / closeTranscript of one socket (`client`): the page's
+ *  /ws and a popout window's /ws/transcript alike. Anything else is ignored. */
+export function handleTranscriptMessage(
+  msg: Record<string, unknown>,
+  send: (m: Record<string, unknown>) => void,
+  transcripts: TranscriptService,
+  client: object,
+): void {
+  const id = typeof msg.id === 'string' ? msg.id : undefined;
+  if (msg.type === 'openTranscript' && id) void transcripts.open(client, id, send);
+  else if (msg.type === 'loadTranscriptBefore' && id && typeof msg.before === 'number')
+    void transcripts.before(client, id, msg.before, send);
+  else if (msg.type === 'closeTranscript') transcripts.close(client, id);
+}
+
 export function snapshotMessage(lan: LanService) {
   const view = lan.profile.activeView;
   return {

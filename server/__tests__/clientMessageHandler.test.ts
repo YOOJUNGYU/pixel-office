@@ -282,11 +282,15 @@ describe('clientMessageHandler', () => {
       send({ type: 'loadTranscriptBefore', id: 'a', before: 5 }, c);
       send({ type: 'loadTranscriptBefore', id: 'a' }, c);
       send({ type: 'closeTranscript' }, c);
+      send({ type: 'closeTranscript', id: 'a' }, c);
       expect(transcripts.open).toHaveBeenCalledTimes(1);
       expect(transcripts.open.mock.calls[0].slice(0, 2)).toEqual([client, 'a']);
       expect(transcripts.before).toHaveBeenCalledTimes(1);
       expect(transcripts.before.mock.calls[0].slice(0, 3)).toEqual([client, 'a', 5]);
-      expect(transcripts.close).toHaveBeenCalledWith(client);
+      expect(transcripts.close.mock.calls).toEqual([
+        [client, undefined],
+        [client, 'a'],
+      ]);
     });
 
     it('answers a refused toggle with the real state so the control snaps back', () => {

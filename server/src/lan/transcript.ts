@@ -12,6 +12,7 @@ import type {
 } from '../../../core/src/messages.js';
 import {
   TRANSCRIPT_ENTRY_MAX_CHARS,
+  TRANSCRIPT_MAX_OPEN,
   TRANSCRIPT_META_MAX_CHARS,
   TRANSCRIPT_PAGE_BYTES,
   TRANSCRIPT_POLL_MS,
@@ -299,10 +300,13 @@ const error = (id: string, reason: TranscriptErrorReason) =>
   ({ type: 'transcriptError', id, reason }) satisfies TranscriptError;
 
 /**
- * Live transcripts of this PC's agents, one per UI socket (`client`). Every reply goes to
- * the `send` of the socket that asked; nothing here is ever sent to peers.
+ * Live transcripts of this PC's agents: each UI socket (`client`) may follow several
+ * (≤ TRANSCRIPT_MAX_OPEN, the oldest is dropped past that), one per agent id. Every reply
+ * goes to the `send` of the socket that asked; nothing here is ever sent to peers.
+ * Internally each (socket, id) pair is one key object; `subs` / `opening` are keyed by it.
  */
 export class TranscriptService {
+  private readonly keys = new Map<object, Map<string, object>>();
   private readonly subs = new Map<object, Sub>();
   /** The latest open() per client: an older one that finishes later is dropped. */
   private readonly opening = new Map<object, object>();
@@ -312,9 +316,42 @@ export class TranscriptService {
     private readonly pollMs = TRANSCRIPT_POLL_MS,
   ) {}
 
-  /** Replaces the client's open transcript. */
-  async open(client: object, id: string, send: Send): Promise<void> {
-    this.close(client);
+  /** Opens (or re-opens) transcript `id` for this client, next to its other open ones. */
+  open(client: object, id: string, send: Send): Promise<void> {
+    let ids = this.keys.get(client);
+    if (!ids) this.keys.set(client, (ids = new Map()));
+    let key = ids.get(id);
+    if (!key) {
+      if (ids.size >= TRANSCRIPT_MAX_OPEN) {
+        const [oldId, oldKey] = ids.entries().next().value as [string, object];
+        this.closeKey(oldKey);
+        ids.delete(oldId);
+      }
+      ids.set(id, (key = {}));
+    }
+    return this.openKey(key, id, send);
+  }
+
+  /** The page before byte `before` of the client's open transcript `id`. */
+  before(client: object, id: string, before: number, send: Send): Promise<void> {
+    const key = this.keys.get(client)?.get(id);
+    return key ? this.beforeKey(key, id, before, send) : Promise.resolve();
+  }
+
+  /** Stops following `id` for this client, or every one of its transcripts (no id / socket gone). */
+  close(client: object, id?: string): void {
+    const ids = this.keys.get(client);
+    if (!ids) return;
+    for (const [i, key] of [...ids]) {
+      if (id !== undefined && i !== id) continue;
+      this.closeKey(key);
+      ids.delete(i);
+    }
+    if (ids.size === 0) this.keys.delete(client);
+  }
+
+  private async openKey(client: object, id: string, send: Send): Promise<void> {
+    this.closeKey(client);
     const src = this.source.transcriptOf(id);
     if (!src) {
       send(error(id, 'notFound'));
@@ -361,8 +398,7 @@ export class TranscriptService {
     send(this.loaded(sub, page));
   }
 
-  /** The page before byte `before` of the client's open transcript `id`. */
-  async before(client: object, id: string, before: number, send: Send): Promise<void> {
+  private async beforeKey(client: object, id: string, before: number, send: Send): Promise<void> {
     const sub = this.subs.get(client);
     if (!sub || sub.id !== id || !Number.isInteger(before) || before < 0) return;
     try {
@@ -382,7 +418,7 @@ export class TranscriptService {
     }
   }
 
-  close(client: object): void {
+  private closeKey(client: object): void {
     this.opening.delete(client);
     const sub = this.subs.get(client);
     if (!sub) return;
@@ -392,7 +428,8 @@ export class TranscriptService {
 
   /** Every timer cleared (server shutdown). */
   stop(): void {
-    for (const client of [...this.subs.keys()]) this.close(client);
+    for (const client of [...this.keys.keys()]) this.close(client);
+    for (const key of [...this.subs.keys()]) this.closeKey(key);
     this.opening.clear();
   }
 
@@ -416,7 +453,7 @@ export class TranscriptService {
         size = (await stat(sub.file)).size;
       } catch (err) {
         if (this.subs.get(client) === sub && (err as NodeJS.ErrnoException).code === 'ENOENT') {
-          this.close(client);
+          this.closeKey(client);
           sub.send(error(sub.id, 'ended'));
         }
         return; // other errors (EACCES, AV lock): try again next poll

@@ -194,3 +194,11 @@ export function shellOutput(file: string | undefined, id: string): string | unde
   if (path.basename(file) !== `${id}.output`) return undefined;
   return path.basename(path.dirname(file)) === 'tasks' ? file : undefined;
 }
+
+/** A Linux path from a WSL session, as this (Windows) PC reaches it: through the same
+ *  `\\wsl.localhost\<distro>` (or `\\wsl$\<distro>`) share the session file was found on.
+ *  Anything else is returned as is. */
+export function hostPath(sessionFile: string, file: string): string {
+  const share = /^(\\\\wsl(?:\.localhost|\$)\\[^\\]+)\\/i.exec(sessionFile)?.[1];
+  return share && file.startsWith('/') ? share + file.replace(/\//g, '\\') : file;
+}
