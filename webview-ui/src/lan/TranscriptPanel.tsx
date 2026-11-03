@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import type { TranscriptEntry } from '../../../core/src/messages.js';
 import {
@@ -25,9 +25,10 @@ const CODE_STYLE = { background: 'var(--transcript-code-bg)' };
  * Left-side panel with one of my agents' full session transcript: header (badge, #n,
  * provider, title, folder, ×), then every entry. Opens at the bottom, follows new
  * entries while scrolled to the bottom (else a "new below" button), loads earlier
- * pages at the top and keeps the reading position when they arrive.
+ * pages at the top (and by itself while it does not fill the panel) and keeps the
+ * reading position when they arrive. Memoized: its props only change with the transcript.
  */
-export function TranscriptPanel({
+export const TranscriptPanel = memo(function TranscriptPanel({
   state,
   onClose,
   onLoadEarlier,
@@ -40,13 +41,13 @@ export function TranscriptPanel({
   const scroller = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
   const prev = useRef({ len: 0, start: 0 });
-  /** scrollHeight when the earlier page was asked for (the top reached). */
-  const heightBefore = useRef(0);
+  /** scrollHeight at the last layout: an earlier page shifts the view by what it added. */
+  const lastHeight = useRef(0);
   const [newBelow, setNewBelow] = useState(false);
   const { info, entries } = state;
 
   // Entries changed: keep the reading position, follow the bottom, or flag new ones below.
-  const { start, error } = state;
+  const { start, error, more, loading } = state;
   const len = entries.length;
   // Entry keys stay with their entry when an earlier page goes in on top (open folds stay put).
   const [keys, setKeys] = useState({ start, len, base: 0 });
@@ -60,14 +61,20 @@ export function TranscriptPanel({
     const p = prev.current;
     if (p.len > 0 && start < p.start) {
       // Earlier entries went in on top: keep the one being read in place.
-      el.scrollTop += el.scrollHeight - heightBefore.current;
+      el.scrollTop += el.scrollHeight - lastHeight.current;
     } else if (atBottom.current) {
       el.scrollTop = el.scrollHeight;
     } else if (len > p.len) {
       setNewBelow(true);
     }
     prev.current = { len, start };
-  }, [len, start, error]);
+    // No scrollbar yet, so no scroll to the top: fetch the earlier page now.
+    if (more && !loading && el.scrollHeight <= el.clientHeight) onLoadEarlier();
+  }, [len, start, error, more, loading, onLoadEarlier]);
+  // After every layout (declared last, so after the correction above).
+  useLayoutEffect(() => {
+    if (scroller.current) lastHeight.current = scroller.current.scrollHeight;
+  });
 
   const toBottom = () => {
     const el = scroller.current;
@@ -141,20 +148,18 @@ export function TranscriptPanel({
             const el = e.currentTarget;
             atBottom.current = isAtBottom(el.scrollTop, el.clientHeight, el.scrollHeight);
             if (atBottom.current) setNewBelow(false);
-            if (el.scrollTop === 0 && state.more && !state.loading) {
-              heightBefore.current = el.scrollHeight;
-              onLoadEarlier();
-            }
+            lastHeight.current = el.scrollHeight;
+            if (el.scrollTop === 0 && more && !loading) onLoadEarlier();
           }}
         >
-          {state.loading && (
+          {loading && (
             <Note>{t(entries.length ? 'transcript.loadingEarlier' : 'transcript.loading')}</Note>
           )}
-          {!state.more && !state.loading && !state.error && <Note>{t('transcript.start')}</Note>}
+          {info && !more && !loading && <Note>{t('transcript.start')}</Note>}
           {entries.map((e, i) => (
             <Entry key={i - keys.base} e={e} />
           ))}
-          {state.error && <Note>{t(`transcript.${state.error}`)}</Note>}
+          {error && <Note>{t(`transcript.${error}`)}</Note>}
         </div>
         {newBelow && (
           <button
@@ -168,7 +173,7 @@ export function TranscriptPanel({
       </div>
     </div>
   );
-}
+});
 
 function Note({ children }: { children: string }) {
   return <div className="text-center text-xs text-text-muted">{children}</div>;
@@ -251,7 +256,7 @@ function Muted({ label, text, clipped }: { label: string; text: string; clipped:
 /** A tool input / result block, folded past TRANSCRIPT_FOLD_LINES lines. */
 function Code({ text, error }: { text: string; error: boolean }) {
   const [open, setOpen] = useState(false);
-  const fold = foldText(text, TRANSCRIPT_FOLD_LINES);
+  const fold = useMemo(() => foldText(text, TRANSCRIPT_FOLD_LINES), [text]);
   return (
     <>
       <pre

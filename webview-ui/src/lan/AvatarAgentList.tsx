@@ -31,7 +31,8 @@ interface AvatarAgentListProps {
  * My agents folded into my avatar (the lounge), listed beside it: right of it,
  * or left when the right side is off screen; kept inside the view vertically.
  * Follows the avatar (re-rendered on every canvas frame, like RoomTip). Closes
- * itself when my PC is no longer the selection (empty floor, another click).
+ * itself when my PC is no longer the selection (empty floor, another click) or
+ * no agent is left in the lounge (so it never pops back, and Esc goes to the panel).
  */
 export function AvatarAgentList({
   officeState,
@@ -47,15 +48,16 @@ export function AvatarAgentList({
   useEffect(() => onFrame(() => setTick((n) => n + 1)), []);
   const [height, setHeight] = useState(0);
   const deselected = officeState.selectedPeer !== peerId || officeState.selectedAgentId !== null;
+  const agents = lan.loungeAgentsOf(peerId);
+  const gone = deselected || agents.length === 0;
   useEffect(() => {
-    if (deselected) onClose();
-  }, [deselected, onClose]);
+    if (gone) onClose();
+  }, [gone, onClose]);
 
   const el = containerRef.current;
   const avatarId = lan.avatars().find((a) => a.peerId === peerId)?.id;
   const ch = avatarId !== undefined ? officeState.characters.get(avatarId) : undefined;
-  const agents = lan.loungeAgentsOf(peerId);
-  if (deselected || !el || !ch || agents.length === 0) return null;
+  if (gone || !el || !ch || agents.length === 0) return null;
 
   const rect = el.getBoundingClientRect();
   const p = overlayProjection(
