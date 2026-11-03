@@ -953,17 +953,35 @@ describe('PeerNet directory: cards', () => {
     expect(b.net.directory().personal).toEqual([]);
   });
 
-  it('a watch drops its sender from the public office at once', async () => {
+  it('a PC that switches public → personal is listed once; its public entry ages out', async () => {
     const [a, b] = await mkNodes(['A', 'B']);
     await pump([a, b], () => b.net.peers(PUBLIC_VIEW).length > 0);
-    expect(ids(b.net.peers(PUBLIC_VIEW))).toEqual(['A']);
+    expect(pids(b.net.directory().public)).toEqual(['A']);
+    b.t += 1000;
     a.offline = true;
-    await pump([a, b], () => b.net.peers(PUBLIC_VIEW).length === 0);
-    expect(b.net.peers(PUBLIC_VIEW)).toEqual([]);
-    expect(inner(b).hellos.has('A')).toBe(false);
-    expect(inner(b).seen.get(PUBLIC_VIEW)?.has('A')).toBe(false);
-    expect(b.net.directory().public).toEqual([]);
+    await pump([a, b], () => b.net.directory().personal.length > 0);
     expect(pids(b.net.directory().personal)).toEqual(['A']);
+    expect(b.net.directory().public).toEqual([]);
+    // Still within the TTL: the stale public entry is kept, only hidden by the newer card.
+    expect(inner(b).seen.get(PUBLIC_VIEW)?.has('A')).toBe(true);
+    b.t += PEER_TTL_MS + 1;
+    await pump([a, b], () => false, 5);
+    expect(inner(b).seen.get(PUBLIC_VIEW)?.has('A')).toBe(false);
+    expect(b.net.peers(PUBLIC_VIEW)).toEqual([]);
+    expect(pids(b.net.directory().personal)).toEqual(['A']);
+  });
+
+  it("a replayed watch with a public PC's id/pk removes nothing", async () => {
+    const raw = await rawSocket();
+    const [a, b] = await mkNodes(['A', 'B']);
+    await pump([a, b], () => b.net.peers(PUBLIC_VIEW).length > 0);
+    const fake = JSON.stringify({ v: 2, t: 'watch', id: 'A', pk: a.id.publicKey });
+    for (let i = 0; i < 3; i++) raw.sock.send(fake, b.port, '127.0.0.1');
+    await until(() => raw.got.length > 0); // B answered the watch: it was processed
+    await sleep(50);
+    expect(ids(b.net.peers(PUBLIC_VIEW))).toEqual(['A']);
+    expect(inner(b).hellos.has('A')).toBe(true);
+    expect(pids(b.net.directory().public)).toEqual(['A']);
   });
 });
 

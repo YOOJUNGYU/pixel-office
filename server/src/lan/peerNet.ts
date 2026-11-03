@@ -549,14 +549,9 @@ export class PeerNet {
     }
     const me = this.opts.identity.id;
     if (w.t === 'hello' || w.t === 'watch') {
-      if (w.id === me) return;
-      const ok = this.heard(w.t === 'hello' ? this.hellos : this.watchers, w.id, w.pk, rinfo);
-      if (ok && w.t === 'watch') {
-        // It just left the public office: drop it there now, not after PEER_TTL_MS.
-        this.hellos.delete(w.id);
-        this.seen.get(PUBLIC_VIEW)?.delete(w.id);
-        this.heardPublic.delete(w.id);
-      }
+      // A plaintext watch never removes anything (a replay would hide that PC): a mode
+      // switch is settled by directory()'s last-heard dedupe and PEER_TTL_MS expiry.
+      if (w.id !== me) this.heard(w.t === 'hello' ? this.hellos : this.watchers, w.id, w.pk, rinfo);
       return;
     }
     if (w.t === 'card') {
@@ -602,21 +597,21 @@ export class PeerNet {
    * A hello or watch: TOFU pin check, at most MAX_HELLO_PEERS ids (a full map ignores new
    * ones), recorded in `map`. Answered 1:1 with our discovery() (rate-limited): a peer that
    * reaches us only via its manual-peer list would otherwise never hear us (watcher ↔
-   * watcher too: a card is accepted only from a PC whose watch we heard). False = ignored.
+   * watcher too: a card is accepted only from a PC whose watch we heard).
    */
   private heard(
     map: Map<string, Heard>,
     id: string,
     pk: string,
     rinfo: { address: string; port: number },
-  ): boolean {
+  ): void {
     const pinned = this.opts.pins.get(id);
     if (pinned !== undefined && pinned !== pk) {
       this.warnOnce(`pin:${id}`, `[Pixel Office] PC ${id} 의 키가 바뀌어 무시합니다 (사칭 의심).`);
-      return false;
+      return;
     }
     const prev = map.get(id);
-    if (!prev && map.size >= MAX_HELLO_PEERS) return false;
+    if (!prev && map.size >= MAX_HELLO_PEERS) return;
     if (pinned === undefined) this.opts.pins.set(id, pk);
     const t = this.now();
     const reply = !prev || t - prev.replied >= HELLO_REPLY_MS;
@@ -630,7 +625,6 @@ export class PeerNet {
     });
     if (reply && this.sock)
       this.send(this.sock, this.discovery(), `${rinfo.address}:${rinfo.port.toString()}`);
-    return true;
   }
 
   /**
