@@ -116,7 +116,6 @@ function App() {
     lan,
     chats,
     people,
-    online,
     notify,
     setNotify,
     profileError,
@@ -706,7 +705,7 @@ function App() {
           </div>
         )}
 
-        {offices && !editor.isEditMode && <OfficeSwitcher state={offices} online={online} />}
+        {offices && !editor.isEditMode && <OfficeSwitcher state={offices} />}
 
         {/* Top right, stacked so nothing overlaps: update banner, install popup, people panel
           (which takes the height left below them). */}

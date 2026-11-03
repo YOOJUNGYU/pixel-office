@@ -164,7 +164,6 @@ export interface ExternalAssetDirectoriesUpdated {
 
 export interface OfficeSnapshot {
   type: 'officeSnapshot';
-  online: Record<string, number>;
   agents: OfficeAgentMessage[];
   people: OfficePersonMessage[];
   selfPeerId: string;

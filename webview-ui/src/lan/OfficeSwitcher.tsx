@@ -6,15 +6,8 @@ import { switcherItems } from './offices.js';
 
 /**
  * Top-centre office tabs: 🌐 public + 🔒 each team + 🏠 personal. This PC's browser only.
- * `online` = people live per open office (me included); a tab without one shows no count.
  */
-export function OfficeSwitcher({
-  state,
-  online,
-}: {
-  state: Omit<OfficesState, 'type'>;
-  online: Record<string, number>;
-}) {
+export function OfficeSwitcher({ state }: { state: Omit<OfficesState, 'type'> }) {
   useLang();
   return (
     <div
@@ -51,8 +44,6 @@ export function OfficeSwitcher({
             : item.isPersonal
               ? t('office.personal')
               : `🔒 ${item.name || t('office.unnamed')}`}
-          {online[item.view] !== undefined &&
-            ` · ${t('office.online', { n: String(online[item.view]) })}`}
         </Button>
       ))}
     </div>

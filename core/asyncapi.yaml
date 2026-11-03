@@ -687,18 +687,10 @@ components:
         sender when its profile hides details.
       type: object
       additionalProperties: false
-      required: [type, agents, people, online, selfPeerId]
+      required: [type, agents, people, selfPeerId]
       properties:
         type:
           const: officeSnapshot
-        online:
-          type: object
-          description: >-
-            People live per open office (public while in no team, else each
-            joined team tag), this PC included; in personal mode the other PCs heard
-            (this PC is in none of them).
-          additionalProperties:
-            type: integer
         agents:
           type: array
           items:

@@ -84,7 +84,6 @@ interface ExtensionMessageState {
   /** Everyone in the viewed office (latest officeSnapshot). */
   people: OfficePersonMessage[];
   /** People live per open office (view → count, me included); {} in personal mode. */
-  online: Record<string, number>;
   /** This PC's profile and whether this browser may edit it; null until loaded. */
   profile: Omit<ProfileLoaded, 'type'> | null;
   /** Why the last saveProfile was refused (profileError); null = none / cleared. */
@@ -128,7 +127,6 @@ export function useExtensionMessages(
   const [restarting, setRestarting] = useState(false);
   const [lanVersion, setLanVersion] = useState(0);
   const [people, setPeople] = useState<OfficePersonMessage[]>([]);
-  const [online, setOnline] = useState<Record<string, number>>({});
   const [profile, setProfile] = useState<Omit<ProfileLoaded, 'type'> | null>(null);
   const [profileError, setProfileError] = useState<ProfileErrorReason | null>(null);
   const [layoutSaveRejections, setLayoutSaveRejections] = useState(0);
@@ -201,7 +199,6 @@ export function useExtensionMessages(
         const snap = disambiguate((msg as OfficeSnapshot).people, msg.agents as OfficeAgent[]);
         const { agents } = snap;
         setPeople(snap.people);
-        setOnline((msg as OfficeSnapshot).online);
         chats.apply(snap.people);
         setNicknames({ taken: snap.taken, selfLost: snap.selfLost });
         if (layoutReadyRef.current) applyAgents(agents, snap.people);
@@ -319,7 +316,6 @@ export function useExtensionMessages(
     chats,
     lanVersion,
     people,
-    online,
     notify,
     setNotify,
     profile,

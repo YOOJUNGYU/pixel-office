@@ -142,21 +142,6 @@ describe('LanService chat', () => {
     expect(lan.profile).not.toHaveProperty('chat');
   });
 
-  it('online: me + live peers per open office; personal mode: only the others heard', () => {
-    const peers: Record<string, PeerPacket[]> = { [PUBLIC_VIEW]: [pkt('p'), pkt('q')] };
-    const { lan } = mk(peers);
-    expect(lan.online()).toEqual({ [PUBLIC_VIEW]: 3 });
-    lan.createOffice('팀');
-    const tag = lan.profile.activeView;
-    peers[tag] = [pkt('r')];
-    expect(lan.online()).toEqual({ [tag]: 2 }); // public is closed while in a team
-    lan.setActiveView(PERSONAL_VIEW);
-    lan.net.liveCount = (v) => (peers[v] ?? []).length;
-    expect(lan.online()).toEqual({ [tag]: 1 });
-    lan.leaveOffice(tag);
-    expect(lan.online()).toEqual({ [PUBLIC_VIEW]: 2 });
-  });
-
   it('a public chat is dropped when joining a team', () => {
     const { lan } = mk();
     lan.sendChat('hi', 0);

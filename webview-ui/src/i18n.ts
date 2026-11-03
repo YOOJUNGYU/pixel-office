@@ -134,7 +134,6 @@ const ko = {
 
   'office.label': '오피스',
   'office.public': '🌐 공개 오피스',
-  'office.online': '{n}명',
   'office.unnamed': '이름 모를 팀',
   'office.personal': '🏠 개인용',
   'office.personalHint':
@@ -496,7 +495,6 @@ const en: Record<Key, string> = {
 
   'office.label': 'Office',
   'office.public': '🌐 Public office',
-  'office.online': '{n} online',
   'office.unnamed': 'Unnamed team',
   'office.personal': '🏠 Personal',
   'office.personalHint':

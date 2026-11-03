@@ -316,7 +316,6 @@ export function snapshotMessage(lan: LanService) {
     type: 'officeSnapshot',
     agents: lan.office(view),
     people: lan.people(view),
-    online: lan.online(),
     selfPeerId: lan.profile.peerId,
   } as const;
 }

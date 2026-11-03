@@ -387,18 +387,6 @@ export class PeerNet {
     return out;
   }
 
-  /** Other PCs live in one office: paired peers, or while offline (personal mode, which
-   *  sends no hello) the public PCs whose hello was heard. Same office gate as peers(). */
-  liveCount(view: string): number {
-    if (view === PUBLIC_VIEW ? this.opts.offices().length > 0 : !this.isJoined(view)) return 0;
-    const t = this.now();
-    const all =
-      view === PUBLIC_VIEW && this.isOffline()
-        ? [...this.hellos.values()]
-        : [...(this.seen.get(view)?.values() ?? [])];
-    return all.filter((e) => t - e.at <= PEER_TTL_MS).length;
-  }
-
   /** The name a member last announced for a team office. */
   teamName(tag: string): string | undefined {
     return this.names.get(tag);
@@ -439,7 +427,7 @@ export class PeerNet {
 
   /** Untrusted datagram: anything off is dropped silently, never throws. */
   private receive(text: string, rinfo: { address: string; port: number }): void {
-    // Personal mode listens only (for liveCount): no hello reply, no pub, so it stays invisible.
+    // Personal mode listens only (team presence is still decrypted): no hello reply, no pub, so it stays invisible.
     const offline = this.isOffline();
     const w = parseWire(text);
     if (!w) {
@@ -606,7 +594,7 @@ export class PeerNet {
   }
 
   /** Drops expired peers and all public-office state while in a team or of left teams.
-   *  Offline keeps listening state (liveCount); peers() hides it. */
+   *  Offline keeps listening state; peers() hides it. */
   private prune(): void {
     const t = this.now();
     const offices = this.opts.offices();

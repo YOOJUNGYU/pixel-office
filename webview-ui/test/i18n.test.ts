@@ -55,3 +55,8 @@ test('people panel strings in both languages', () => {
   assert.equal(t('people.title', { n: '3' }), '3 online');
   assert.equal(t('people.you'), '(you)');
 });
+
+test('tab counts are gone', () => {
+  assert.ok(!('office.online' in DICT.ko));
+  assert.ok(!('office.online' in DICT.en));
+});
