@@ -4,6 +4,9 @@ import {
   TRANSCRIPT_PANEL_EDGE_PX,
   TRANSCRIPT_PANEL_MIN_WIDTH_PX,
   TRANSCRIPT_PANEL_WIDTH_PX,
+  TRANSCRIPT_ZOOM_DEFAULT,
+  TRANSCRIPT_ZOOM_MAX,
+  TRANSCRIPT_ZOOM_MIN,
 } from '../constants.js';
 
 export interface TranscriptState {
@@ -79,4 +82,10 @@ export function clampPanelWidth(width: number, viewport: number): number {
   if (!Number.isFinite(width)) width = TRANSCRIPT_PANEL_WIDTH_PX;
   const max = Math.max(TRANSCRIPT_PANEL_MIN_WIDTH_PX, viewport - TRANSCRIPT_PANEL_EDGE_PX);
   return Math.round(Math.min(max, Math.max(TRANSCRIPT_PANEL_MIN_WIDTH_PX, width)));
+}
+
+/** A typed / saved content zoom (%) as a whole number within the range (bad → the default). */
+export function clampZoom(zoom: number): number {
+  if (!Number.isFinite(zoom)) return TRANSCRIPT_ZOOM_DEFAULT;
+  return Math.round(Math.min(TRANSCRIPT_ZOOM_MAX, Math.max(TRANSCRIPT_ZOOM_MIN, zoom)));
 }

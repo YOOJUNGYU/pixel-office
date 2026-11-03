@@ -502,6 +502,13 @@ export const TRANSCRIPT_PANEL_EDGE_PX = 16;
 export const TRANSCRIPT_RESIZE_STEP_PX = 32;
 /** The splitter's grab area (straddles the panel's right border), CSS px. */
 export const TRANSCRIPT_RESIZE_HANDLE_PX = 8;
+/** Transcript content zoom (%), separate from the office zoom: slider range, step, default. */
+export const TRANSCRIPT_ZOOM_MIN = 50;
+export const TRANSCRIPT_ZOOM_MAX = 200;
+export const TRANSCRIPT_ZOOM_STEP = 10;
+export const TRANSCRIPT_ZOOM_DEFAULT = 100;
+/** localStorage key: this viewer's transcript content zoom, %. */
+export const TRANSCRIPT_ZOOM_KEY = 'pixel-office.transcript.zoom';
 /** localStorage key: this viewer's transcript panel width, px. */
 export const TRANSCRIPT_WIDTH_KEY = 'pixel-office.transcript.width';
 /** A tool input/result longer than this many lines is folded behind [더 보기]. */

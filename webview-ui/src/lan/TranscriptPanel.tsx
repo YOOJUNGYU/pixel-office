@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import type { TranscriptEntry } from '../../../core/src/messages.js';
@@ -14,13 +14,18 @@ import {
   TRANSCRIPT_RESIZE_HANDLE_PX,
   TRANSCRIPT_RESIZE_STEP_PX,
   TRANSCRIPT_WIDTH_KEY,
+  TRANSCRIPT_ZOOM_DEFAULT,
+  TRANSCRIPT_ZOOM_KEY,
+  TRANSCRIPT_ZOOM_MAX,
+  TRANSCRIPT_ZOOM_MIN,
+  TRANSCRIPT_ZOOM_STEP,
 } from '../constants.js';
 import { t, useLang } from '../i18n.js';
 import { badgeColors } from './badgeColors.js';
 import type { Family } from './highlight.js';
 import { highlight, languageOf } from './highlight.js';
 import type { TranscriptState } from './transcript.js';
-import { clampPanelWidth, foldText, isAtBottom } from './transcript.js';
+import { clampPanelWidth, clampZoom, foldText, isAtBottom } from './transcript.js';
 import {
   headingText,
   prettyResult,
@@ -64,6 +69,12 @@ export const TranscriptPanel = memo(function TranscriptPanel({
   const panel = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(readWidth);
   const [dragging, setDragging] = useState(false);
+  const [zoom, setZoom] = useState(readZoom);
+  const changeZoom = (z: number) => {
+    const v = clampZoom(z);
+    setZoom(v);
+    store(TRANSCRIPT_ZOOM_KEY, String(v));
+  };
   const resize = (next: number, save: boolean) => {
     const w = clampPanelWidth(next, window.innerWidth);
     setWidth(w);
@@ -94,7 +105,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({
     prev.current = { len, start };
     // No scrollbar yet, so no scroll to the top: fetch the earlier page now.
     if (more && !loading && el.scrollHeight <= el.clientHeight) onLoadEarlier();
-  }, [len, start, error, more, loading, onLoadEarlier]);
+  }, [len, start, error, more, loading, onLoadEarlier, zoom]);
   // After every layout (declared last, so after the correction above).
   useLayoutEffect(() => {
     if (scroller.current) lastHeight.current = scroller.current.scrollHeight;
@@ -154,9 +165,10 @@ export const TranscriptPanel = memo(function TranscriptPanel({
             </span>
           </>
         )}
+        <ZoomControl zoom={zoom} onChange={changeZoom} />
         <button
           type="button"
-          className="ml-auto shrink-0 px-6 text-base text-text-muted hover:text-text cursor-pointer bg-transparent border-0"
+          className="shrink-0 px-6 text-base text-text-muted hover:text-text cursor-pointer bg-transparent border-0"
           title={t('transcript.close')}
           aria-label={t('transcript.close')}
           onClick={onClose}
@@ -168,7 +180,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({
         <div
           ref={scroller}
           tabIndex={0}
-          className="absolute inset-0 overflow-y-auto pixel-scrollbar px-8 py-6 flex flex-col gap-8 text-sm leading-normal"
+          className="absolute inset-0 overflow-y-auto pixel-scrollbar px-8 py-6 text-sm leading-normal"
           onScroll={(e) => {
             const el = e.currentTarget;
             atBottom.current = isAtBottom(el.scrollTop, el.clientHeight, el.scrollHeight);
@@ -177,16 +189,19 @@ export const TranscriptPanel = memo(function TranscriptPanel({
             if (el.scrollTop === 0 && more && !loading) onLoadEarlier();
           }}
         >
-          {loading && (
-            <Note>{t(entries.length ? 'transcript.loadingEarlier' : 'transcript.loading')}</Note>
-          )}
-          {info && !more && !loading && <Note>{t('transcript.start')}</Note>}
-          {info?.kind === 'shell' ? (
-            <ShellOutput entries={entries} />
-          ) : (
-            entries.map((e, i) => <Entry key={i - keys.base} e={e} />)
-          )}
-          {error && <Note>{t(`transcript.${error}`)}</Note>}
+          {/* Content zoom only (CSS zoom re-flows the text, unlike a transform). */}
+          <div className="flex flex-col gap-8" style={{ zoom: zoom / 100 }}>
+            {loading && (
+              <Note>{t(entries.length ? 'transcript.loadingEarlier' : 'transcript.loading')}</Note>
+            )}
+            {info && !more && !loading && <Note>{t('transcript.start')}</Note>}
+            {info?.kind === 'shell' ? (
+              <ShellOutput entries={entries} />
+            ) : (
+              entries.map((e, i) => <Entry key={i - keys.base} e={e} />)
+            )}
+            {error && <Note>{t(`transcript.${error}`)}</Note>}
+          </div>
         </div>
         {newBelow && (
           <button
@@ -249,11 +264,79 @@ function readWidth(): number {
 }
 
 function saveWidth(width: number): void {
+  store(TRANSCRIPT_WIDTH_KEY, String(width));
+}
+
+function store(key: string, value: string): void {
   try {
-    localStorage.setItem(TRANSCRIPT_WIDTH_KEY, String(width));
+    localStorage.setItem(key, value);
   } catch {
-    // Storage blocked: the width just is not kept.
+    // Storage blocked: the setting just is not kept.
   }
+}
+
+function readZoom(): number {
+  try {
+    return clampZoom(Number(localStorage.getItem(TRANSCRIPT_ZOOM_KEY) ?? TRANSCRIPT_ZOOM_DEFAULT));
+  } catch {
+    return TRANSCRIPT_ZOOM_DEFAULT;
+  }
+}
+
+/** Content zoom: a slider and its percentage; click the number to type an exact one. */
+function ZoomControl({ zoom, onChange }: { zoom: number; onChange(z: number): void }) {
+  const [typing, setTyping] = useState<string | null>(null);
+  const fill = ((zoom - TRANSCRIPT_ZOOM_MIN) / (TRANSCRIPT_ZOOM_MAX - TRANSCRIPT_ZOOM_MIN)) * 100;
+  const commit = () => {
+    if (typing !== null && typing.trim() !== '') onChange(Number(typing));
+    setTyping(null);
+  };
+  return (
+    <div className="ml-auto shrink-0 flex items-center gap-4">
+      <input
+        type="range"
+        min={TRANSCRIPT_ZOOM_MIN}
+        max={TRANSCRIPT_ZOOM_MAX}
+        step={TRANSCRIPT_ZOOM_STEP}
+        value={zoom}
+        aria-label={t('transcript.zoom')}
+        title={t('transcript.zoom')}
+        className="pixel-range w-[72px]"
+        style={{ '--range-fill': `${fill}%` } as CSSProperties}
+        onChange={(e) => onChange(Number(e.target.value))}
+        onDoubleClick={() => onChange(TRANSCRIPT_ZOOM_DEFAULT)}
+      />
+      {typing === null ? (
+        <button
+          type="button"
+          className="w-[44px] text-right text-xs tabular-nums text-text-muted hover:text-text cursor-text bg-transparent border-0 p-0"
+          title={t('transcript.zoomType')}
+          aria-label={t('transcript.zoomType')}
+          onClick={() => setTyping(String(zoom))}
+        >
+          {zoom}%
+        </button>
+      ) : (
+        <input
+          type="number"
+          autoFocus
+          min={TRANSCRIPT_ZOOM_MIN}
+          max={TRANSCRIPT_ZOOM_MAX}
+          value={typing}
+          aria-label={t('transcript.zoomType')}
+          className="w-[44px] px-2 text-right text-xs bg-bg-dark text-text border-2 border-border outline-none"
+          onChange={(e) => setTyping(e.target.value)}
+          onFocus={(e) => e.currentTarget.select()}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') commit();
+            else if (e.key === 'Escape') setTyping(null);
+          }}
+        />
+      )}
+    </div>
+  );
 }
 
 function Note({ children }: { children: string }) {

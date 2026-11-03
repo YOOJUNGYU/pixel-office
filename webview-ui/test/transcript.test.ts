@@ -4,6 +4,7 @@ import { test } from 'vitest';
 
 import {
   clampPanelWidth,
+  clampZoom,
   foldText,
   isAtBottom,
   listSide,
@@ -103,4 +104,12 @@ test('clampPanelWidth keeps the width between the minimum and the window', () =>
   // A bad saved value → the default; a narrow window never goes under the minimum (CSS min() fits it).
   assert.equal(clampPanelWidth(NaN, 1600), 480);
   assert.equal(clampPanelWidth(480, 300), 320);
+});
+
+test('clampZoom keeps a whole percentage within 50–200', () => {
+  assert.equal(clampZoom(125), 125);
+  assert.equal(clampZoom(112.6), 113);
+  assert.equal(clampZoom(10), 50);
+  assert.equal(clampZoom(900), 200);
+  assert.equal(clampZoom(NaN), 100);
 });
