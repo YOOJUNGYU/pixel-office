@@ -85,7 +85,7 @@ describe('my avatar: arrow keys', () => {
     settle(os);
     os.pressAvatar(Direction.RIGHT);
     expect(os.nextFrameIn(0)).toBe(0);
-    settle(os, 0.5); // 48 px/s = 3 tiles/s
+    settle(os, 0.25); // WALK_SPEED_PX_PER_SEC 108 = 6.75 tiles/s
     expect(ch.tileCol).toBeLessThanOrEqual(2);
     settle(os, 3);
     expect([ch.tileCol, ch.tileRow]).toEqual([4, 2]); // walked through p, stopped at the edge
