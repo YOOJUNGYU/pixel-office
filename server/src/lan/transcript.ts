@@ -91,7 +91,7 @@ function claude(o: Obj, ts: string | undefined, out: TranscriptEntry[]): void {
   }
 }
 
-const CODEX_META = ['<environment_context>', '<user_instructions>'];
+const CODEX_META = ['<environment_context>', '<user_instructions>', '# AGENTS.md instructions'];
 
 function codex(o: Obj, ts: string | undefined, out: TranscriptEntry[]): void {
   if (o.type !== 'response_item' || !isObj(o.payload)) return;

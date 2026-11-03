@@ -80,6 +80,11 @@ describe('parseLines', () => {
         role: 'user',
         content: [{ type: 'input_text', text: '<environment_context>x' }],
       }),
+      ri({
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'input_text', text: '# AGENTS.md instructions for /x' }],
+      }),
       ri({ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'do it' }] }),
       ri({ type: 'reasoning', summary: [{ text: 'think' }] }),
       ri({ type: 'reasoning', summary: [] }),
@@ -87,9 +92,9 @@ describe('parseLines', () => {
       ri({ type: 'function_call_output', call_id: 'c1', output: 'out' }),
       j({ type: 'event_msg', payload: { type: 'user_message', message: 'do it' } }),
     ]);
-    expect(e.map((x) => x.kind)).toEqual(['meta', 'user', 'thinking', 'tool', 'result']);
-    expect(e[3]).toMatchObject({ tool: 'shell', callId: 'c1', text: '{"cmd":"ls"}' });
-    expect(e[4]).toMatchObject({ callId: 'c1', text: 'out' });
+    expect(e.map((x) => x.kind)).toEqual(['meta', 'meta', 'user', 'thinking', 'tool', 'result']);
+    expect(e[4]).toMatchObject({ tool: 'shell', callId: 'c1', text: '{"cmd":"ls"}' });
+    expect(e[5]).toMatchObject({ callId: 'c1', text: 'out' });
   });
 
   it('clips a long text and reports how much', () => {
