@@ -17,6 +17,8 @@ export interface AreaSection {
   people: DirectoryPersonMessage[];
   /** This area is the office on screen (its rows keep the full panel behaviour). */
   viewed: boolean;
+  /** The directory has no area for the viewed office yet (a team just joined): its rows are the snapshot as is. */
+  fallback?: true;
 }
 
 export const EMPTY_DIRECTORY: Omit<PeopleDirectory, 'type'> = {
@@ -63,11 +65,34 @@ export function areaSections(
   const teams = [...dir.teams].sort(
     (a, b) => a.name.localeCompare(b.name) || a.tag.localeCompare(b.tag),
   );
+  const known = activeView === PUBLIC_VIEW || activeView === PERSONAL_VIEW;
+  const pending: AreaSection[] =
+    known || teams.some((t) => t.tag === activeView)
+      ? []
+      : [{ ...section('team', activeView, '', []), fallback: true }];
   return [
     section('public', PUBLIC_VIEW, '', dir.public),
     ...teams.map((t) => section('team', t.tag, t.name, t.people)),
+    ...pending,
     section('personal', PERSONAL_VIEW, '', dir.personal),
   ];
+}
+
+/**
+ * The viewed office's snapshot rows the panel lists: its area's members (the
+ * directory decides, deduped by last heard), plus snapshot people in no area at
+ * all (≤ 1.0.24 peers, the tour's demo PCs). A PC the directory puts in another
+ * area (just switched mode, the snapshot still has it) is dropped. No directory
+ * area for the viewed office yet: the snapshot as is.
+ */
+export function viewedRows(sections: AreaSection[], rows: PersonRow[]): PersonRow[] {
+  const viewed = sections.find((s) => s.viewed);
+  if (!viewed || viewed.fallback) return rows;
+  const elsewhere = new Set(
+    sections.filter((s) => s !== viewed).flatMap((s) => s.people.map((p) => p.peerId)),
+  );
+  const members = new Set(viewed.people.map((p) => p.peerId));
+  return rows.filter((r) => members.has(r.person.peerId) || !elsewhere.has(r.person.peerId));
 }
 
 /** Area people the viewed office's snapshot rows do not have (shown as plain rows). */

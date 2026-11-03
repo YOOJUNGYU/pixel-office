@@ -12,7 +12,7 @@ import {
 } from '../constants.js';
 import { type Key, t, useLang } from '../i18n.js';
 import type { OfficeState } from '../office/engine/officeState.js';
-import { type AreaSection, totalPeople, viewedExtras } from './directoryModel.js';
+import { type AreaSection, totalPeople, viewedExtras, viewedRows } from './directoryModel.js';
 import type { LanAgents } from './lanAgents.js';
 import { peerLabel } from './nicknames.js';
 import { focusHintKey, inFrozenOrder, type PersonRow } from './peopleModel.js';
@@ -101,13 +101,14 @@ interface PeoplePanelProps {
  * tags light up (LanAgents.highlightPeer). Other areas: face + name only.
  */
 export function PeoplePanel({
-  rows: live,
+  rows: snapshotRows,
   sections,
   lan,
   officeState,
   forceOpen,
 }: PeoplePanelProps) {
   useLang();
+  const live = viewedRows(sections, snapshotRows);
   // Rows must not jump under a resting pointer: while it is over the list the order is frozen.
   const [hovered, setHovered] = useState(false);
   const frozen = useRef<string[]>([]);

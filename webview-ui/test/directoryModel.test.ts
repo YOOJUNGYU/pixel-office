@@ -14,6 +14,7 @@ import {
   EMPTY_DIRECTORY,
   totalPeople,
   viewedExtras,
+  viewedRows,
 } from '../src/lan/directoryModel.js';
 import type { PersonRow } from '../src/lan/peopleModel.js';
 
@@ -128,4 +129,44 @@ test('totalPeople counts each peerId once', () => {
     personal: [person('c')],
   };
   assert.equal(totalPeople(areaSections(dir, 'public'), [row('me'), row('b'), row('demo')]), 4);
+});
+
+const ids = (rows: PersonRow[]) => rows.map((r) => r.person.peerId);
+
+test('viewedRows: a PC the directory moved to another area is not listed twice', () => {
+  // b switched to personal; the public snapshot still has it until the peer TTL.
+  const dir = {
+    ...EMPTY_DIRECTORY,
+    public: [person('me', { self: true })],
+    personal: [person('b')],
+  };
+  const sections = areaSections(dir, 'public');
+  assert.deepEqual(ids(viewedRows(sections, [row('me'), row('b')])), ['me']);
+});
+
+test('viewedRows: no directory area for the viewed office yet = the snapshot as is', () => {
+  const dir = { ...EMPTY_DIRECTORY, personal: [person('b')] };
+  const sections = areaSections(dir, TAG_A); // joined a team, no peopleDirectory with it yet
+  const team = sections.find((s) => s.viewed);
+  assert.equal(team?.area, 'team');
+  assert.deepEqual(
+    sections.map((s) => s.area),
+    ['public', 'team', 'personal'],
+  );
+  assert.deepEqual(ids(viewedRows(sections, [row('me'), row('b')])), ['me', 'b']);
+  // No directory received at all: the public snapshot as is.
+  assert.deepEqual(
+    ids(viewedRows(areaSections(EMPTY_DIRECTORY, 'public'), [row('me'), row('b')])),
+    ['me', 'b'],
+  );
+});
+
+test('viewedRows: a snapshot person in no directory area (old peer) stays', () => {
+  const dir = {
+    ...EMPTY_DIRECTORY,
+    public: [person('me', { self: true })],
+    personal: [person('c')],
+  };
+  const sections = areaSections(dir, 'public');
+  assert.deepEqual(ids(viewedRows(sections, [row('me'), row('old')])), ['me', 'old']);
 });
