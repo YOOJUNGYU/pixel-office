@@ -618,7 +618,7 @@ components:
 
     OfficeErrorReason:
       type: string
-      enum: [invalidCode, alreadyJoined, nameInvalid, full]
+      enum: [invalidCode, alreadyJoined, nameInvalid]
 
     LayoutSaved:
       description: >-
@@ -1175,7 +1175,8 @@ components:
     CreateOffice:
       description: >-
         Create a team office (loopback browser only). Answered with
-        officeCreated, then officesState.
+        officeCreated, then officesState. Already in a team: that team is
+        left in the same save.
       type: object
       additionalProperties: false
       required: [type, name]
@@ -1188,7 +1189,8 @@ components:
     JoinOffice:
       description: >-
         Join a team office by invite code (loopback browser only; tolerant of
-        case, spaces and dashes). Answered with officesState.
+        case, spaces and dashes). Answered with officesState. Already in a team:
+        that team is left in the same save.
       type: object
       additionalProperties: false
       required: [type, code]

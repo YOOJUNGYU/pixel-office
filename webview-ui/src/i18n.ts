@@ -157,7 +157,7 @@ const ko = {
   'office.error.invalidCode': '코드가 올바르지 않습니다. 다시 확인하세요.',
   'office.error.alreadyJoined': '이미 참여 중인 팀 오피스라 그 오피스로 전환했습니다.',
   'office.error.nameInvalid': '팀 이름은 1–20자여야 합니다.',
-  'office.error.full': '팀 오피스는 10개까지 참여할 수 있습니다.',
+  'office.switchConfirm': '지금 팀({name})에서 나가고 새 팀으로 옮길까요?',
 
   'update.available': '새 버전 v{v} 이 있습니다',
   'update.install': '업데이트',
@@ -519,7 +519,7 @@ const en: Record<Key, string> = {
   'office.error.invalidCode': 'That code is not valid. Check it and try again.',
   'office.error.alreadyJoined': 'You are already in this team office — switched to it.',
   'office.error.nameInvalid': 'Team name must be 1–20 characters.',
-  'office.error.full': 'You can be in up to 10 team offices.',
+  'office.switchConfirm': 'Leave your current team ({name}) and move to the new one?',
 
   'update.available': 'Version v{v} is available',
   'update.install': 'Update',

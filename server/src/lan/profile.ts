@@ -124,16 +124,24 @@ export function officeFromSecret(secret: Buffer, name: string): TeamOffice {
   return { tag: teamTag(teamKey(secret)), name, secret: secret.toString('base64') };
 }
 
-function parseOffices(x: unknown): TeamOffice[] {
-  const out: TeamOffice[] = [];
+/** One team at a time: of the valid, distinct teams keep the one `keepTag` names (the one on
+ *  screen), else the first. */
+function parseOffices(x: unknown, keepTag: unknown): TeamOffice[] {
+  const all: TeamOffice[] = [];
   for (const o of Array.isArray(x) ? x : []) {
     if (!isObj(o) || typeof o.secret !== 'string') continue;
     const secret = Buffer.from(o.secret, 'base64');
     if (secret.length !== INVITE_SECRET_BYTES || secret.toString('base64') !== o.secret) continue;
     const office = officeFromSecret(secret, validateOfficeName(o.name) ?? '');
-    if (out.length < MAX_OFFICES && !out.some((e) => e.tag === office.tag)) out.push(office);
+    if (!all.some((e) => e.tag === office.tag)) all.push(office);
   }
-  return out;
+  const keep = all.find((e) => e.tag === keepTag) ?? all[0];
+  if (all.length > MAX_OFFICES) {
+    console.log(
+      `[Pixel Office] One team office at a time: left ${(all.length - MAX_OFFICES).toString()} other team office(s).`,
+    );
+  }
+  return keep ? [keep] : [];
 }
 
 /** The office `view` is open on this PC: public only while in no team, a team once
@@ -245,7 +253,7 @@ export function loadProfile(dir: string = defaultDir()): Profile {
   const { publicKey, privateKeyPem } = pk
     ? { publicKey: pk, privateKeyPem: pem }
     : createIdentity(peerId);
-  const offices = parseOffices(raw.offices);
+  const offices = parseOffices(raw.offices, raw.activeView);
   const activeView =
     raw.activeView === PERSONAL_VIEW || offices.some((o) => o.tag === raw.activeView)
       ? (raw.activeView as string)

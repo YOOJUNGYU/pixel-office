@@ -6,7 +6,7 @@ import { MAX_OFFICE_NAME, OFFICE_COPIED_MS } from '../constants.js';
 import type { OfficeReply } from '../hooks/useExtensionMessages.js';
 import { t } from '../i18n.js';
 import { transport } from '../transport/index.js';
-import { normalizeCodeInput } from './offices.js';
+import { normalizeCodeInput, switchConfirmName } from './offices.js';
 
 const INPUT = 'flex-1 min-w-0 py-2 px-4 bg-bg border-2 border-border rounded-none text-text';
 /** Created office's code panel key in `copied` (list rows use the office tag). */
@@ -71,14 +71,22 @@ export function OfficeSettings({ state, reply, onReplyHandled }: OfficeSettingsP
 
   const trimmedName = name.trim();
   const nameOk = trimmedName.length >= 1 && trimmedName.length <= MAX_OFFICE_NAME;
+  /** In a team already: the new one replaces it, so ask first. */
+  const confirmSwitch = (): boolean => {
+    const cur = switchConfirmName(state);
+    return (
+      cur === null ||
+      window.confirm(t('office.switchConfirm', { name: cur || t('office.unnamed') }))
+    );
+  };
   const create = () => {
-    if (!nameOk) return;
+    if (!nameOk || !confirmSwitch()) return;
     setError(null);
     transport.send({ type: 'createOffice', name: trimmedName });
   };
   const join = () => {
     const c = normalizeCodeInput(code);
-    if (!c) return;
+    if (!c || !confirmSwitch()) return;
     setError(null);
     setCreated(null);
     const n = joinName.trim();

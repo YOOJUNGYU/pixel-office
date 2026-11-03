@@ -12,13 +12,24 @@ import {
   profileMessage,
   snapshotMessage,
 } from '../../src/clientMessageHandler.js';
-import { MAX_OFFICES } from '../../src/constants.js';
 import { FileStateAdapter } from '../../src/fileStateAdapter.js';
 import { createIdentity, parseInviteCode } from '../../src/lan/crypto.js';
 import type { CreatedOffice } from '../../src/lan/office.js';
 import { buildOffice, LanService } from '../../src/lan/office.js';
 import type { Profile } from '../../src/lan/profile.js';
 import { loadProfile, osAccount } from '../../src/lan/profile.js';
+
+const saves = vi.hoisted(() => vi.fn());
+vi.mock('../../src/lan/profile.js', async (orig) => {
+  const m = await orig<typeof import('../../src/lan/profile.js')>();
+  return {
+    ...m,
+    saveProfile: (...a: Parameters<typeof m.saveProfile>) => {
+      saves(...a);
+      m.saveProfile(...a);
+    },
+  };
+});
 
 const view = (o: Partial<AgentView> = {}): AgentView => ({
   id: 's1',
@@ -404,13 +415,27 @@ describe('LanService', () => {
       expect(keys(lan.office(PUBLIC_VIEW))).toContain('p1:public-work');
     });
 
-    it('rejects bad names and a full office list', () => {
+    it('rejects bad names', () => {
       const { lan } = mk();
       expect(lan.createOffice('')).toBe('nameInvalid');
       expect(lan.createOffice('x'.repeat(21))).toBe('nameInvalid');
       expect(lan.createOffice(5)).toBe('nameInvalid');
-      for (let i = 0; i < MAX_OFFICES; i++) lan.createOffice(`팀${i.toString()}`);
-      expect(lan.createOffice('one more')).toBe('full');
+    });
+
+    it('create or join while in a team replaces the team in one save', () => {
+      const { lan } = mk();
+      const a = lan.createOffice('a') as CreatedOffice;
+      saves.mockClear();
+      const b = lan.createOffice('b') as CreatedOffice;
+      expect(saves).toHaveBeenCalledTimes(1);
+      expect(lan.profile.offices.map((o) => o.name)).toEqual(['b']);
+      expect(lan.profile.activeView).toBe(b.tag);
+      expect(loadProfile(dir).offices.map((o) => o.name)).toEqual(['b']);
+      expect(lan.joinOffice(a.code)).toBeNull();
+      expect(lan.profile.offices.map((o) => o.tag)).toEqual([a.tag]);
+      expect(lan.profile.activeView).toBe(a.tag);
+      expect(lan.joinOffice(a.code)).toBe('alreadyJoined');
+      expect(lan.profile.offices.map((o) => o.tag)).toEqual([a.tag]);
     });
   });
 });

@@ -51,3 +51,8 @@ export function switcherItems(state: Omit<OfficesState, 'type'>): SwitcherItem[]
 /** Personal mode: offline, this PC alone, the smaller office. */
 export const isPersonal = (state: Pick<OfficesState, 'activeView'> | null): boolean =>
   state?.activeView === PERSONAL_VIEW;
+
+/** Name of the team this PC is in ('' when unnamed), null when in none: creating or joining
+ *  another one leaves it, so the page asks first. */
+export const switchConfirmName = (state: Omit<OfficesState, 'type'>): string | null =>
+  state.offices[0] ? state.offices[0].name : null;

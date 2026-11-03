@@ -132,17 +132,13 @@ describe('LanService chat', () => {
     const { lan } = mk();
     lan.createOffice('팀');
     const tag = lan.profile.activeView;
-    lan.createOffice('팀2'); // active view is now the second team
-    const other = lan.profile.activeView;
-    lan.setActiveView(tag);
     lan.sendChat('team only', 0);
     expect(lan.packet(tag).chat?.text).toBe('team only');
-    expect(lan.packet(other)).not.toHaveProperty('chat');
     expect(lan.packet(PUBLIC_VIEW)).not.toHaveProperty('chat');
-    lan.setActiveView(other);
+    lan.setActiveView(PERSONAL_VIEW);
+    lan.setActiveView(tag);
     expect(lan.packet(tag).chat?.text).toBe('team only');
-    expect(lan.people(other)[0]).not.toHaveProperty('chat');
-    lan.leaveOffice(tag);
+    lan.createOffice('팀2'); // replaces the team: its chat goes with it
     expect(lan.profile).not.toHaveProperty('chat');
   });
 

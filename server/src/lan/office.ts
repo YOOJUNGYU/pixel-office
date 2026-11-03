@@ -27,7 +27,6 @@ import type {
 import {
   AVATAR_SAVE_DELAY_MS,
   AVATAR_SEND_DELAY_MS,
-  MAX_OFFICES,
   PING_APP,
   PING_TIMEOUT_MS,
 } from '../constants.js';
@@ -335,14 +334,14 @@ export class LanService {
     }));
   }
 
-  /** New team office with a fresh invite code; it becomes the active view. */
+  /** New team office with a fresh invite code; it becomes the active view and replaces
+   *  the current team (one team at a time) in the same save. */
   createOffice(name: unknown): CreatedOffice | OfficeErrorReason {
     const n = validateOfficeName(name);
     if (n === null) return 'nameInvalid';
-    if (this.profile.offices.length >= MAX_OFFICES) return 'full';
     const code = newInviteCode();
     const office = officeFromSecret(code.secret, n);
-    this.update({ offices: [...this.profile.offices, office], activeView: office.tag });
+    this.update({ offices: [office], activeView: office.tag });
     return { tag: office.tag, name: n, code: code.text };
   }
 
@@ -359,8 +358,7 @@ export class LanService {
       this.setActiveView(office.tag);
       return 'alreadyJoined';
     }
-    if (offices.length >= MAX_OFFICES) return 'full';
-    this.update({ offices: [...offices, office], activeView: office.tag });
+    this.update({ offices: [office], activeView: office.tag });
     return null;
   }
 

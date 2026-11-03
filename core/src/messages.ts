@@ -321,7 +321,7 @@ export interface OfficeError {
   reason: OfficeErrorReason;
 }
 
-export type OfficeErrorReason = 'invalidCode' | 'alreadyJoined' | 'nameInvalid' | 'full';
+export type OfficeErrorReason = 'invalidCode' | 'alreadyJoined' | 'nameInvalid';
 
 export interface ProfileError {
   type: 'profileError';

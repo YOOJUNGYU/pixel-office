@@ -132,11 +132,12 @@ describe('personal mode', () => {
     expect(lan.setActiveView(PERSONAL_VIEW)).toBe(true);
     expect(loadProfile(home)).toMatchObject({ activeView: PERSONAL_VIEW });
     expect(loadProfile(home).offices.map((o) => o.tag)).toEqual([team.tag]);
-    // Leaving another team keeps personal mode.
-    const other = lan.createOffice('둘') as CreatedOffice;
-    lan.setActiveView(PERSONAL_VIEW);
-    lan.leaveOffice(other.tag);
+    // Leaving the team while in personal mode keeps personal mode.
+    lan.leaveOffice(team.tag);
     expect(lan.personal).toBe(true);
+    expect(lan.profile.offices).toEqual([]);
+    lan.joinOffice(team.code);
+    lan.setActiveView(PERSONAL_VIEW);
     msg({ type: 'setActiveView', view: team.tag });
     expect(lan.profile.activeView).toBe(team.tag);
     expect(onOfficesChanged).toHaveBeenLastCalledWith(true);
@@ -144,7 +145,7 @@ describe('personal mode', () => {
 
   it('every office switch resends the layout (each office has its own); a no-op switch does not', () => {
     const a = lan.createOffice('a') as CreatedOffice;
-    lan.createOffice('b');
+    lan.setActiveView(PERSONAL_VIEW);
     msg({ type: 'setActiveView', view: a.tag });
     expect(onOfficesChanged).toHaveBeenLastCalledWith(true);
     msg({ type: 'setActiveView', view: a.tag });

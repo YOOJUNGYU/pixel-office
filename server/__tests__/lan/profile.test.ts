@@ -2,7 +2,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PUBLIC_VIEW } from '../../../core/src/lan.js';
 import { ACCOUNT_FALLBACK, MAX_KNOWN_PEERS } from '../../src/constants.js';
@@ -86,6 +86,44 @@ describe('loadProfile', () => {
     expect(p.activeView).toBe(good.tag);
     expect(publicKeyOf(p.identity.privateKeyPem)).toBe(p.identity.publicKey);
     if (posix) expect(mode(path.join(dir, 'profile.json'))).toBe(0o600);
+  });
+  it('keeps only the viewed team of several, else the first; logs once', () => {
+    const [a, b, c] = ['가', '나', '다'].map((n) => officeFromSecret(newInviteCode().secret, n));
+    const write = (activeView: string) =>
+      fs.writeFileSync(
+        path.join(dir, 'profile.json'),
+        JSON.stringify({ peerId: 'pc', offices: [a, b, c], activeView }),
+      );
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    write(b.tag);
+    const p = loadProfile(dir);
+    expect(p.offices).toEqual([b]);
+    expect(p.activeView).toBe(b.tag);
+    const file = fs.readFileSync(path.join(dir, 'profile.json'), 'utf-8');
+    expect(file).not.toContain(a.secret);
+    expect(file).not.toContain(c.secret);
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(String(log.mock.calls[0][0])).toContain('One team office at a time');
+    write(PUBLIC_VIEW);
+    const q = loadProfile(dir);
+    expect(q.offices).toEqual([a]);
+    expect(q.activeView).toBe(a.tag);
+    log.mockRestore();
+  });
+  it('a chat said in a dropped team is dropped with it', () => {
+    const [a, b] = ['가', '나'].map((n) => officeFromSecret(newInviteCode().secret, n));
+    fs.writeFileSync(
+      path.join(dir, 'profile.json'),
+      JSON.stringify({
+        peerId: 'pc',
+        offices: [a, b],
+        activeView: a.tag,
+        chat: { id: 'chat0001', text: 'hi', ts: 1, view: b.tag },
+      }),
+    );
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    expect(loadProfile(dir).chat).toBeUndefined();
+    vi.restoreAllMocks();
   });
   it('a corrupt key pair gets a new peerId with the new key (old pins would ignore it)', () => {
     fs.writeFileSync(

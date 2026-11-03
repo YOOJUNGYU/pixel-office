@@ -8,7 +8,12 @@ import assert from 'node:assert/strict';
 
 import { test } from 'vitest';
 
-import { isPersonal, normalizeCodeInput, switcherItems } from '../src/lan/offices.js';
+import {
+  isPersonal,
+  normalizeCodeInput,
+  switchConfirmName,
+  switcherItems,
+} from '../src/lan/offices.js';
 
 test('code input: upper-case, spaces dropped, dashes kept', () => {
   assert.equal(normalizeCodeInput(' po2-ab cd\tef\n'), 'PO2-ABCDEF');
@@ -62,4 +67,12 @@ test('in a team: public disabled, teams in join order, active follows activeView
     ],
   );
   assert.equal(items[1].name, '개발팀');
+});
+
+test('switchConfirmName: the current team or null', () => {
+  assert.equal(switchConfirmName({ offices: [], activeView: 'public' }), null);
+  assert.equal(
+    switchConfirmName({ offices: [{ tag: 't', name: '우리' }], activeView: 't' }),
+    '우리',
+  );
 });
