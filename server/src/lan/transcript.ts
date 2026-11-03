@@ -1,5 +1,11 @@
+import { open } from 'node:fs/promises';
+
 import type { Provider } from '../../../core/src/lan.js';
-import { TRANSCRIPT_ENTRY_MAX_CHARS, TRANSCRIPT_META_MAX_CHARS } from '../constants.js';
+import {
+  TRANSCRIPT_ENTRY_MAX_CHARS,
+  TRANSCRIPT_META_MAX_CHARS,
+  TRANSCRIPT_PAGE_BYTES,
+} from '../constants.js';
 
 export type TranscriptKind = 'user' | 'assistant' | 'thinking' | 'tool' | 'result' | 'meta';
 export interface TranscriptEntry {
@@ -151,4 +157,55 @@ export function parseLines(provider: Provider, lines: string[]): TranscriptEntry
     (provider === 'claude' ? claude : codex)(o, ts, out);
   }
   return out;
+}
+
+export interface TranscriptPage {
+  entries: TranscriptEntry[];
+  start: number;
+  end: number;
+  more: boolean;
+}
+
+/**
+ * The complete lines of [?, end), at most ~one page. `end` is a line boundary
+ * (file end or a previous page's `start`); an unfinished last line (no `\n`) is
+ * left out and `end` is lowered to its start (the live side reads on from there).
+ */
+export async function readPage(
+  file: string,
+  provider: Provider,
+  end: number,
+): Promise<TranscriptPage> {
+  const fh = await open(file, 'r');
+  try {
+    // A line longer than the window: widen it one page at a time until a `\n` or offset 0.
+    for (let span = TRANSCRIPT_PAGE_BYTES; ; span += TRANSCRIPT_PAGE_BYTES) {
+      const from = Math.max(0, end - span);
+      let buf = Buffer.alloc(end - from);
+      buf = buf.subarray(0, (await fh.read(buf, 0, buf.length, from)).bytesRead);
+      let to = end;
+      if (buf.length > 0 && buf[buf.length - 1] !== 0x0a) {
+        const keep = buf.lastIndexOf(0x0a) + 1;
+        to = from + keep;
+        buf = buf.subarray(0, keep);
+      }
+      let skip = 0;
+      if (from > 0) {
+        const nl = buf.indexOf(0x0a);
+        if (nl < 0 || nl === buf.length - 1) continue; // no line start in the window yet
+        skip = nl + 1;
+      }
+      const lines: string[] = [];
+      for (let i = skip; i < buf.length;) {
+        const nl = buf.indexOf(0x0a, i);
+        const line = buf.subarray(i, nl).toString('utf8');
+        if (line.trim()) lines.push(line);
+        i = nl + 1;
+      }
+      const start = from + skip;
+      return { entries: parseLines(provider, lines), start, end: to, more: start > 0 };
+    }
+  } finally {
+    await fh.close();
+  }
 }

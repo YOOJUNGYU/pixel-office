@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-import { TRANSCRIPT_ENTRY_MAX_CHARS } from '../../src/constants.js';
-import { parseLines } from '../../src/lan/transcript.js';
+import { afterAll, describe, expect, it } from 'vitest';
+
+import { TRANSCRIPT_ENTRY_MAX_CHARS, TRANSCRIPT_PAGE_BYTES } from '../../src/constants.js';
+import type { TranscriptEntry } from '../../src/lan/transcript.js';
+import { parseLines, readPage } from '../../src/lan/transcript.js';
 
 const j = (o: unknown) => JSON.stringify(o);
 const userLine = j({ type: 'user', timestamp: 'T1', message: { content: 'hello' } });
@@ -106,5 +111,83 @@ describe('parseLines', () => {
 
   it('bad json is skipped', () => {
     expect(parseLines('claude', ['{oops', userLine])).toHaveLength(1);
+  });
+});
+
+describe('readPage', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'po-transcript-'));
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+  const user = (text: string) => j({ type: 'user', message: { content: text } }) + '\n';
+  const write = (name: string, body: string) => {
+    const f = join(dir, name);
+    writeFileSync(f, body);
+    return f;
+  };
+
+  it('small file: everything, no more', async () => {
+    const f = write('small.jsonl', user('a') + user('b') + user('c'));
+    const p = await readPage(f, 'claude', statSync(f).size);
+    expect(p.entries.length).toBe(3);
+    expect(p.start).toBe(0);
+    expect(p.more).toBe(false);
+  });
+
+  it('big file: tail page then the page before it, no line lost or doubled', async () => {
+    const pad = 'x'.repeat(1000);
+    const n = Math.ceil((TRANSCRIPT_PAGE_BYTES * 2.5) / 1050);
+    let body = '';
+    for (let i = 0; i < n; i++) body += user(`${i} ${pad}`);
+    const f = write('big.jsonl', body);
+    let end = statSync(f).size;
+    const seen: number[] = [];
+    let pages = 0;
+    for (;;) {
+      const p = await readPage(f, 'claude', end);
+      pages++;
+      seen.unshift(...p.entries.map((e) => parseInt(e.text, 10)));
+      if (!p.more) break;
+      end = p.start;
+    }
+    expect(pages).toBeGreaterThan(2);
+    expect(seen).toEqual(Array.from({ length: n }, (_, i) => i));
+  });
+
+  it('one line larger than a page', async () => {
+    const f = write(
+      'huge.jsonl',
+      user('first') + user('y'.repeat(TRANSCRIPT_PAGE_BYTES * 2)) + user('last'),
+    );
+    let end = statSync(f).size;
+    const all: TranscriptEntry[] = [];
+    for (;;) {
+      const p = await readPage(f, 'claude', end);
+      all.push(...p.entries);
+      if (!p.more) break;
+      end = p.start;
+    }
+    expect(all.length).toBe(3);
+    expect(all.some((e) => (e.clipped ?? 0) > 0)).toBe(true);
+  });
+
+  it('unfinished last line is left for the live tail', async () => {
+    const head = user('a') + user('b');
+    const f = write('tail.jsonl', head + '{"type":"user","mess');
+    const p = await readPage(f, 'claude', statSync(f).size);
+    expect(p.entries.length).toBe(2);
+    expect(p.end).toBe(Buffer.byteLength(head));
+  });
+
+  it('multibyte text across a page boundary', async () => {
+    const n = Math.ceil((TRANSCRIPT_PAGE_BYTES * 2.2) / 300);
+    let body = '';
+    for (let i = 0; i < n; i++) body += user('한글'.repeat(50) + i);
+    const f = write('ko.jsonl', body);
+    let end = statSync(f).size;
+    for (;;) {
+      const p = await readPage(f, 'claude', end);
+      for (const e of p.entries) expect(e.text).not.toContain('�');
+      if (!p.more) break;
+      end = p.start;
+    }
   });
 });

@@ -253,3 +253,4 @@ export const CODEX_INDEX_MAX_BYTES = 256 * 1024;
 /** Transcript panel: one entry's text is clipped to this many chars (meta lines: the second). */
 export const TRANSCRIPT_ENTRY_MAX_CHARS = 200_000;
 export const TRANSCRIPT_META_MAX_CHARS = 500;
+export const TRANSCRIPT_PAGE_BYTES = 512 * 1024;
