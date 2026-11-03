@@ -55,6 +55,7 @@ import { TranscriptDialog } from './lan/TranscriptDialog.js';
 import { getOpenIn, openPopout, usePopoutIds } from './lan/transcriptWindows.js';
 import { UpdateBanner } from './lan/UpdateBanner.js';
 import { useTranscripts } from './lan/useTranscript.js';
+import { ZoneEditor } from './lan/ZoneEditor.js';
 import { OfficeCanvas } from './office/components/OfficeCanvas.js';
 import { EditorState } from './office/editor/editorState.js';
 import { EditorToolbar } from './office/editor/EditorToolbar.js';
@@ -685,6 +686,7 @@ function App() {
         />
 
         {!editor.isEditMode && <TagToggle tagsHidden={tagsHidden} onToggleTags={toggleTags} />}
+        {!editor.isEditMode && !touring && <ZoneEditor />}
 
         {!editor.isEditMode &&
           front.map((id, n) => {

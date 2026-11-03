@@ -10,12 +10,15 @@ import {
   TRANSCRIPT_PANEL_TOP_PX,
   TRANSCRIPT_PANEL_WIDTH_PX,
   TRANSCRIPT_PANEL_Z_INDEX,
+  ZONE_SNAP_SLACK_PX,
 } from '../constants.js';
 import { t } from '../i18n.js';
 import type { Rect } from './transcript.js';
 import { clampRect } from './transcript.js';
 import type { TranscriptPanelProps } from './TranscriptPanel.js';
 import { TranscriptPanel } from './TranscriptPanel.js';
+import { ZoneOverlay } from './ZoneEditor.js';
+import { loadLayout, unionRect, zoneArea, zoneAt, zoneRects } from './zones.js';
 
 function savedSize(): { w: number; h: number } {
   try {
@@ -49,8 +52,11 @@ export function TranscriptDialog({
     const fit = Math.min(h, window.innerHeight - y - TRANSCRIPT_DIALOG_CASCADE_PX);
     return clampRect({ x: 8 + step, y, w, h: fit }, view());
   });
-  const drag = useRef<{ grip: Grip; x: number; y: number; from: Rect } | null>(null);
+  const drag = useRef<{ grip: Grip; x: number; y: number; from: Rect; zones: Rect[] } | null>(null);
   const [active, setActive] = useState(false);
+  /** Shift held while moving: the zones on screen and the lit ones (Ctrl adds more). */
+  const [snap, setSnap] = useState<{ zones: Rect[]; on: number[] } | null>(null);
+  const snapRef = useRef<number[]>([]);
 
   // The window got smaller: keep the dialog reachable.
   useEffect(() => {
@@ -62,11 +68,31 @@ export function TranscriptDialog({
   const start = (grip: Grip) => (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     e.preventDefault();
-    drag.current = { grip, x: e.clientX, y: e.clientY, from: rect };
+    drag.current = {
+      grip,
+      x: e.clientX,
+      y: e.clientY,
+      from: rect,
+      zones: zoneRects(loadLayout(), zoneArea()),
+    };
+    snapRef.current = [];
     setActive(true);
     const move = (ev: PointerEvent) => {
       const d = drag.current;
       if (!d) return;
+      if (d.grip === 'move') {
+        if (ev.shiftKey) {
+          const i = zoneAt(d.zones, ev.clientX, ev.clientY, ZONE_SNAP_SLACK_PX);
+          const prev = snapRef.current;
+          const on =
+            i < 0 ? (ev.ctrlKey ? prev : []) : ev.ctrlKey ? [...new Set([...prev, i])] : [i];
+          snapRef.current = on;
+          setSnap({ zones: d.zones, on });
+        } else if (snapRef.current.length || snap) {
+          snapRef.current = [];
+          setSnap(null);
+        }
+      }
       const dx = ev.clientX - d.x;
       const dy = ev.clientY - d.y;
       const f = d.from;
@@ -80,12 +106,20 @@ export function TranscriptDialog({
             };
       setRect(clampRect(next, view()));
     };
-    const up = () => {
+    const up = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       const d = drag.current;
       drag.current = null;
       setActive(false);
+      // Dropped with Shift on a zone (or several, Ctrl): the dialog takes its box.
+      const on = snapRef.current;
+      snapRef.current = [];
+      setSnap(null);
+      if (d && d.grip === 'move' && ev.shiftKey && on.length) {
+        setRect(clampRect(unionRect(on.map((i) => d.zones[i])), view()));
+        return;
+      }
       if (d && d.grip !== 'move') {
         setRect((r) => {
           try {
@@ -127,6 +161,7 @@ export function TranscriptDialog({
       }}
       onPointerDownCapture={onFront}
     >
+      {snap && <ZoneOverlay rects={snap.zones} active={snap.on} />}
       <TranscriptPanel {...panel} onHeaderPointerDown={start('move')} />
       {grip('e', { top: 0, right: -G / 2, width: G, bottom: G }, 'ew-resize')}
       {grip('s', { left: 0, bottom: -G / 2, height: G, right: G }, 'ns-resize')}

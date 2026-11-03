@@ -509,8 +509,27 @@ export const TRANSCRIPT_PANEL_GAP_PX = 8;
 export const TAG_TOGGLE_HEIGHT_PX = 32;
 /** The bottom-left toolbar's top edge above the window bottom (`bottom-10` + its height), CSS px. */
 export const BOTTOM_TOOLBAR_RESERVE_PX = 56;
-export const TRANSCRIPT_PANEL_TOP_PX =
+/** The dialog-zones button sits under the name-tag toggle (same height). */
+export const ZONES_BUTTON_TOP_PX =
   TAG_TOGGLE_TOP_PX + TAG_TOGGLE_HEIGHT_PX + TRANSCRIPT_PANEL_GAP_PX;
+export const TRANSCRIPT_PANEL_TOP_PX =
+  ZONES_BUTTON_TOP_PX + TAG_TOGGLE_HEIGHT_PX + TRANSCRIPT_PANEL_GAP_PX;
+/** Snap zones (Shift-drag a dialog): the area they split = the window below the top-left
+ *  buttons and above the bottom toolbar; at most ZONE_MAX zones, none under ZONE_MIN_FRAC. */
+export const ZONE_AREA_BOTTOM_PX = BOTTOM_TOOLBAR_RESERVE_PX + TRANSCRIPT_PANEL_GAP_PX;
+export const ZONE_MAX = 12;
+export const ZONE_MIN_FRAC = 0.1;
+export const ZONE_SPACING_DEFAULT = 8;
+export const ZONE_SPACING_MAX = 32;
+/** A drop this close to a zone (in its gap) still snaps to it, CSS px. */
+export const ZONE_SNAP_SLACK_PX = 24;
+/** The zone overlay draws over the dialogs; the editor over everything but modals. */
+export const ZONE_OVERLAY_Z_INDEX = 47;
+export const ZONE_EDITOR_Z_INDEX = 48;
+/** Editor preview width (its height follows the area's aspect), CSS px. */
+export const ZONE_PREVIEW_W_PX = 320;
+/** localStorage key: this viewer's zone layout. */
+export const ZONES_KEY = 'pixel-office.transcript.zones';
 /** Above name tags, bubbles and room plates (≤ 43) and the chat bar; below plate popups (46) and modals. */
 export const TRANSCRIPT_PANEL_Z_INDEX = 45;
 /** Transcript dialog: default / minimum size, each new one offset this much from the last. */
