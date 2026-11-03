@@ -172,6 +172,43 @@ function codex(o: Obj, ts: string | undefined, out: TranscriptEntry[]): void {
   }
 }
 
+/** Lines → entries for one transcript source (may keep state across pages / polls). */
+export type Parse = (lines: string[]) => TranscriptEntry[];
+
+/** A plain-text shell output file: its lines as `result` entries (each ≤ the entry cap). */
+export function rawParse(): Parse {
+  return (lines) => {
+    const out: TranscriptEntry[] = [];
+    let cur: string[] = [];
+    let size = 0;
+    for (const l of lines) {
+      if (size + l.length > TRANSCRIPT_ENTRY_MAX_CHARS && cur.length) {
+        out.push(make('result', cur.join('\n'), undefined));
+        cur = [];
+        size = 0;
+      }
+      cur.push(l);
+      size += l.length + 1;
+    }
+    if (cur.length) out.push(make('result', cur.join('\n'), undefined));
+    return out;
+  };
+}
+
+/** One Codex background process (`session_id` = `sid`) out of its rollout: the calls that
+ *  name it (exec / write_stdin) and their outputs, plus any output reporting it. */
+export function codexShellParse(sid: string): Parse {
+  const mine = new RegExp(`\\bsession_id"?\\s*[:=]\\s*${sid}\\b|session ID ${sid}\\b`);
+  const calls = new Set<string>();
+  return (lines) => {
+    const all = parseLines('codex', lines);
+    for (const e of all) if (e.callId && mine.test(e.text)) calls.add(e.callId);
+    return all.filter(
+      (e) => (e.kind === 'tool' || e.kind === 'result') && e.callId && calls.has(e.callId),
+    );
+  };
+}
+
 /** Normalize raw transcript JSONL lines into display entries. Bad lines are skipped. */
 export function parseLines(provider: Provider, lines: string[]): TranscriptEntry[] {
   const out: TranscriptEntry[] = [];
@@ -203,9 +240,10 @@ export interface TranscriptPage {
  */
 export async function readPage(
   file: string,
-  provider: Provider,
+  provider: Provider | Parse,
   end: number,
 ): Promise<TranscriptPage> {
+  const parse: Parse = typeof provider === 'function' ? provider : (l) => parseLines(provider, l);
   const fh = await open(file, 'r');
   try {
     // A line longer than the window: widen it one page at a time until a `\n` or offset 0.
@@ -228,12 +266,11 @@ export async function readPage(
       const lines: string[] = [];
       for (let i = skip; i < buf.length;) {
         const nl = buf.indexOf(0x0a, i);
-        const line = buf.subarray(i, nl).toString('utf8');
-        if (line.trim()) lines.push(line);
+        lines.push(buf.subarray(i, nl).toString('utf8')); // blank lines too (shell output)
         i = nl + 1;
       }
       const start = from + skip;
-      return { entries: parseLines(provider, lines), start, end: to, more: start > 0 };
+      return { entries: parse(lines), start, end: to, more: start > 0 };
     }
   } finally {
     await fh.close();
@@ -246,7 +283,9 @@ type Send = (message: Record<string, unknown>) => void;
 interface Sub {
   id: string;
   file: string;
-  provider: Provider;
+  /** A fresh parser per read: pages and the live tail keep separate state. */
+  parser: () => Parse;
+  live: Parse;
   info: TranscriptInfo;
   send: Send;
   offset: number;
@@ -291,9 +330,12 @@ export class TranscriptService {
       title: src.title,
       folder: src.folder,
     };
+    const parser = src.parse ?? (() => (l: string[]) => parseLines(src.provider, l));
+    // The opening page and the live tail share one parser (a Codex shell's call → its outputs).
+    const live = parser();
     let page: TranscriptPage;
     try {
-      page = await readPage(file, src.provider, (await stat(file)).size);
+      page = await readPage(file, live, (await stat(file)).size);
     } catch {
       if (this.opening.get(client) !== req) return;
       this.opening.delete(client);
@@ -305,7 +347,8 @@ export class TranscriptService {
     const sub: Sub = {
       id,
       file,
-      provider: src.provider,
+      parser,
+      live,
       info,
       send,
       offset: page.end,
@@ -325,7 +368,7 @@ export class TranscriptService {
     try {
       const size = (await stat(sub.file)).size;
       // Never past what this client already has (offset): those lines come as appends.
-      const page = await readPage(sub.file, sub.provider, Math.min(before, size, sub.offset));
+      const page = await readPage(sub.file, sub.parser(), Math.min(before, size, sub.offset));
       if (this.subs.get(client) !== sub) return;
       send({
         type: 'transcriptEarlier',
@@ -381,7 +424,8 @@ export class TranscriptService {
       if (this.subs.get(client) !== sub) return;
       if (size < sub.offset) {
         // rewritten shorter: start over from its tail
-        const page = await readPage(sub.file, sub.provider, size);
+        sub.live = sub.parser();
+        const page = await readPage(sub.file, sub.live, size);
         if (this.subs.get(client) !== sub) return;
         sub.offset = page.end;
         sub.buf = '';
@@ -402,10 +446,7 @@ export class TranscriptService {
         sub.offset += chunk.length;
         const lines = (sub.buf + sub.decoder.write(chunk)).split('\n');
         sub.buf = lines.pop() ?? '';
-        const entries = parseLines(
-          sub.provider,
-          lines.filter((l) => l.trim()),
-        );
+        const entries = sub.live(lines);
         if (entries.length > 0)
           sub.send({ type: 'transcriptAppend', id: sub.id, entries } satisfies TranscriptAppend);
       }

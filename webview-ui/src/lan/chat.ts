@@ -76,6 +76,19 @@ export function wrapLines(text: string, max: number, measure: (s: string) => num
   return lines;
 }
 
+/** At most `max` of `lines`; cut ones end the last kept line with … (fitted to `width`). */
+export function clampRows(
+  lines: string[],
+  max: number,
+  width: number,
+  measure: (s: string) => number,
+): string[] {
+  if (lines.length <= max) return lines;
+  let last = lines[max - 1];
+  while (last && measure(`${last}…`) > width) last = Array.from(last).slice(0, -1).join('');
+  return [...lines.slice(0, max - 1), `${last}…`];
+}
+
 /** A bubble on screen: centre x, the bottom it wants (CSS px), size. */
 export interface BubbleBox {
   x: number;

@@ -181,9 +181,11 @@ export const TranscriptPanel = memo(function TranscriptPanel({
             <Note>{t(entries.length ? 'transcript.loadingEarlier' : 'transcript.loading')}</Note>
           )}
           {info && !more && !loading && <Note>{t('transcript.start')}</Note>}
-          {entries.map((e, i) => (
-            <Entry key={i - keys.base} e={e} />
-          ))}
+          {info?.kind === 'shell' ? (
+            <ShellOutput entries={entries} />
+          ) : (
+            entries.map((e, i) => <Entry key={i - keys.base} e={e} />)
+          )}
           {error && <Note>{t(`transcript.${error}`)}</Note>}
         </div>
         {newBelow && (
@@ -322,6 +324,30 @@ function Entry({ e }: { e: TranscriptEntry }) {
     default:
       return null;
   }
+}
+
+/** A shell: its output as one terminal block (Codex: the polls that read it, muted). */
+function ShellOutput({ entries }: { entries: TranscriptEntry[] }) {
+  if (!entries.length) return <Note>{t('transcript.shellEmpty')}</Note>;
+  return (
+    <pre className={`${PRE} ${PRE_WRAP}`} style={{ ...CODE_STYLE, borderColor: 'transparent' }}>
+      {entries.map((e, i) =>
+        e.kind === 'tool' ? (
+          <span key={i} className="block" style={{ color: 'var(--syntax-com)' }}>
+            {`▸ ${e.text.split('\n')[0]}`}
+          </span>
+        ) : (
+          <span
+            key={i}
+            className="block"
+            style={e.error ? { color: 'var(--transcript-error-border)' } : undefined}
+          >
+            {e.text}
+          </span>
+        ),
+      )}
+    </pre>
+  );
 }
 
 const LABEL = 'text-2xs font-bold uppercase tracking-wide text-text-muted';

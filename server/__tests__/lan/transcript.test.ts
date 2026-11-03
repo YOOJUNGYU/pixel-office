@@ -5,9 +5,16 @@ import { join } from 'node:path';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 
 import { TRANSCRIPT_ENTRY_MAX_CHARS, TRANSCRIPT_PAGE_BYTES } from '../../src/constants.js';
+import { shellOutput } from '../../src/lan/claudeParser.js';
 import type { TranscriptSource } from '../../src/lan/scanner.js';
 import type { TranscriptEntry } from '../../src/lan/transcript.js';
-import { parseLines, readPage, TranscriptService } from '../../src/lan/transcript.js';
+import {
+  codexShellParse,
+  parseLines,
+  rawParse,
+  readPage,
+  TranscriptService,
+} from '../../src/lan/transcript.js';
 
 const j = (o: unknown) => JSON.stringify(o);
 const userLine = j({ type: 'user', timestamp: 'T1', message: { content: 'hello' } });
@@ -412,5 +419,54 @@ describe('TranscriptService', () => {
     expect(t.sent).toHaveLength(1);
     await t.svc.before(t.client, 'a', 1e15, t.send);
     expect(ofType(t.sent, 'transcriptEarlier')[0].entries).toHaveLength(2);
+  });
+});
+
+describe('shell output', () => {
+  it('shellOutput accepts only an absolute tasks/<id>.output path', () => {
+    const ok = join(tmpdir(), 'claude-1', 'tasks', 'abc.output');
+    expect(shellOutput(ok, 'abc')).toBe(ok);
+    expect(shellOutput(ok, 'other')).toBeUndefined();
+    expect(shellOutput('tasks/abc.output', 'abc')).toBeUndefined();
+    expect(shellOutput(join(tmpdir(), 'x', 'abc.output'), 'abc')).toBeUndefined();
+    expect(shellOutput(undefined, 'abc')).toBeUndefined();
+  });
+
+  it('rawParse keeps blank lines and splits at the entry cap', () => {
+    expect(rawParse()(['x', '', 'y'])).toEqual([{ kind: 'result', text: 'x\n\ny' }]);
+    const big = 'z'.repeat(TRANSCRIPT_ENTRY_MAX_CHARS - 10);
+    expect(rawParse()([big, big]).map((e) => e.text.length)).toEqual([big.length, big.length]);
+  });
+
+  it('codexShellParse keeps only the calls and outputs of that process', () => {
+    const call = (id: string, input: string) =>
+      j({
+        type: 'response_item',
+        payload: { type: 'custom_tool_call', call_id: id, name: 'exec', input },
+      });
+    const out = (id: string, output: string) =>
+      j({
+        type: 'response_item',
+        payload: { type: 'custom_tool_call_output', call_id: id, output },
+      });
+    const parse = codexShellParse('42');
+    const first = parse([
+      call('c1', 'exec_command({cmd:"npm run dev"})'),
+      out('c1', 'Process running with session ID 42'),
+      call('c2', 'exec_command({cmd:"ls"})'),
+      out('c2', 'a.ts'),
+    ]);
+    expect(first.map((e) => `${e.kind}:${e.callId}`)).toEqual(['tool:c1', 'result:c1']);
+    // Later polls: a write_stdin naming the process, its output (no id in it), another process.
+    const next = parse([
+      call('c3', 'write_stdin({session_id:42,chars:""})'),
+      out('c3', 'ready on :3000'),
+      call('c4', 'write_stdin({session_id:420,chars:""})'),
+      out('c4', 'other'),
+    ]);
+    expect(next.map((e) => e.text)).toEqual([
+      'write_stdin({session_id:42,chars:""})',
+      'ready on :3000',
+    ]);
   });
 });

@@ -20,23 +20,24 @@ const FLOOR_9 = 9;
 
 // Two variants from one generator:
 //   (default)    83×54 shared office   → default-layout-1.json
-//   --personal   36×27 personal office → default-layout-personal.json
+//   --personal   36×31 personal office → default-layout-personal.json
 const PERSONAL = process.argv.includes('--personal');
 
 // Each room is a grid of furniture groups with the same free border (`pad`) along all four
 // walls; the gaps between groups take up the rest (spread evenly, symmetric).
 const V = PERSONAL
   ? {
-      roomH: 10,
+      roomH: 12,
       corridorH: 2,
       roomW: [15, 18],
       pad: { coding: 1, library: 1, server: 1, lounge: 1 },
-      // Compact blocks centred in each room (`gap` between groups), lifted `lift` tiles:
-      // the back wall's face makes a floor-centred block look low.
+      // Compact blocks centred in each room (`gap` between groups, [x, y] or both), lifted
+      // `lift` tiles: the back wall's face makes a floor-centred block look low. Wide gaps
+      // keep seated agents (and their bubbles) apart.
       lift: 1,
-      coding: { cols: 2, rows: 2, chairs: [0, 2], gap: 1 },
-      library: { cols: 2, rows: 1, gap: 1 },
-      server: { cols: 2, rows: 1, gap: 2 },
+      coding: { cols: 2, rows: 2, chairs: [0, 2], gap: [3, 2] },
+      library: { cols: 2, rows: 1, gap: 3 },
+      server: { cols: 2, rows: 1, gap: 4 },
       lounge: { cols: 1, rows: 1, gap: 0 },
       extraDoors: false,
       wallDeco: {
@@ -196,8 +197,9 @@ function spread(n, size, inner, gap, lift = 0) {
  * `place(col, row, k)` puts one group at its anchor (k = index in reading order).
  */
 function roomGrid(room, pad, unit, cols, rows, place, gap) {
-  const xs = spread(cols, unit.w, room.w - 2 * pad, gap);
-  const ys = spread(rows, unit.h, room.h - 2 * pad, gap, V.lift);
+  const [gx, gy] = Array.isArray(gap) ? gap : [gap, gap];
+  const xs = spread(cols, unit.w, room.w - 2 * pad, gx);
+  const ys = spread(rows, unit.h, room.h - 2 * pad, gy, V.lift);
   let k = 0;
   for (const y of ys) {
     for (const x of xs) place(room.x + pad + x + unit.ox, room.y + pad + y + unit.oy, k++);

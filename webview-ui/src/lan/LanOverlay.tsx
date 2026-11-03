@@ -8,9 +8,12 @@ import {
   CHARACTER_SITTING_OFFSET_PX,
   CHAT_BORDER_PX,
   CHAT_TAIL_PX,
+  LAN_ACTIVITY_BADGE_GAP_PX,
+  LAN_ACTIVITY_LINE_PX,
   LAN_ACTIVITY_MAX_WIDTH_PX,
   LAN_ACTIVITY_PAD_X_PX,
   LAN_ACTIVITY_PAD_Y_PX,
+  LAN_ACTIVITY_PERSONAL_LINES,
   LAN_ALERT_COLOR,
   LAN_BUBBLE_HEAD_OFFSET,
   LAN_BUBBLE_MAX_WIDTH_PX,
@@ -36,7 +39,7 @@ import { getCachedSprite } from '../office/sprites/spriteCache.js';
 import { BUBBLE_PERMISSION_SPRITE } from '../office/sprites/spriteData.js';
 import { type Character, CharacterState } from '../office/types.js';
 import { badgeColors } from './badgeColors.js';
-import { bubbleScale, stackBubbles } from './chat.js';
+import { bubbleScale, clampRows, stackBubbles, wrapLines } from './chat.js';
 import {
   activityText,
   type AvatarRef,
@@ -48,6 +51,8 @@ import {
 import { stackTags, type TagBox } from './tagStack.js';
 import { tagVisible } from './tagVisibility.js';
 import { textWidth } from './textWidth.js';
+
+const measureTag = (s: string) => textWidth(s, LAN_TAG_FONT);
 
 /** The permission bubble sprite, blitted into a DOM canvas above the tags. */
 /** `scale` = fractional-zoom stretch on top of the integer-zoom sprite (see renderScale). */
@@ -279,6 +284,8 @@ export function LanOverlay({
       key: string;
       a: OfficeAgent;
       text: string;
+      /** Personal mode: the text wrapped, ≤ LAN_ACTIVITY_PERSONAL_LINES (else one clipped line). */
+      rows?: string[];
       x: number;
       head: number;
       w0: number;
@@ -296,22 +303,34 @@ export function LanOverlay({
           (ch.pet ? PET_HEAD_DROP_PX : 0) -
           LAN_BUBBLE_HEAD_OFFSET,
       );
+      const chrome =
+        2 * (LAN_ACTIVITY_PAD_X_PX + CHAT_BORDER_PX) +
+        LAN_TAG_BADGE_CHROME_PX +
+        textWidth(providerName(a), LAN_TAG_BADGE_FONT) +
+        (personal ? LAN_ACTIVITY_BADGE_GAP_PX : 0);
+      const rows = personal
+        ? clampRows(
+            wrapLines(text, LAN_ACTIVITY_MAX_WIDTH_PX - chrome, measureTag),
+            LAN_ACTIVITY_PERSONAL_LINES,
+            LAN_ACTIVITY_MAX_WIDTH_PX - chrome,
+            measureTag,
+          )
+        : undefined;
+      const lineH = rows && rows.length > 1 ? LAN_ACTIVITY_LINE_PX : LAN_TAG_LINE_PX;
       lines.push({
         key: a.key,
         a,
         text,
+        rows,
         x: project.toScreenX(ch.x),
         head,
         // Unscaled size; w/h/bottom below are on screen (× k).
         w0: Math.min(
           LAN_ACTIVITY_MAX_WIDTH_PX,
-          2 * (LAN_ACTIVITY_PAD_X_PX + CHAT_BORDER_PX) +
-            LAN_TAG_BADGE_CHROME_PX +
-            textWidth(providerName(a), LAN_TAG_BADGE_FONT) +
-            textWidth(text, LAN_TAG_FONT),
+          chrome + Math.max(...(rows ?? [text]).map(measureTag)),
         ),
         w: 0,
-        h: (LAN_TAG_LINE_PX + 2 * (LAN_ACTIVITY_PAD_Y_PX + CHAT_BORDER_PX)) * k,
+        h: ((rows?.length ?? 1) * lineH + 2 * (LAN_ACTIVITY_PAD_Y_PX + CHAT_BORDER_PX)) * k,
         bottom: head - CHAT_TAIL_PX * k,
       });
     }
@@ -334,7 +353,7 @@ export function LanOverlay({
         <div
           key={`act:${l.key}`}
           data-activity={l.key}
-          className="bubble-agent flex items-center gap-4 whitespace-nowrap text-sm leading-none pointer-events-none"
+          className={`bubble-agent flex gap-4 whitespace-nowrap text-sm leading-none pointer-events-none ${l.rows && l.rows.length > 1 ? 'items-start' : 'items-center'}`}
           style={{
             left: l.x - l.w / 2,
             top: bottoms[i] - l.h,
@@ -353,7 +372,20 @@ export function LanOverlay({
           >
             {providerName(l.a)}
           </span>
-          <span className="min-w-0 overflow-hidden text-ellipsis">{l.text}</span>
+          {l.rows && l.rows.length > 1 ? (
+            <span
+              className="min-w-0 flex flex-col"
+              style={{ lineHeight: `${LAN_ACTIVITY_LINE_PX}px` }}
+            >
+              {l.rows.map((r, j) => (
+                <span key={j} className="whitespace-pre">
+                  {r}
+                </span>
+              ))}
+            </span>
+          ) : (
+            <span className="min-w-0 overflow-hidden text-ellipsis">{l.text}</span>
+          )}
         </div>,
       ),
     );

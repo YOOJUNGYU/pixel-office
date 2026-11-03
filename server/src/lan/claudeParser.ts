@@ -1,3 +1,5 @@
+import * as path from 'node:path';
+
 import type { Act, Room } from '../../../core/src/lan.js';
 import type { SessionState } from './session.js';
 import { isPrompt, notePrompt, programName, setActivity, setIdle, setThinking } from './session.js';
@@ -26,6 +28,7 @@ const turnOf = (s: SessionState): Turn => {
 
 const BG_RE = /Command running in background with ID: ([\w-]+)/;
 const TASK_ID_RE = /<task-id>([^<]+)<\/task-id>/;
+const OUTPUT_RE = /Output is being written to: (.+?\.output)(?=[.\s]|$)/;
 const DONE_RE = /<status>(completed|failed|killed)<\/status>/;
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
@@ -118,10 +121,16 @@ function onUser(s: SessionState, content: unknown, now: number, meta: boolean): 
     s.pendingTool = null;
     s.permission = false;
     for (const r of results) {
-      const id = BG_RE.exec(textOf(r.content))?.[1];
+      const text = textOf(r.content);
+      const id = BG_RE.exec(text)?.[1];
       const call = turnOf(s).tools.get(str(r.tool_use_id));
       if (id && call?.input.run_in_background === true) {
-        s.shells.set(id, { target: call.target, brief: call.brief });
+        s.shells.set(id, {
+          target: call.target,
+          brief: call.brief,
+          command: str(call.input.command),
+          output: shellOutput(OUTPUT_RE.exec(text)?.[1], id),
+        });
       }
     }
     return;
@@ -176,4 +185,12 @@ export function applyClaudeLine(s: SessionState, line: string, now: number): voi
   if (rec.type === 'assistant' && Array.isArray(content)) onAssistant(s, content, now);
   else if (rec.type === 'user') onUser(s, content, now, rec.isMeta === true);
   else if (rec.type === 'system' && rec.subtype === 'turn_duration') setIdle(s, now);
+}
+
+/** Claude's background-shell output file, only in its own shape (absolute, `tasks/<id>.output`):
+ *  the path comes from transcript text, so nothing else is ever opened through it. */
+export function shellOutput(file: string | undefined, id: string): string | undefined {
+  if (!file || !path.isAbsolute(file)) return undefined;
+  if (path.basename(file) !== `${id}.output`) return undefined;
+  return path.basename(path.dirname(file)) === 'tasks' ? file : undefined;
 }

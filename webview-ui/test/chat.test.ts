@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { OfficePersonMessage } from '../../core/src/messages.js';
-import { ChatBubbles, isTextEntry, stackBubbles, wrapLines } from '../src/lan/chat.js';
+import { ChatBubbles, clampRows, isTextEntry, stackBubbles, wrapLines } from '../src/lan/chat.js';
 
 const person = (
   peerId: string,
@@ -97,5 +97,16 @@ describe('chat geometry', () => {
     expect(isTextEntry({ tagName: 'DIV', isContentEditable: true })).toBe(true);
     expect(isTextEntry({ tagName: 'BUTTON' })).toBe(false);
     expect(isTextEntry(null)).toBe(false);
+  });
+});
+
+describe('clampRows', () => {
+  const measure = (s: string) => s.length * 10;
+  it('keeps up to max lines; past that the last kept line ends with … and still fits', () => {
+    expect(clampRows(['a', 'b'], 5, 100, measure)).toEqual(['a', 'b']);
+    const out = clampRows(['l1', 'l2', 'l3', 'l4', 'abcdefghij', 'x'], 5, 100, measure);
+    expect(out).toHaveLength(5);
+    expect(out[4]).toBe('abcdefghi…');
+    expect(measure(out[4])).toBeLessThanOrEqual(100);
   });
 });

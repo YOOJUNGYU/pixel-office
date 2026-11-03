@@ -294,6 +294,40 @@ describe('Scanner', () => {
       expect(scanner.transcriptOf('sh/sh/bg1')).toMatchObject({ file: f, kind: 'shell', num: 1 });
     });
 
+    it('claude shell with an output file → that file, read as plain text, titled by its command', async () => {
+      const out = join(proj, 'tasks', 'bg2.output');
+      const f = join(proj, 'sh2.jsonl');
+      writeFileSync(
+        f,
+        assistant([
+          {
+            type: 'tool_use',
+            id: 'b2',
+            name: 'Bash',
+            input: { command: 'npm run dev', run_in_background: true },
+          },
+        ]) +
+          line({
+            type: 'user',
+            message: {
+              content: [
+                {
+                  type: 'tool_result',
+                  tool_use_id: 'b2',
+                  content: `Command running in background with ID: bg2. Output is being written to: ${out}. You will be notified.`,
+                },
+              ],
+            },
+          }),
+      );
+      await scanner.discover();
+      const src = scanner.transcriptOf('sh2/sh/bg2');
+      expect(src).toMatchObject({ file: out, kind: 'shell', title: 'npm run dev' });
+      expect(src?.parse?.()(['a', '', 'b'])).toEqual([{ kind: 'result', text: 'a\n\nb' }]);
+      // Views never carry the command's output file.
+      expect(JSON.stringify(scanner.views())).not.toContain('bg2.output');
+    });
+
     it('unknown id → undefined', async () => {
       writeFileSync(join(proj, 'cl.jsonl'), edit('a.ts'));
       await scanner.discover();

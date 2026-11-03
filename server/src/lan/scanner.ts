@@ -25,6 +25,8 @@ import { checkPids, domainOf, readRegistry } from './liveness.js';
 import type { Roots } from './roots.js';
 import type { SessionState } from './session.js';
 import { folderOf, newSession, tick, toViews } from './session.js';
+import type { Parse } from './transcript.js';
+import { codexShellParse, rawParse } from './transcript.js';
 
 export { CHILD_IDLE_TTL_MS, SESSION_TTL_MS, TAIL_BYTES };
 export type { Roots } from './roots.js';
@@ -64,6 +66,8 @@ interface Candidate {
 export interface TranscriptSource {
   file: string;
   provider: Provider;
+  /** Not the session's JSONL (a shell's output): a parser factory for it. */
+  parse?: () => Parse;
   kind: ViewKind;
   num: number;
   title: string;
@@ -297,13 +301,31 @@ export class Scanner {
   }
 
   /** AgentView.id of this PC (main / `<p>/sub/<n>` / `<s>/sh/<n>`) → its transcript file. A shell
-   *  resolves to the session that started it. LOCAL ONLY — never put into views()/packets. */
+   *  → its own output (Claude: the task's output file; Codex: its calls in the rollout); one
+   *  without (gone, or an older Claude line) → the session that started it. LOCAL ONLY — never put into views()/packets. */
   transcriptOf(id: string): TranscriptSource | undefined {
     const shellAt = id.lastIndexOf('/sh/');
     const sid = shellAt >= 0 ? id.slice(0, shellAt) : id;
     for (const [file, { s }] of this.files) {
       if (s.id !== sid) continue;
       const kind: ViewKind = shellAt >= 0 ? 'shell' : s.kind;
+      const sh = shellAt >= 0 ? s.shells.get(id.slice(shellAt + 4)) : undefined;
+      if (sh) {
+        // The shell's own output: Claude's output file, or its calls out of the Codex rollout.
+        const own = s.provider === 'claude' ? sh.output : file;
+        if (own) {
+          const shellId = id.slice(shellAt + 4);
+          return {
+            file: own,
+            provider: s.provider,
+            parse: s.provider === 'claude' ? rawParse : () => codexShellParse(shellId),
+            kind,
+            num: s.kind === 'main' ? s.num : this.mainNum(s.parentId ?? ''),
+            title: sh.command ?? sh.target,
+            folder: this.info(s.kind === 'main' ? sid : (s.parentId ?? ''))?.folder ?? '',
+          };
+        }
+      }
       if (s.kind === 'main') {
         const i = this.info(sid);
         return {

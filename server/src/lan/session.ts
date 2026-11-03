@@ -35,7 +35,9 @@ export interface SessionState {
   /** Claude main: SendMessage sent to this agent id at `at`, not yet matched to a tracked subagent. */
   talkTo: { to: string; at: number } | null;
   /** shellId -> target (command or its description) and its brief */
-  shells: Map<string, { target: string; brief: string }>;
+  /** Running background shells. `command` / `output` (Claude's output file) are LOCAL ONLY:
+   *  only the transcript panel reads them, never views()/packets. */
+  shells: Map<string, { target: string; brief: string; command?: string; output?: string }>;
   /** LOCAL ONLY (notifications on this PC): never copied into an AgentView, so never sent. */
   local: LocalInfo;
 }
