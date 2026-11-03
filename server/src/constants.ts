@@ -250,3 +250,6 @@ export const NOTIFY_TITLE_SHORT_MAX = 24;
 export const SESSION_PROMPT_MAX = 200;
 /** Codex `session_index.jsonl` (thread names): only its last this-many bytes are read. */
 export const CODEX_INDEX_MAX_BYTES = 256 * 1024;
+/** Transcript panel: one entry's text is clipped to this many chars (meta lines: the second). */
+export const TRANSCRIPT_ENTRY_MAX_CHARS = 200_000;
+export const TRANSCRIPT_META_MAX_CHARS = 500;
