@@ -20,38 +20,35 @@ const FLOOR_9 = 9;
 
 // Two variants from one generator:
 //   (default)    83×54 shared office   → default-layout-1.json
-//   --personal   28×23 personal office → default-layout-personal.json
+//   --personal   36×27 personal office → default-layout-personal.json
 const PERSONAL = process.argv.includes('--personal');
 
 // Each room is a grid of furniture groups with the same free border (`pad`) along all four
 // walls; the gaps between groups take up the rest (spread evenly, symmetric).
 const V = PERSONAL
   ? {
-      roomH: 8,
+      roomH: 10,
       corridorH: 2,
-      roomW: [10, 15],
-      pad: { coding: 1, library: 1, server: 2, lounge: 2 },
-      coding: { cols: 2, rows: 2, chairs: [0, 2] },
-      // Two tables on opposite corners (the room is too small for a grid).
-      library: {
-        tables: [
-          [2, 1],
-          [6, 4],
-        ],
-      },
-      server: { cols: 2, rows: 1 },
-      lounge: { cols: 2, rows: 1 },
+      roomW: [15, 18],
+      pad: { coding: 1, library: 1, server: 1, lounge: 1 },
+      // Compact blocks centred in each room (`gap` between groups), lifted `lift` tiles:
+      // the back wall's face makes a floor-centred block look low.
+      lift: 1,
+      coding: { cols: 2, rows: 2, chairs: [0, 2], gap: 1 },
+      library: { cols: 2, rows: 1, gap: 1 },
+      server: { cols: 2, rows: 1, gap: 2 },
+      lounge: { cols: 1, rows: 1, gap: 0 },
       extraDoors: false,
       wallDeco: {
         coding: [
-          ['WHITEBOARD', 1],
-          ['CLOCK', 5],
-          ['WHITEBOARD', 7],
+          ['WHITEBOARD', 2],
+          ['CLOCK', 7],
+          ['WHITEBOARD', 11],
         ],
         server: [
-          ['LARGE_PAINTING', 2],
-          ['CLOCK', 7],
-          ['SMALL_PAINTING', 11],
+          ['LARGE_PAINTING', 3],
+          ['CLOCK', 8],
+          ['SMALL_PAINTING', 14],
         ],
       },
     }
@@ -66,6 +63,7 @@ const V = PERSONAL
       // A centred block with one gap both ways (spread to the walls it looked scattered).
       lounge: { cols: 4, rows: 2, gap: 5 },
       extraDoors: true,
+      lift: 0,
       wallDeco: {
         coding: [
           ['WHITEBOARD', 3],
@@ -173,9 +171,9 @@ if (V.extraDoors) {
 /** n groups of `size` tiles over `inner` tiles: `gap` given → that gap, the block centred;
  *  else first at 0, last at the far end, gaps as even as possible and mirror-symmetric
  *  (one group: centred). */
-function spread(n, size, inner, gap) {
+function spread(n, size, inner, gap, lift = 0) {
   if (gap !== undefined) {
-    const start = Math.floor((inner - n * size - (n - 1) * gap) / 2);
+    const start = Math.max(0, Math.floor((inner - n * size - (n - 1) * gap) / 2) - lift);
     if (start < 0)
       throw new Error(`${String(n)} groups of ${String(size)} do not fit ${String(inner)}`);
     return Array.from({ length: n }, (_, i) => start + i * (size + gap));
@@ -199,7 +197,7 @@ function spread(n, size, inner, gap) {
  */
 function roomGrid(room, pad, unit, cols, rows, place, gap) {
   const xs = spread(cols, unit.w, room.w - 2 * pad, gap);
-  const ys = spread(rows, unit.h, room.h - 2 * pad, gap);
+  const ys = spread(rows, unit.h, room.h - 2 * pad, gap, V.lift);
   let k = 0;
   for (const y of ys) {
     for (const x of xs) place(room.x + pad + x + unit.ox, room.y + pad + y + unit.oy, k++);
@@ -208,12 +206,20 @@ function roomGrid(room, pad, unit, cols, rows, place, gap) {
 
 // ── 코딩실: desks with two PCs, chairs facing up under each desk (group 3×3) ──
 const { coding: cd, library: lb, server: sv, lounge: lg, pad } = V;
-roomGrid(CODING, pad.coding, { w: 3, h: 3, ox: 0, oy: 0 }, cd.cols, cd.rows, (c, y) => {
-  put('DESK_FRONT', c, y);
-  put('PC_FRONT_OFF', c, y);
-  put('PC_FRONT_OFF', c + 2, y);
-  for (const k of cd.chairs) put('CUSHIONED_CHAIR_BACK', c + k, y + 2);
-});
+roomGrid(
+  CODING,
+  pad.coding,
+  { w: 3, h: 3, ox: 0, oy: 0 },
+  cd.cols,
+  cd.rows,
+  (c, y) => {
+    put('DESK_FRONT', c, y);
+    put('PC_FRONT_OFF', c, y);
+    put('PC_FRONT_OFF', c + 2, y);
+    for (const k of cd.chairs) put('CUSHIONED_CHAIR_BACK', c + k, y + 2);
+  },
+  cd.gap,
+);
 for (const [type, x] of V.wallDeco.coding) put(type, CODING.x + x, TOP_WALL - 1);
 
 // ── 자료실: bookshelves on the top wall, reading tables with 4 chairs (group 4×3) ──
@@ -241,22 +247,34 @@ const readingTable = (c, y) => {
   put('CUSHIONED_CHAIR_BACK', c, y + 2);
   put('CUSHIONED_CHAIR_BACK', c + 1, y + 2);
 };
-if (lb.tables) {
-  for (const [c, y] of lb.tables) readingTable(LIBRARY.x + c, LIBRARY.y + y);
-} else {
-  roomGrid(LIBRARY, pad.library, { w: 4, h: 3, ox: 1, oy: 0 }, lb.cols, lb.rows, readingTable);
-}
+roomGrid(
+  LIBRARY,
+  pad.library,
+  { w: 4, h: 3, ox: 1, oy: 0 },
+  lb.cols,
+  lb.rows,
+  readingTable,
+  lb.gap,
+);
 
 // ── 서버실: workstation tables, a PC on every seat, wooden chairs both sides (group 5×4) ──
-roomGrid(SERVER, pad.server, { w: 5, h: 4, ox: 1, oy: 0 }, sv.cols, sv.rows, (c, y) => {
-  put('TABLE_FRONT', c, y);
-  for (const dy of [0, 2]) {
-    put('PC_SIDE', c, y + dy);
-    put('PC_SIDE:left', c + 2, y + dy);
-    put('WOODEN_CHAIR_SIDE', c - 1, y + dy);
-    put('WOODEN_CHAIR_SIDE:left', c + 3, y + dy);
-  }
-});
+roomGrid(
+  SERVER,
+  pad.server,
+  { w: 5, h: 4, ox: 1, oy: 0 },
+  sv.cols,
+  sv.rows,
+  (c, y) => {
+    put('TABLE_FRONT', c, y);
+    for (const dy of [0, 2]) {
+      put('PC_SIDE', c, y + dy);
+      put('PC_SIDE:left', c + 2, y + dy);
+      put('WOODEN_CHAIR_SIDE', c - 1, y + dy);
+      put('WOODEN_CHAIR_SIDE:left', c + 3, y + dy);
+    }
+  },
+  sv.gap,
+);
 for (const [type, x] of V.wallDeco.server) put(type, SERVER.x + x, TOP_WALL - 1);
 
 // ── 대기실: sofa lounges around a coffee table, 8 seats each (group 4×4); open floor between ──

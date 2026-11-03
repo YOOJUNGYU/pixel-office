@@ -316,7 +316,8 @@ describe('/ws LAN office', () => {
     );
     local.send(JSON.stringify({ type: 'setRemoteView', enabled: true }));
     await new Promise((r) => setTimeout(r, SETTLE_MS));
-    expect(replies.filter((t) => t !== 'officeSnapshot')).toEqual([]);
+    // The 1 s ticks (officeSnapshot, peopleDirectory) may land in the window: no reply besides them.
+    expect(replies.filter((t) => t !== 'officeSnapshot' && t !== 'peopleDirectory')).toEqual([]);
     expect(fs.readFileSync(profilePath(), 'utf-8')).not.toContain('remoteView');
   });
 
