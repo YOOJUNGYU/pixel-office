@@ -78,7 +78,7 @@ Open the office in this PC's browser and an **Install Pixel Office as an app** p
 - PCs on the same network appear automatically; no IP needs to be entered. They have to be on the **same network** (same router / subnet); guest Wi-Fi, VPN or other subnets may block discovery.
 - Only for PCs on another floor or network: add the other PC's IP under **Settings → My profile → Advanced: when a PC isn't found automatically → PC IPs to connect directly** (one per line) and save. Listing it on one side is enough to see each other; listing it on both is more reliable.
 - Make sure **both PCs run 0.2.0 or later**: 0.2.0 does not talk to the unencrypted 0.1.0.
-- If either of you is in a **team office** or 🏠 **Personal** mode, you don't see each other's characters or agents in the public office (names still show in the people panel). Join the same team office, or both leave your teams.
+- If either of you is in a **team office** or 🏠 **Personal** mode, you don't see each other's characters or agents in the public office (a team PC still lists public PCs' names in its people panel, but a public PC does not list team PCs). Join the same team office, or both leave your teams.
 - Make sure UDP 47800 is not blocked (the Windows installer adds an inbound UDP 47800 rule; a Mac needs the "Allow" from step 3). TCP 47801 is used only inside your PC and needs no opening.
 - If **corporate security software** (antivirus, EDR, AppLocker, company firewall) blocks it, ask IT for an exception rather than working around it: program `C:\Program Files\PixelOffice\node.exe` / `/Applications/Pixel Office.app`, port UDP 47800 (the only inbound one; the TCP 47801 UI stays on the PC), LAN only.
 

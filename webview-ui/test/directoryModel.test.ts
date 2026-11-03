@@ -144,6 +144,12 @@ test('viewedRows: a PC the directory moved to another area is not listed twice',
   assert.deepEqual(ids(viewedRows(sections, [row('me'), row('b')])), ['me']);
 });
 
+test('areaSections: a just-joined team shows its name from the offices state', () => {
+  const named = areaSections(EMPTY_DIRECTORY, TAG_A, [{ tag: TAG_A, name: 'Alpha' }]);
+  assert.equal(named.find((s) => s.viewed)?.name, 'Alpha');
+  assert.equal(areaSections(EMPTY_DIRECTORY, TAG_A).find((s) => s.viewed)?.name, '');
+});
+
 test('viewedRows: no directory area for the viewed office yet = the snapshot as is', () => {
   const dir = { ...EMPTY_DIRECTORY, personal: [person('b')] };
   const sections = areaSections(dir, TAG_A); // joined a team, no peopleDirectory with it yet

@@ -732,7 +732,11 @@ function App() {
           {!editor.isEditMode && (
             <PeoplePanel
               rows={peopleRows(people, lan.all())}
-              sections={areaSections(directory, offices?.activeView ?? PUBLIC_VIEW)}
+              sections={areaSections(
+                directory,
+                offices?.activeView ?? PUBLIC_VIEW,
+                offices?.offices,
+              )}
               lan={lan}
               officeState={officeState}
               forceOpen={scene?.people === true}

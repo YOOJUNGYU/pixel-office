@@ -480,6 +480,9 @@ export class PeerNet {
       : [...this.heardPublic.values()].filter(live);
     const teams = this.opts.offices().map((o) => [o.tag, teamRows(o.tag)] as const);
     const cards = [...this.cards.values()].filter(live);
+    // Team presence is not authenticated per sender (one shared key): a team member could
+    // forge a peer id and move someone's row on that team's panels. Display only; team
+    // members are trusted.
     // Heard in several areas (switched mode within the TTL): the newest wins; on a tie
     // public, then team, then personal.
     const rank = [pub, ...teams.map(([, r]) => r), cards];
@@ -586,7 +589,7 @@ export class PeerNet {
         return;
       }
       // Watcher: the person only — no agents, chat, avatar, and never a layout.
-      if (plain === null || plain.startsWith('{"lay":')) return;
+      if (plain === null || parseLayoutPart(plain)) return;
       const inner = this.unpack(PUBLIC_VIEW, plain, w.from);
       if (inner?.packet.peer.id === w.from && this.fresh(`${PUBLIC_VIEW}|${w.from}`, inner.seq))
         this.heardPublic.set(w.from, { peer: inner.packet.peer, at: this.now() });

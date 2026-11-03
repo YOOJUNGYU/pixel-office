@@ -61,7 +61,7 @@ Once an activity lasts 3 seconds, the agent walks to its room and sits on a free
 The people panel on the right has three areas, **Public office / Team / Personal**, so you see by name who is in the areas you are not viewing (only the team you joined; none = no team area).
 
 - 🌐 **Public office** (default): everyone on the network who installed the app.
-- 🔒 **Team office**: only people with the invite code (`PO2-…`). **Settings → Offices**: create (copy the code and send it), join with a code, leave. **One team at a time**: creating or joining another replaces the current one after a confirmation. ⚠️ While you are in a team office you are **out of the public office entirely** (you neither see it nor show up in it).
+- 🔒 **Team office**: only people with the invite code (`PO2-…`). **Settings → Offices**: create (copy the code and send it), join with a code, leave. **One team at a time**: creating or joining another replaces the current one after a confirmation. ⚠️ While you are in a team office you are **out of the public office entirely** (you see its names in the people panel's public area, but you are not listed there).
 - 🏠 **Personal**: a small office of your own. Agents, chat and avatar position never leave the PC; only your name card (account, nickname, character look) shows in other PCs' people list under `Personal`. PCs on 1.0.24 or older and you may not list each other. Team memberships are kept, so you go back without a code.
 
 ### Your character and chat

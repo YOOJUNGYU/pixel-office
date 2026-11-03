@@ -49,6 +49,8 @@ function arrange(people: DirectoryPersonMessage[]): DirectoryPersonMessage[] {
 export function areaSections(
   dir: Omit<PeopleDirectory, 'type'>,
   activeView: string,
+  /** Team names from officesState: names a just-joined team before the directory has it. */
+  offices: readonly { tag: string; name: string }[] = [],
 ): AreaSection[] {
   const section = (
     area: AreaKey,
@@ -69,7 +71,17 @@ export function areaSections(
   const pending: AreaSection[] =
     known || teams.some((t) => t.tag === activeView)
       ? []
-      : [{ ...section('team', activeView, '', []), fallback: true }];
+      : [
+          {
+            ...section(
+              'team',
+              activeView,
+              offices.find((o) => o.tag === activeView)?.name ?? '',
+              [],
+            ),
+            fallback: true,
+          },
+        ];
   return [
     section('public', PUBLIC_VIEW, '', dir.public),
     ...teams.map((t) => section('team', t.tag, t.name, t.people)),
