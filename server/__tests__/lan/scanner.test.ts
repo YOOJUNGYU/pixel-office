@@ -222,6 +222,84 @@ describe('Scanner', () => {
       expect(sent).toContain('"provider":"codex"'); // the views are there
       expect(sent).not.toMatch(/SECRET|secret|AUTO title|CODEX|codex-repo|Old name/);
     }
+    expect(JSON.stringify(scanner.views(true))).not.toContain(proj);
+  });
+
+  describe('transcriptOf', () => {
+    const line = (o: unknown) => JSON.stringify(o) + '\n';
+
+    it('main session → its file, title and folder', async () => {
+      const f = join(proj, 'cl.jsonl');
+      writeFileSync(
+        f,
+        line({ type: 'user', cwd: '/w/my-repo', message: { content: 'hello prompt' } }) +
+          edit('a.ts'),
+      );
+      await scanner.discover();
+      expect(scanner.transcriptOf('cl')).toEqual({
+        file: f,
+        provider: 'claude',
+        kind: 'main',
+        num: 1,
+        title: 'hello prompt',
+        folder: 'my-repo',
+      });
+    });
+
+    it('subagent → its own file, parent num', async () => {
+      writeFileSync(join(proj, 'sid.jsonl'), edit('a.ts'));
+      mkdirSync(join(proj, 'sid', 'subagents'), { recursive: true });
+      const f = join(proj, 'sid', 'subagents', 'agent-x.jsonl');
+      writeFileSync(
+        f,
+        line({ type: 'user', cwd: '/w/sub-repo', message: { content: 'sub task' } }) + edit('b.ts'),
+      );
+      await scanner.discover();
+      expect(scanner.transcriptOf('sid/sub/agent-x')).toMatchObject({
+        file: f,
+        kind: 'subagent',
+        num: 1,
+        title: 'sub task',
+        folder: 'sub-repo',
+      });
+    });
+
+    it('shell id → the session that started it', async () => {
+      const f = join(proj, 'sh.jsonl');
+      writeFileSync(
+        f,
+        assistant([
+          {
+            type: 'tool_use',
+            id: 'b1',
+            name: 'Bash',
+            input: { command: 'npm run dev', run_in_background: true },
+          },
+        ]) +
+          line({
+            type: 'user',
+            message: {
+              content: [
+                {
+                  type: 'tool_result',
+                  tool_use_id: 'b1',
+                  content: 'Command running in background with ID: bg1',
+                },
+              ],
+            },
+          }),
+      );
+      await scanner.discover();
+      expect(scanner.views().map((v) => v.id)).toContain('sh/sh/bg1');
+      expect(scanner.transcriptOf('sh/sh/bg1')).toMatchObject({ file: f, kind: 'shell', num: 1 });
+    });
+
+    it('unknown id → undefined', async () => {
+      writeFileSync(join(proj, 'cl.jsonl'), edit('a.ts'));
+      await scanner.discover();
+      expect(scanner.transcriptOf('some-peer-session')).toBeUndefined();
+      expect(scanner.transcriptOf('some-peer-session/sh/x')).toBeUndefined();
+    });
   });
 
   it('finds codex rollouts in today dir, subagent id from meta', async () => {

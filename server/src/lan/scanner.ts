@@ -4,7 +4,7 @@ import { open, readdir, stat } from 'node:fs/promises';
 import * as path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 
-import type { AgentView, Provider } from '../../../core/src/lan.js';
+import type { AgentView, Provider, ViewKind } from '../../../core/src/lan.js';
 import {
   CHILD_ENDED_HIDE_MS,
   CHILD_IDLE_TTL_MS,
@@ -58,6 +58,16 @@ interface Candidate {
   provider: Provider;
   /** Claude subagent: parent session id */
   parentId?: string;
+}
+
+/** LOCAL ONLY: where an agent's transcript lives, for the transcript panel. Never in views()/packets. */
+export interface TranscriptSource {
+  file: string;
+  provider: Provider;
+  kind: ViewKind;
+  num: number;
+  title: string;
+  folder: string;
 }
 
 const dirents = (d: string) => readdir(d, { withFileTypes: true }).catch(() => []);
@@ -284,6 +294,44 @@ export class Scanner {
       return { title: named || l.prompt, folder: folderOf(l.cwd) };
     }
     return undefined;
+  }
+
+  /** AgentView.id of this PC (main / `<p>/sub/<n>` / `<s>/sh/<n>`) → its transcript file. A shell
+   *  resolves to the session that started it. LOCAL ONLY — never put into views()/packets. */
+  transcriptOf(id: string): TranscriptSource | undefined {
+    const shellAt = id.lastIndexOf('/sh/');
+    const sid = shellAt >= 0 ? id.slice(0, shellAt) : id;
+    for (const [file, { s }] of this.files) {
+      if (s.id !== sid) continue;
+      const kind: ViewKind = shellAt >= 0 ? 'shell' : s.kind;
+      if (s.kind === 'main') {
+        const i = this.info(sid);
+        return {
+          file,
+          provider: s.provider,
+          kind,
+          num: s.num,
+          title: i?.title ?? '',
+          folder: i?.folder ?? '',
+        };
+      }
+      const parent = s.parentId ? this.info(s.parentId) : undefined;
+      const num = s.parentId ? this.mainNum(s.parentId) : s.num;
+      return {
+        file,
+        provider: s.provider,
+        kind,
+        num,
+        title: s.local.prompt || parent?.title || '',
+        folder: s.local.cwd ? folderOf(s.local.cwd) : (parent?.folder ?? ''),
+      };
+    }
+    return undefined;
+  }
+
+  private mainNum(id: string): number {
+    for (const { s } of this.files.values()) if (s.id === id && s.kind === 'main') return s.num;
+    return 0;
   }
 
   /** brief=true: commands as program name / description only (always, for peers) */
