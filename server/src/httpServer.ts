@@ -26,6 +26,7 @@ import {
 } from './constants.js';
 import type { FileStateAdapter } from './fileStateAdapter.js';
 import type { LanService } from './lan/office.js';
+import type { TranscriptService } from './lan/transcript.js';
 import type { Updater } from './lan/updater.js';
 import { APP_VERSION } from './lan/updater.js';
 import { roomColorsOf, sanitizeLayout } from './layoutPersistence.js';
@@ -56,6 +57,8 @@ export interface HttpServerOptions {
   updater?: Updater;
   /** Start at login. */
   autostart?: ClientMessageContext['autostart'];
+  /** This PC's agent transcripts, per socket (closed with it). */
+  transcripts?: TranscriptService;
   /** `GET /api/health?waiting`: a page showing "server is off" is polling (it reloads by itself). */
   onWaitingPage?: () => void;
 }
@@ -239,7 +242,10 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     for (const c of clients) c.close(WS_CLOSE_REPLACED, 'replaced');
     clients.clear();
     clients.add(socket);
-    socket.on('close', () => clients.delete(socket));
+    socket.on('close', () => {
+      clients.delete(socket);
+      options.transcripts?.close(socket);
+    });
     // Every connection learns the server version at once, a reconnect too (no new
     // handshake): a page left open across an update reloads into the new version.
     safeSend(socket, { type: 'officeAccess', readOnly: false, version: APP_VERSION });
@@ -258,6 +264,8 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
           updater,
           autostart: options.autostart,
           onQuitApp: options.onQuitApp,
+          transcripts: options.transcripts,
+          client: socket,
         });
       } catch {
         // Malformed JSON, ignore

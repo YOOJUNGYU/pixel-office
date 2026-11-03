@@ -29,7 +29,11 @@ export type ServerMessage =
   | OfficeCreated
   | OfficeCode
   | OfficeError
-  | ProfileError;
+  | ProfileError
+  | TranscriptLoaded
+  | TranscriptEarlier
+  | TranscriptAppend
+  | TranscriptError;
 
 export type ClientMessage =
   | WebviewReady
@@ -50,7 +54,10 @@ export type ClientMessage =
   | SendChat
   | DeleteChat
   | MoveAvatar
-  | SetNotifications;
+  | SetNotifications
+  | OpenTranscript
+  | LoadTranscriptBefore
+  | CloseTranscript;
 
 export interface LayoutLoaded {
   type: 'layoutLoaded';
@@ -323,6 +330,57 @@ export interface ProfileError {
 
 export type ProfileErrorReason = 'nicknameTaken';
 
+export interface TranscriptLoaded {
+  type: 'transcriptLoaded';
+  id: string;
+  info: TranscriptInfo;
+  entries: TranscriptEntry[];
+  start: number;
+  more: boolean;
+}
+
+export interface TranscriptInfo {
+  kind: AgentViewKind;
+  provider: AgentProvider;
+  num: number;
+  title: string;
+  folder: string;
+}
+
+export interface TranscriptEntry {
+  kind: TranscriptKind;
+  text: string;
+  ts?: string;
+  tool?: string;
+  callId?: string;
+  error?: boolean;
+  clipped?: number;
+}
+
+export type TranscriptKind = 'user' | 'assistant' | 'thinking' | 'tool' | 'result' | 'meta';
+
+export interface TranscriptEarlier {
+  type: 'transcriptEarlier';
+  id: string;
+  entries: TranscriptEntry[];
+  start: number;
+  more: boolean;
+}
+
+export interface TranscriptAppend {
+  type: 'transcriptAppend';
+  id: string;
+  entries: TranscriptEntry[];
+}
+
+export interface TranscriptError {
+  type: 'transcriptError';
+  id: string;
+  reason: TranscriptErrorReason;
+}
+
+export type TranscriptErrorReason = 'notFound' | 'unreadable' | 'ended';
+
 export interface WebviewReady {
   type: 'webviewReady';
 }
@@ -415,4 +473,19 @@ export interface SetNotifications {
   type: 'setNotifications';
   presence?: boolean;
   agents?: boolean;
+}
+
+export interface OpenTranscript {
+  type: 'openTranscript';
+  id: string;
+}
+
+export interface LoadTranscriptBefore {
+  type: 'loadTranscriptBefore';
+  id: string;
+  before: number;
+}
+
+export interface CloseTranscript {
+  type: 'closeTranscript';
 }

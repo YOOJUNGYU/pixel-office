@@ -9,6 +9,7 @@ import type {
 import { FileStateAdapter } from './fileStateAdapter.js';
 import { createHttpServer } from './httpServer.js';
 import type { LanService } from './lan/office.js';
+import type { TranscriptService } from './lan/transcript.js';
 import type { Updater } from './lan/updater.js';
 
 /**
@@ -40,6 +41,7 @@ export class PixelAgentsServer {
     updater?: Updater;
     autostart?: ClientMessageContext['autostart'];
     onWaitingPage?: () => void;
+    transcripts?: TranscriptService;
   }): Promise<{ port: number }> {
     const { app, port, closeClients } = await createHttpServer({
       host: options?.host,
@@ -55,6 +57,7 @@ export class PixelAgentsServer {
       updater: options?.updater,
       autostart: options?.autostart,
       onWaitingPage: options?.onWaitingPage,
+      transcripts: options?.transcripts,
     });
     this.app = app;
     this.closeClients = closeClients;

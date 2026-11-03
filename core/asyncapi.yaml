@@ -101,6 +101,11 @@ components:
         - $ref: '#/components/schemas/OfficeCode'
         - $ref: '#/components/schemas/OfficeError'
         - $ref: '#/components/schemas/ProfileError'
+        # Transcript of this PC's agent (loopback browser, requesting socket only)
+        - $ref: '#/components/schemas/TranscriptLoaded'
+        - $ref: '#/components/schemas/TranscriptEarlier'
+        - $ref: '#/components/schemas/TranscriptAppend'
+        - $ref: '#/components/schemas/TranscriptError'
       discriminator: type
 
     ClientMessage:
@@ -124,6 +129,9 @@ components:
         - $ref: '#/components/schemas/DeleteChat'
         - $ref: '#/components/schemas/MoveAvatar'
         - $ref: '#/components/schemas/SetNotifications'
+        - $ref: '#/components/schemas/OpenTranscript'
+        - $ref: '#/components/schemas/LoadTranscriptBefore'
+        - $ref: '#/components/schemas/CloseTranscript'
       discriminator: type
 
     # ── Server message variants ────────────────────────────────────
@@ -484,6 +492,129 @@ components:
           const: officeError
         reason:
           $ref: '#/components/schemas/OfficeErrorReason'
+
+    TranscriptLoaded:
+      description: >-
+        The last page of a transcript of this PC's agent, to the requesting
+        socket only (answer to openTranscript; sent again when the file was
+        truncated). `start` = byte offset of the first entry, for
+        loadTranscriptBefore; `more` = earlier entries exist.
+      type: object
+      additionalProperties: false
+      required: [type, id, info, entries, start, more]
+      properties:
+        type:
+          const: transcriptLoaded
+        id:
+          type: string
+        info:
+          $ref: '#/components/schemas/TranscriptInfo'
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/TranscriptEntry'
+        start:
+          type: integer
+        more:
+          type: boolean
+
+    TranscriptEarlier:
+      description: The page before a loadTranscriptBefore offset, to the requesting socket only.
+      type: object
+      additionalProperties: false
+      required: [type, id, entries, start, more]
+      properties:
+        type:
+          const: transcriptEarlier
+        id:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/TranscriptEntry'
+        start:
+          type: integer
+        more:
+          type: boolean
+
+    TranscriptAppend:
+      description: New entries written to the open transcript since the last message.
+      type: object
+      additionalProperties: false
+      required: [type, id, entries]
+      properties:
+        type:
+          const: transcriptAppend
+        id:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/TranscriptEntry'
+
+    TranscriptError:
+      description: >-
+        openTranscript failed (`notFound` = no such agent of this PC,
+        `unreadable`) or the open transcript's file is gone (`ended`, sent once).
+      type: object
+      additionalProperties: false
+      required: [type, id, reason]
+      properties:
+        type:
+          const: transcriptError
+        id:
+          type: string
+        reason:
+          $ref: '#/components/schemas/TranscriptErrorReason'
+
+    TranscriptErrorReason:
+      type: string
+      enum: [notFound, unreadable, ended]
+
+    TranscriptInfo:
+      description: Which agent the transcript belongs to (never its file path).
+      type: object
+      additionalProperties: false
+      required: [kind, provider, num, title, folder]
+      properties:
+        kind:
+          $ref: '#/components/schemas/AgentViewKind'
+        provider:
+          $ref: '#/components/schemas/AgentProvider'
+        num:
+          type: integer
+        title:
+          type: string
+        folder:
+          type: string
+
+    TranscriptEntry:
+      description: >-
+        One normalized transcript item. `clipped` = characters cut from
+        `text`; `callId` links a tool call to its result.
+      type: object
+      additionalProperties: false
+      required: [kind, text]
+      properties:
+        kind:
+          $ref: '#/components/schemas/TranscriptKind'
+        text:
+          type: string
+        ts:
+          type: string
+        tool:
+          type: string
+        callId:
+          type: string
+        error:
+          type: boolean
+          description: Present (true) only on a failed tool result.
+        clipped:
+          type: integer
+
+    TranscriptKind:
+      type: string
+      enum: [user, assistant, thinking, tool, result, meta]
 
     OfficeErrorReason:
       type: string
@@ -1152,3 +1283,41 @@ components:
       properties:
         type:
           const: deleteChat
+
+    OpenTranscript:
+      description: >-
+        Show the transcript of this PC's agent `id` (loopback browser only).
+        Replaces this socket's open transcript; answered with transcriptLoaded
+        then transcriptAppend as the file grows, or transcriptError.
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          const: openTranscript
+        id:
+          type: string
+
+    LoadTranscriptBefore:
+      description: >-
+        Load the page before byte offset `before` of the open transcript
+        (loopback browser only). Answered with transcriptEarlier.
+      type: object
+      additionalProperties: false
+      required: [type, id, before]
+      properties:
+        type:
+          const: loadTranscriptBefore
+        id:
+          type: string
+        before:
+          type: integer
+
+    CloseTranscript:
+      description: Stop following this socket's open transcript (loopback browser only).
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: closeTranscript

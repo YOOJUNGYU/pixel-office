@@ -254,3 +254,5 @@ export const CODEX_INDEX_MAX_BYTES = 256 * 1024;
 export const TRANSCRIPT_ENTRY_MAX_CHARS = 200_000;
 export const TRANSCRIPT_META_MAX_CHARS = 500;
 export const TRANSCRIPT_PAGE_BYTES = 512 * 1024;
+/** An open transcript is re-checked for new lines this often. */
+export const TRANSCRIPT_POLL_MS = 1000;

@@ -1,12 +1,13 @@
-import { mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 
 import { TRANSCRIPT_ENTRY_MAX_CHARS, TRANSCRIPT_PAGE_BYTES } from '../../src/constants.js';
+import type { TranscriptSource } from '../../src/lan/scanner.js';
 import type { TranscriptEntry } from '../../src/lan/transcript.js';
-import { parseLines, readPage } from '../../src/lan/transcript.js';
+import { parseLines, readPage, TranscriptService } from '../../src/lan/transcript.js';
 
 const j = (o: unknown) => JSON.stringify(o);
 const userLine = j({ type: 'user', timestamp: 'T1', message: { content: 'hello' } });
@@ -189,5 +190,168 @@ describe('readPage', () => {
       if (!p.more) break;
       end = p.start;
     }
+  });
+});
+
+describe('TranscriptService', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'po-transcript-svc-'));
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+  const POLL = 20;
+  const user = (text: string) => j({ type: 'user', message: { content: text } }) + '\n';
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  let svc: TranscriptService | undefined;
+  afterEach(() => svc?.stop());
+
+  /** A service whose source knows `ids` → files in `dir`; returns the messages sent. */
+  function setup(files: Record<string, string>) {
+    const srcs = new Map<string, TranscriptSource>();
+    for (const [id, body] of Object.entries(files)) {
+      const file = join(dir, `${id}-${Math.random().toString(36).slice(2)}.jsonl`);
+      writeFileSync(file, body);
+      srcs.set(id, {
+        file,
+        provider: 'claude',
+        kind: 'main',
+        num: 1,
+        title: `T-${id}`,
+        folder: 'f',
+      });
+    }
+    svc = new TranscriptService({ transcriptOf: (id) => srcs.get(id) }, POLL);
+    const sent: Array<Record<string, unknown>> = [];
+    const send = (m: Record<string, unknown>) => sent.push(m);
+    const file = (id: string) => srcs.get(id)!.file;
+    return { svc, sent, send, file, client: {} };
+  }
+  const ofType = (sent: Array<Record<string, unknown>>, type: string) =>
+    sent.filter((m) => m.type === type) as Array<
+      Record<string, unknown> & { entries: TranscriptEntry[] }
+    >;
+
+  it('open sends the tail page with info', async () => {
+    const t = setup({ a: user('one') + user('two') });
+    await t.svc.open(t.client, 'a', t.send);
+    expect(t.sent[0].type).toBe('transcriptLoaded');
+    const info = t.sent[0].info as Record<string, unknown>;
+    expect(info.title).toBe('T-a');
+    expect(info).not.toHaveProperty('file');
+    expect((t.sent[0].entries as TranscriptEntry[]).length).toBe(2);
+  });
+
+  it('unknown id → notFound, nothing read', async () => {
+    const t = setup({});
+    await t.svc.open(t.client, 'nope', t.send);
+    expect(t.sent).toEqual([{ type: 'transcriptError', id: 'nope', reason: 'notFound' }]);
+  });
+
+  it('missing file → unreadable', async () => {
+    const t = setup({ a: user('x') });
+    unlinkSync(t.file('a'));
+    await t.svc.open(t.client, 'a', t.send);
+    expect(t.sent).toEqual([{ type: 'transcriptError', id: 'a', reason: 'unreadable' }]);
+  });
+
+  it('appended lines arrive as transcriptAppend', async () => {
+    const t = setup({ a: user('one') });
+    await t.svc.open(t.client, 'a', t.send);
+    appendFileSync(t.file('a'), user('new'));
+    await vi.waitFor(() => expect(ofType(t.sent, 'transcriptAppend')).toHaveLength(1));
+    expect(ofType(t.sent, 'transcriptAppend')[0].entries[0].text).toBe('new');
+  });
+
+  it('a line split across polls (multibyte) arrives once, whole', async () => {
+    const t = setup({ a: user('one') });
+    await t.svc.open(t.client, 'a', t.send);
+    const bytes = Buffer.from(user('한글 문장입니다'));
+    const cut = bytes.indexOf(Buffer.from('글')) + 1; // inside a multibyte char
+    appendFileSync(t.file('a'), bytes.subarray(0, cut));
+    await sleep(POLL * 4);
+    appendFileSync(t.file('a'), bytes.subarray(cut));
+    await vi.waitFor(() => expect(ofType(t.sent, 'transcriptAppend')).toHaveLength(1));
+    await sleep(POLL * 3);
+    const appends = ofType(t.sent, 'transcriptAppend');
+    expect(appends).toHaveLength(1);
+    expect(appends[0].entries).toHaveLength(1);
+    expect(appends[0].entries[0].text).toBe('한글 문장입니다');
+  });
+
+  it('truncated file → transcriptLoaded again', async () => {
+    const t = setup({ a: user('one') + user('two') + user('three') });
+    await t.svc.open(t.client, 'a', t.send);
+    writeFileSync(t.file('a'), user('z'));
+    await vi.waitFor(() => expect(ofType(t.sent, 'transcriptLoaded')).toHaveLength(2));
+    expect(ofType(t.sent, 'transcriptLoaded')[1].entries.map((e) => e.text)).toEqual(['z']);
+    appendFileSync(t.file('a'), user('after'));
+    await vi.waitFor(() => expect(ofType(t.sent, 'transcriptAppend')).toHaveLength(1));
+    expect(ofType(t.sent, 'transcriptAppend')[0].entries[0].text).toBe('after');
+  });
+
+  it('deleted file → ended once, polling stops', async () => {
+    const t = setup({ a: user('one') });
+    await t.svc.open(t.client, 'a', t.send);
+    unlinkSync(t.file('a'));
+    await vi.waitFor(() => expect(ofType(t.sent, 'transcriptError')).toHaveLength(1));
+    expect(ofType(t.sent, 'transcriptError')[0]).toMatchObject({ id: 'a', reason: 'ended' });
+    writeFileSync(t.file('a'), user('one') + user('two'));
+    await sleep(POLL * 4);
+    expect(t.sent).toHaveLength(2);
+  });
+
+  it('close(client) stops polling; a second open replaces the first', async () => {
+    const t = setup({ a: user('one'), b: user('bee') });
+    await t.svc.open(t.client, 'a', t.send);
+    t.svc.close(t.client);
+    appendFileSync(t.file('a'), user('x'));
+    await sleep(POLL * 4);
+    expect(t.sent).toHaveLength(1);
+
+    await t.svc.open(t.client, 'a', t.send);
+    await t.svc.open(t.client, 'b', t.send);
+    appendFileSync(t.file('a'), user('y'));
+    appendFileSync(t.file('b'), user('bee2'));
+    await vi.waitFor(() => expect(ofType(t.sent, 'transcriptAppend')).toHaveLength(1));
+    await sleep(POLL * 3);
+    const appends = ofType(t.sent, 'transcriptAppend');
+    expect(appends).toHaveLength(1);
+    expect(appends[0]).toMatchObject({ id: 'b' });
+  });
+
+  it('two clients follow independently', async () => {
+    const t = setup({ a: user('one') });
+    const other: Array<Record<string, unknown>> = [];
+    await t.svc.open(t.client, 'a', t.send);
+    await t.svc.open({}, 'a', (m) => other.push(m));
+    t.svc.close(t.client);
+    appendFileSync(t.file('a'), user('x'));
+    await vi.waitFor(() => expect(ofType(other, 'transcriptAppend')).toHaveLength(1));
+    expect(ofType(t.sent, 'transcriptAppend')).toHaveLength(0);
+  });
+
+  it('before returns the earlier page', async () => {
+    const n = Math.ceil((TRANSCRIPT_PAGE_BYTES * 1.5) / 300);
+    let body = '';
+    for (let i = 0; i < n; i++) body += user('x'.repeat(280) + i);
+    const t = setup({ a: body });
+    await t.svc.open(t.client, 'a', t.send);
+    const loaded = t.sent[0] as { start: number; more: boolean };
+    expect(loaded.more).toBe(true);
+    await t.svc.before(t.client, 'a', loaded.start, t.send);
+    const earlier = ofType(t.sent, 'transcriptEarlier');
+    expect(earlier).toHaveLength(1);
+    expect(earlier[0].entries.length).toBeGreaterThan(0);
+    expect(earlier[0].start).toBeLessThan(loaded.start);
+  });
+
+  it('before: other id or a non-integer is ignored; past the end is clamped', async () => {
+    const t = setup({ a: user('one') + user('two') });
+    await t.svc.open(t.client, 'a', t.send);
+    await t.svc.before(t.client, 'b', 10, t.send);
+    await t.svc.before(t.client, 'a', 1.5, t.send);
+    await t.svc.before(t.client, 'a', -1, t.send);
+    await t.svc.before(t.client, 'a', Number.NaN, t.send);
+    await t.svc.before({}, 'a', 10, t.send);
+    expect(t.sent).toHaveLength(1);
+    await t.svc.before(t.client, 'a', 1e15, t.send);
+    expect(ofType(t.sent, 'transcriptEarlier')[0].entries).toHaveLength(2);
   });
 });

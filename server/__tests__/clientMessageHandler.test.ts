@@ -14,6 +14,7 @@ import {
 import { readConfig, writeConfig } from '../src/configPersistence.js';
 import { FileStateAdapter } from '../src/fileStateAdapter.js';
 import type { LanService } from '../src/lan/office.js';
+import type { TranscriptService } from '../src/lan/transcript.js';
 import { Updater } from '../src/lan/updater.js';
 
 // Hex placeholders are test fixtures, not UI tokens.
@@ -252,6 +253,40 @@ describe('clientMessageHandler', () => {
         'externalAssetDirectoriesUpdated',
         'settingsLoaded',
       ]);
+    });
+
+    it('read-only ctx cannot open a transcript', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const transcripts = { open: vi.fn(), before: vi.fn(), close: vi.fn() };
+      const c = {
+        ...ctx(false),
+        transcripts: transcripts as unknown as TranscriptService,
+        client: {},
+      };
+      send({ type: 'openTranscript', id: 'a' }, c);
+      send({ type: 'loadTranscriptBefore', id: 'a', before: 0 }, c);
+      send({ type: 'closeTranscript' }, c);
+      warn.mockRestore();
+      expect(transcripts.open).not.toHaveBeenCalled();
+      expect(transcripts.before).not.toHaveBeenCalled();
+      expect(transcripts.close).not.toHaveBeenCalled();
+      expect(sent).toEqual([]);
+    });
+
+    it('a privileged ctx routes transcript messages with its socket as client', () => {
+      const transcripts = { open: vi.fn(), before: vi.fn(), close: vi.fn() };
+      const client = {};
+      const c = { ...ctx(true), transcripts: transcripts as unknown as TranscriptService, client };
+      send({ type: 'openTranscript', id: 'a' }, c);
+      send({ type: 'openTranscript', id: 7 }, c);
+      send({ type: 'loadTranscriptBefore', id: 'a', before: 5 }, c);
+      send({ type: 'loadTranscriptBefore', id: 'a' }, c);
+      send({ type: 'closeTranscript' }, c);
+      expect(transcripts.open).toHaveBeenCalledTimes(1);
+      expect(transcripts.open.mock.calls[0].slice(0, 2)).toEqual([client, 'a']);
+      expect(transcripts.before).toHaveBeenCalledTimes(1);
+      expect(transcripts.before.mock.calls[0].slice(0, 3)).toEqual([client, 'a', 5]);
+      expect(transcripts.close).toHaveBeenCalledWith(client);
     });
 
     it('answers a refused toggle with the real state so the control snaps back', () => {

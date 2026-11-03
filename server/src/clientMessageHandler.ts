@@ -5,6 +5,7 @@ import type { FileStateAdapter } from './fileStateAdapter.js';
 import type { AutostartState } from './lan/autostart.js';
 import type { LanService } from './lan/office.js';
 import { validateProfileUpdate } from './lan/profile.js';
+import type { TranscriptService } from './lan/transcript.js';
 import type { Updater } from './lan/updater.js';
 import { APP_VERSION } from './lan/updater.js';
 import {
@@ -65,6 +66,10 @@ export interface ClientMessageContext {
   };
   /** Settings → 완전 종료. Absent in tests. */
   onQuitApp?: () => void;
+  /** Live transcripts of this PC's agents, keyed by `client`. Absent in tests. */
+  transcripts?: TranscriptService;
+  /** The socket itself: a transcript subscription belongs to it (falls back to `send`). */
+  client?: object;
 }
 
 // ── Setting keys ──
@@ -210,6 +215,20 @@ export function handleClientMessage(
 
     case 'quitApp':
       ctx.onQuitApp?.();
+      break;
+
+    // This PC's agent transcript: answers go to this socket only (TranscriptService).
+    case 'openTranscript':
+      if (typeof msg.id === 'string') void ctx.transcripts?.open(ctx.client ?? send, msg.id, send);
+      break;
+
+    case 'loadTranscriptBefore':
+      if (typeof msg.id === 'string' && typeof msg.before === 'number')
+        void ctx.transcripts?.before(ctx.client ?? send, msg.id, msg.before, send);
+      break;
+
+    case 'closeTranscript':
+      ctx.transcripts?.close(ctx.client ?? send);
       break;
 
     default:

@@ -1,11 +1,22 @@
-import { open } from 'node:fs/promises';
+import { open, stat } from 'node:fs/promises';
+import { StringDecoder } from 'node:string_decoder';
 
 import type { Provider } from '../../../core/src/lan.js';
+import type {
+  TranscriptAppend,
+  TranscriptEarlier,
+  TranscriptError,
+  TranscriptErrorReason,
+  TranscriptInfo,
+  TranscriptLoaded,
+} from '../../../core/src/messages.js';
 import {
   TRANSCRIPT_ENTRY_MAX_CHARS,
   TRANSCRIPT_META_MAX_CHARS,
   TRANSCRIPT_PAGE_BYTES,
+  TRANSCRIPT_POLL_MS,
 } from '../constants.js';
+import type { TranscriptSource } from './scanner.js';
 
 export type TranscriptKind = 'user' | 'assistant' | 'thinking' | 'tool' | 'result' | 'meta';
 export interface TranscriptEntry {
@@ -207,5 +218,175 @@ export async function readPage(
     }
   } finally {
     await fh.close();
+  }
+}
+
+type Send = (message: Record<string, unknown>) => void;
+
+/** One socket's open transcript, followed from `offset` (a line boundary + `buf`). */
+interface Sub {
+  id: string;
+  file: string;
+  provider: Provider;
+  info: TranscriptInfo;
+  send: Send;
+  offset: number;
+  buf: string;
+  decoder: StringDecoder;
+  timer: ReturnType<typeof setInterval>;
+  busy: boolean;
+}
+
+const error = (id: string, reason: TranscriptErrorReason) =>
+  ({ type: 'transcriptError', id, reason }) satisfies TranscriptError;
+
+/**
+ * Live transcripts of this PC's agents, one per UI socket (`client`). Every reply goes to
+ * the `send` of the socket that asked; nothing here is ever sent to peers.
+ */
+export class TranscriptService {
+  private readonly subs = new Map<object, Sub>();
+  /** The latest open() per client: an older one that finishes later is dropped. */
+  private readonly opening = new Map<object, object>();
+
+  constructor(
+    private readonly source: { transcriptOf(id: string): TranscriptSource | undefined },
+    private readonly pollMs = TRANSCRIPT_POLL_MS,
+  ) {}
+
+  /** Replaces the client's open transcript. */
+  async open(client: object, id: string, send: Send): Promise<void> {
+    this.close(client);
+    const src = this.source.transcriptOf(id);
+    if (!src) {
+      send(error(id, 'notFound'));
+      return;
+    }
+    const req = {};
+    this.opening.set(client, req);
+    const { file, ...info } = src;
+    let page: TranscriptPage;
+    try {
+      page = await readPage(file, src.provider, (await stat(file)).size);
+    } catch {
+      if (this.opening.get(client) !== req) return;
+      this.opening.delete(client);
+      send(error(id, 'unreadable'));
+      return;
+    }
+    if (this.opening.get(client) !== req) return; // closed or re-opened meanwhile
+    this.opening.delete(client);
+    const sub: Sub = {
+      id,
+      file,
+      provider: src.provider,
+      info,
+      send,
+      offset: page.end,
+      buf: '',
+      decoder: new StringDecoder('utf8'),
+      timer: setInterval(() => void this.poll(client, sub), this.pollMs),
+      busy: false,
+    };
+    this.subs.set(client, sub);
+    send(this.loaded(sub, page));
+  }
+
+  /** The page before byte `before` of the client's open transcript `id`. */
+  async before(client: object, id: string, before: number, send: Send): Promise<void> {
+    const sub = this.subs.get(client);
+    if (!sub || sub.id !== id || !Number.isInteger(before) || before < 0) return;
+    try {
+      const size = (await stat(sub.file)).size;
+      // Never past what this client already has (offset): those lines come as appends.
+      const page = await readPage(sub.file, sub.provider, Math.min(before, size, sub.offset));
+      if (this.subs.get(client) !== sub) return;
+      send({
+        type: 'transcriptEarlier',
+        id,
+        entries: page.entries,
+        start: page.start,
+        more: page.more,
+      } satisfies TranscriptEarlier);
+    } catch {
+      // gone meanwhile: the next poll reports `ended`
+    }
+  }
+
+  close(client: object): void {
+    this.opening.delete(client);
+    const sub = this.subs.get(client);
+    if (!sub) return;
+    clearInterval(sub.timer);
+    this.subs.delete(client);
+  }
+
+  /** Every timer cleared (server shutdown). */
+  stop(): void {
+    for (const client of [...this.subs.keys()]) this.close(client);
+    this.opening.clear();
+  }
+
+  private loaded(sub: Sub, page: TranscriptPage) {
+    return {
+      type: 'transcriptLoaded',
+      id: sub.id,
+      info: sub.info,
+      entries: page.entries,
+      start: page.start,
+      more: page.more,
+    } satisfies TranscriptLoaded;
+  }
+
+  private async poll(client: object, sub: Sub): Promise<void> {
+    if (sub.busy) return;
+    sub.busy = true;
+    try {
+      let size: number;
+      try {
+        size = (await stat(sub.file)).size;
+      } catch (err) {
+        if (this.subs.get(client) === sub && (err as NodeJS.ErrnoException).code === 'ENOENT') {
+          this.close(client);
+          sub.send(error(sub.id, 'ended'));
+        }
+        return; // other errors (EACCES, AV lock): try again next poll
+      }
+      if (this.subs.get(client) !== sub) return;
+      if (size < sub.offset) {
+        // rewritten shorter: start over from its tail
+        const page = await readPage(sub.file, sub.provider, size);
+        if (this.subs.get(client) !== sub) return;
+        sub.offset = page.end;
+        sub.buf = '';
+        sub.decoder = new StringDecoder('utf8');
+        sub.send(this.loaded(sub, page));
+      } else if (size > sub.offset) {
+        // ponytail: one page per poll, a burst catches up over a few polls
+        const to = Math.min(size, sub.offset + TRANSCRIPT_PAGE_BYTES);
+        const fh = await open(sub.file, 'r');
+        let chunk: Buffer;
+        try {
+          const b = Buffer.alloc(to - sub.offset);
+          chunk = b.subarray(0, (await fh.read(b, 0, b.length, sub.offset)).bytesRead);
+        } finally {
+          await fh.close();
+        }
+        if (this.subs.get(client) !== sub) return;
+        sub.offset += chunk.length;
+        const lines = (sub.buf + sub.decoder.write(chunk)).split('\n');
+        sub.buf = lines.pop() ?? '';
+        const entries = parseLines(
+          sub.provider,
+          lines.filter((l) => l.trim()),
+        );
+        if (entries.length > 0)
+          sub.send({ type: 'transcriptAppend', id: sub.id, entries } satisfies TranscriptAppend);
+      }
+    } catch {
+      // read hiccup: the next poll retries from the same offset
+    } finally {
+      sub.busy = false;
+    }
   }
 }

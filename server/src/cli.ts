@@ -39,6 +39,7 @@ import { checkExisting, LanService } from './lan/office.js';
 import { PeerNet } from './lan/peerNet.js';
 import { KnownPeers, loadProfile } from './lan/profile.js';
 import { discoverRoots, Scanner } from './lan/scanner.js';
+import { TranscriptService } from './lan/transcript.js';
 import { startTray, trayCheck } from './lan/tray.js';
 import {
   APP_VERSION,
@@ -180,6 +181,7 @@ export async function main(boot = true): Promise<void> {
   // LAN: local transcripts -> UDP peers; peers -> officeSnapshot.
   const scanner = new Scanner(() => discoverRoots());
   scanner.start();
+  const transcripts = new TranscriptService(scanner);
   const lan = new LanService(loadProfile(), scanner);
   const pins = new KnownPeers();
   const udpPort = Number(process.env[UDP_PORT_ENV]) || LAN_UDP_PORT;
@@ -233,6 +235,7 @@ export async function main(boot = true): Promise<void> {
     shuttingDown = true;
     console.log('\nShutting down...');
     scanner.stop();
+    transcripts.stop();
     peerNet.stop();
     pins.flush();
     updater.stop();
@@ -302,6 +305,7 @@ export async function main(boot = true): Promise<void> {
       },
       updater,
       autostart: { get: () => getAutostart(), set: (on) => setAutostart(on) },
+      transcripts,
     });
     reportListening();
     updater.start();
