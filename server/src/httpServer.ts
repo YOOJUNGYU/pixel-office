@@ -10,6 +10,7 @@ import type {
   ReloadAssetsSideEffect,
 } from './clientMessageHandler.js';
 import {
+  directoryMessage,
   handleClientMessage,
   layoutMessage,
   officesMessage,
@@ -179,6 +180,7 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
         if (officesChanged) safeSend(c, officesMessage(lan));
         try {
           safeSend(c, snapshotMessage(lan));
+          safeSend(c, directoryMessage(lan));
         } catch (err) {
           console.error('[Pixel Office] officeSnapshot failed:', err);
         }

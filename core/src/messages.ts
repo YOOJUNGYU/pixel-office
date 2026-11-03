@@ -21,6 +21,7 @@ export type ServerMessage =
   | SettingsLoaded
   | ExternalAssetDirectoriesUpdated
   | OfficeSnapshot
+  | PeopleDirectory
   | ProfileLoaded
   | UpdateAvailable
   | UpdateStatus
@@ -252,6 +253,31 @@ export interface AvatarMessage {
 }
 
 export type AvatarDir = 'down' | 'up' | 'left' | 'right';
+
+export interface PeopleDirectory {
+  type: 'peopleDirectory';
+  public: DirectoryPersonMessage[];
+  teams: DirectoryTeamMessage[];
+  personal: DirectoryPersonMessage[];
+}
+
+export interface DirectoryPersonMessage {
+  peerId: string;
+  account: string;
+  nickname: string;
+  nickSince?: number;
+  palette: number;
+  hueShift: number;
+  pet?: PetId;
+  tagColors?: TagColors;
+  self: boolean;
+}
+
+export interface DirectoryTeamMessage {
+  tag: string;
+  name: string;
+  people: DirectoryPersonMessage[];
+}
 
 export interface ProfileLoaded {
   type: 'profileLoaded';

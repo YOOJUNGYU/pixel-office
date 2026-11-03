@@ -5,7 +5,7 @@ import * as path from 'path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { AgentView, PeerInfo, PeerPacket } from '../../../core/src/lan.js';
-import { PUBLIC_VIEW } from '../../../core/src/lan.js';
+import { PERSONAL_VIEW, PUBLIC_VIEW } from '../../../core/src/lan.js';
 import {
   handleClientMessage,
   officesMessage,
@@ -145,7 +145,12 @@ describe('LanService', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-lan-'));
     const lan = new LanService({ ...profile }, { views: () => [] }, dir);
     const peerAt = (rev: number) => ({ ...peer, layout: { rev, by: 'p1', h: 'a'.repeat(16) } });
-    lan.net = { peers: () => [peerAt(7)], sendNow: () => {}, teamName: () => undefined };
+    lan.net = {
+      peers: () => [peerAt(7)],
+      sendNow: () => {},
+      teamName: () => undefined,
+      directory: () => ({ public: [], teams: {}, personal: [] }),
+    };
     expect(lan.saveSharedLayout({ m: 'mine' })).toBe(true);
     expect(lan.layouts.rev(PUBLIC_VIEW)).toMatchObject({ rev: 8, by: 'me' });
 
@@ -172,7 +177,12 @@ describe('LanService', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-lan-'));
     const lan = new LanService({ ...profile }, { views: () => [] }, dir);
     const sendNow = vi.fn();
-    lan.net = { peers: () => [], sendNow, teamName: () => undefined };
+    lan.net = {
+      peers: () => [],
+      sendNow,
+      teamName: () => undefined,
+      directory: () => ({ public: [], teams: {}, personal: [] }),
+    };
     const { peerId: _, ...rest } = profile;
     lan.saveProfile({ ...rest, nickname: '유' });
     expect(lan.profile).toMatchObject({ peerId: 'me', nickname: '유' });
@@ -195,7 +205,12 @@ describe('LanService', () => {
   it('pet: announced in self() and people(); a save without one goes back to the human', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-lan-'));
     const lan = new LanService({ ...profile }, { views: () => [] }, dir);
-    lan.net = { peers: () => [], sendNow: () => {}, teamName: () => undefined };
+    lan.net = {
+      peers: () => [],
+      sendNow: () => {},
+      teamName: () => undefined,
+      directory: () => ({ public: [], teams: {}, personal: [] }),
+    };
     const { peerId: _, ...rest } = profile;
     expect(lan.self()).not.toHaveProperty('pet');
     lan.saveProfile({ ...rest, pet: 'gitcat' });
@@ -213,7 +228,12 @@ describe('LanService', () => {
   it('tagColors: announced in self() and people(); a save without them goes back to the default', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-lan-'));
     const lan = new LanService({ ...profile }, { views: () => [] }, dir);
-    lan.net = { peers: () => [], sendNow: () => {}, teamName: () => undefined };
+    lan.net = {
+      peers: () => [],
+      sendNow: () => {},
+      teamName: () => undefined,
+      directory: () => ({ public: [], teams: {}, personal: [] }),
+    };
     const { peerId: _, ...rest } = profile;
     const tagColors = { bg: '#112233', fg: '#FFEEDD' };
     lan.saveProfile({ ...rest, tagColors });
@@ -241,7 +261,12 @@ describe('LanService', () => {
         team: [pkt('mate', 'Mate')],
         other: [pkt('x', 'Stranger')],
       };
-      lan.net = { peers: (v) => peers[v] ?? [], sendNow: () => {}, teamName: () => undefined };
+      lan.net = {
+        peers: (v) => peers[v] ?? [],
+        sendNow: () => {},
+        teamName: () => undefined,
+        directory: () => ({ public: [], teams: {}, personal: [] }),
+      };
       return lan;
     };
 
@@ -327,6 +352,7 @@ describe('LanService', () => {
       const lan = new LanService({ ...profile }, { views: () => [view()] }, dir);
       const sendNow = vi.fn();
       lan.net = {
+        ...lan.net,
         peers: (v: string) => (v === PUBLIC_VIEW ? [pubPeer] : [teamPeer]),
         sendNow,
         teamName: () => 'announced',
@@ -436,6 +462,81 @@ describe('LanService', () => {
       expect(lan.profile.activeView).toBe(a.tag);
       expect(lan.joinOffice(a.code)).toBe('alreadyJoined');
       expect(lan.profile.offices.map((o) => o.tag)).toEqual([a.tag]);
+    });
+  });
+
+  describe('directory', () => {
+    const mkPeer = (id: string): PeerInfo => ({ ...peer.peer, id, account: id });
+    let dir: string;
+    const mk = (net: {
+      public?: PeerInfo[];
+      teams?: Record<string, PeerInfo[]>;
+      personal?: PeerInfo[];
+    }) => {
+      dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-dir-'));
+      const lan = new LanService({ ...profile }, { views: () => [view()] }, dir);
+      lan.net = {
+        peers: () => [],
+        sendNow: () => {},
+        teamName: () => undefined,
+        directory: () => ({ public: [], teams: {}, personal: [], ...net }),
+      };
+      return lan;
+    };
+    const ids = (ps: { peerId: string }[]) => ps.map((p) => p.peerId);
+    afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+    it('public PC: me first in public, cards in personal, no team area', () => {
+      const lan = mk({ public: [mkPeer('a')], personal: [mkPeer('c')] });
+      const d = lan.directory();
+      expect(d.public[0]).toMatchObject({ peerId: 'me', self: true });
+      expect(ids(d.public)).toEqual(['me', 'a']);
+      expect(d.teams).toEqual([]);
+      expect(d.personal).toMatchObject([{ peerId: 'c', self: false }]);
+    });
+
+    it('team PC: me in the team under its name, public PCs listed without me', () => {
+      const lan = mk({});
+      const { tag } = lan.createOffice('우리팀') as CreatedOffice;
+      lan.net.directory = () => ({
+        public: [mkPeer('a')],
+        teams: { [tag]: [mkPeer('m')] },
+        personal: [],
+      });
+      const d = lan.directory();
+      expect(ids(d.public)).toEqual(['a']);
+      expect(d.teams).toHaveLength(1);
+      expect(d.teams[0]).toMatchObject({ tag, name: '우리팀' });
+      expect(ids(d.teams[0].people)).toEqual(['me', 'm']);
+    });
+
+    it('personal PC in a team: me in personal only; the team still lists its members', () => {
+      const lan = mk({});
+      const { tag } = lan.createOffice('우리팀') as CreatedOffice;
+      lan.net.directory = () => ({ public: [], teams: { [tag]: [mkPeer('m')] }, personal: [] });
+      lan.setActiveView(PERSONAL_VIEW);
+      const d = lan.directory();
+      expect(ids(d.personal)).toEqual(['me']);
+      expect(ids(d.teams[0].people)).toEqual(['m']);
+    });
+
+    it('a peer claiming my id is dropped; rows carry no chat or avatar', () => {
+      const lan = mk({ public: [mkPeer('me'), mkPeer('a'), mkPeer('a')] });
+      lan.sendChat('hi');
+      const d = lan.directory();
+      expect(ids(d.public)).toEqual(['me', 'a']);
+      for (const row of d.public) {
+        expect(row).not.toHaveProperty('chat');
+        expect(row).not.toHaveProperty('avatar');
+      }
+    });
+
+    it('the office view ignores the directory', () => {
+      const lan = mk({ public: [mkPeer('w')], personal: [mkPeer('c')] });
+      expect(ids(lan.people(PUBLIC_VIEW))).toEqual(['me']);
+      const snap = snapshotMessage(lan);
+      expect(ids(snap.people)).toEqual(['me']);
+      expect(snap.agents.some((a) => a.key.startsWith('w'))).toBe(false);
     });
   });
 });

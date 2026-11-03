@@ -89,6 +89,7 @@ components:
         - $ref: '#/components/schemas/ExternalAssetDirectoriesUpdated'
         # LAN office
         - $ref: '#/components/schemas/OfficeSnapshot'
+        - $ref: '#/components/schemas/PeopleDirectory'
         - $ref: '#/components/schemas/ProfileLoaded'
         # Updates (loopback browser only)
         - $ref: '#/components/schemas/UpdateAvailable'
@@ -705,6 +706,73 @@ components:
         selfPeerId:
           type: string
           description: This server's peer id (marks which agents are local).
+
+    PeopleDirectory:
+      description: >-
+        Who this PC can list per area for the people panel, pushed with every
+        snapshot (display only; never part of the office or its agents). `public`
+        = the public office, `teams` = joined team offices (one at a time),
+        `personal` = PCs in personal mode. This PC is listed first, once, in the
+        area it is in.
+      type: object
+      additionalProperties: false
+      required: [type, public, teams, personal]
+      properties:
+        type:
+          const: peopleDirectory
+        public:
+          type: array
+          items:
+            $ref: '#/components/schemas/DirectoryPersonMessage'
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/DirectoryTeamMessage'
+        personal:
+          type: array
+          items:
+            $ref: '#/components/schemas/DirectoryPersonMessage'
+
+    DirectoryTeamMessage:
+      type: object
+      additionalProperties: false
+      required: [tag, name, people]
+      properties:
+        tag:
+          type: string
+        name:
+          type: string
+          description: "'' = not known yet."
+        people:
+          type: array
+          items:
+            $ref: '#/components/schemas/DirectoryPersonMessage'
+
+    DirectoryPersonMessage:
+      description: An OfficePersonMessage without chat and avatar.
+      type: object
+      additionalProperties: false
+      required: [peerId, account, nickname, palette, hueShift, self]
+      properties:
+        peerId:
+          type: string
+        account:
+          type: string
+        nickname:
+          type: string
+        nickSince:
+          type: integer
+          minimum: 0
+        palette:
+          type: integer
+        hueShift:
+          type: integer
+        pet:
+          $ref: '#/components/schemas/PetId'
+        tagColors:
+          $ref: '#/components/schemas/TagColors'
+        self:
+          type: boolean
 
     OfficePersonMessage:
       description: >-

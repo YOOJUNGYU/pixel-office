@@ -270,6 +270,14 @@ describe('/ws LAN office', () => {
     await vi.waitFor(() => expect(count).toBeGreaterThanOrEqual(2), { timeout: 3_000 });
   });
 
+  it('pushes peopleDirectory with every snapshot', async () => {
+    const socket = await open('localhost');
+    const dir = (await waitForMessage(socket, 'peopleDirectory')) as {
+      public: { self: boolean }[];
+    };
+    expect(dir.public[0].self).toBe(true);
+  });
+
   it('an old profile with remoteView: true still serves this PC only', async () => {
     fs.writeFileSync(
       profilePath(),

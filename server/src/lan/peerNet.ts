@@ -470,24 +470,32 @@ export class PeerNet {
   directory(): NetDirectory {
     const t = this.now();
     const live = <T extends { at: number }>(e: T) => t - e.at <= PEER_TTL_MS;
-    const teams: Record<string, PeerInfo[]> = {};
-    for (const o of this.opts.offices())
-      teams[o.tag] = [...(this.seen.get(o.tag)?.values() ?? [])]
+    type Row = { peer: PeerInfo; at: number };
+    const teamRows = (tag: string): Row[] =>
+      [...(this.seen.get(tag)?.values() ?? [])]
         .filter(live)
-        .map((e) => e.packet.peer);
-    const pub = this.inPublic()
-      ? [...(this.seen.get(PUBLIC_VIEW)?.values() ?? [])]
-          .filter(live)
-          .map((e) => ({ peer: e.packet.peer, at: e.at }))
+        .map((e) => ({ peer: e.packet.peer, at: e.at }));
+    const pub: Row[] = this.inPublic()
+      ? teamRows(PUBLIC_VIEW)
       : [...this.heardPublic.values()].filter(live);
+    const teams = this.opts.offices().map((o) => [o.tag, teamRows(o.tag)] as const);
     const cards = [...this.cards.values()].filter(live);
-    // Heard both ways (switched mode within the TTL): keep the newer one, public on a tie.
-    const pubAt = new Map(pub.map((e) => [e.peer.id, e.at]));
-    const cardAt = new Map(cards.map((e) => [e.peer.id, e.at]));
+    // Heard in several areas (switched mode within the TTL): the newest wins; on a tie
+    // public, then team, then personal.
+    const rank = [pub, ...teams.map(([, r]) => r), cards];
+    const best = new Map<string, { at: number; area: number }>();
+    rank.forEach((rows, area) => {
+      for (const { peer, at } of rows) {
+        const b = best.get(peer.id);
+        if (!b || at > b.at) best.set(peer.id, { at, area });
+      }
+    });
+    const keep = (rows: Row[], area: number) =>
+      rows.filter((r) => best.get(r.peer.id)?.area === area).map((r) => r.peer);
     return {
-      public: pub.filter((e) => !((cardAt.get(e.peer.id) ?? -Infinity) > e.at)).map((e) => e.peer),
-      teams,
-      personal: cards.filter((e) => e.at > (pubAt.get(e.peer.id) ?? -Infinity)).map((e) => e.peer),
+      public: keep(pub, 0),
+      teams: Object.fromEntries(teams.map(([tag, rows], i) => [tag, keep(rows, i + 1)])),
+      personal: keep(cards, rank.length - 1),
     };
   }
 

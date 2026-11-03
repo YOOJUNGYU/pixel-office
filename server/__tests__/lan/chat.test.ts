@@ -82,7 +82,7 @@ describe('LanService chat', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-chat-'));
     const lan = new LanService({ ...profile }, { views: () => [] }, dir);
     const sendNow = vi.fn();
-    lan.net = { peers: (v) => peers[v] ?? [], sendNow, teamName: () => undefined };
+    lan.net = { ...lan.net, peers: (v) => peers[v] ?? [], sendNow, teamName: () => undefined };
     return { lan, sendNow };
   };
   afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));

@@ -320,6 +320,11 @@ export function snapshotMessage(lan: LanService) {
   } as const;
 }
 
+/** peopleDirectory: who the panel lists per area (never the office or its agents). */
+export function directoryMessage(lan: LanService) {
+  return { type: 'peopleDirectory', ...lan.directory() } as const;
+}
+
 /** The bundled default of a mode: the small personal office, else the shared one. */
 function defaultLayoutFor(cache: AssetCache | null, personal: boolean) {
   return (personal ? cache?.personalLayout : cache?.defaultLayout) ?? null;
@@ -384,7 +389,10 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
   send(layoutMessage(cache, ctx.lan));
 
   // 4. Agents right away rather than on the next 1 s tick.
-  if (ctx.lan && ctx.privileged) send(snapshotMessage(ctx.lan));
+  if (ctx.lan && ctx.privileged) {
+    send(snapshotMessage(ctx.lan));
+    send(directoryMessage(ctx.lan));
+  }
 
   // 5. Start-at-login checkbox and update banner: this PC's browser only.
   if (ctx.privileged && ctx.autostart) send(autostartMessage(ctx.autostart.get()));

@@ -88,7 +88,7 @@ describe('personal mode', () => {
       nicknameSince: 0,
     };
     lan = new LanService(profile, { views: () => [view] }, home);
-    lan.net = { peers: () => [pubPeer], sendNow: vi.fn(), teamName: () => undefined };
+    lan.net = { ...lan.net, peers: () => [pubPeer], sendNow: vi.fn(), teamName: () => undefined };
     sent = [];
     onOfficesChanged.mockClear();
   });

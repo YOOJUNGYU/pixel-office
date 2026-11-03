@@ -971,6 +971,20 @@ describe('PeerNet directory: cards', () => {
     expect(pids(b.net.directory().personal)).toEqual(['A']);
   });
 
+  it('a team member that switches to personal is listed once, where it was heard last', async () => {
+    const [a, b] = await mkNodes(['A', 'B']);
+    const ch = channel(newInviteCode().secret);
+    a.offices = [ch];
+    b.offices = [ch];
+    await pump([a, b], () => b.net.directory().teams[ch.tag].length > 0);
+    expect(pids(b.net.directory().teams[ch.tag])).toEqual(['A']);
+    b.t += 1000;
+    a.offline = true;
+    await pump([a, b], () => b.net.directory().personal.length > 0);
+    expect(pids(b.net.directory().personal)).toEqual(['A']);
+    expect(b.net.directory().teams[ch.tag]).toEqual([]);
+  });
+
   it("a replayed watch with a public PC's id/pk removes nothing", async () => {
     const raw = await rawSocket();
     const [a, b] = await mkNodes(['A', 'B']);

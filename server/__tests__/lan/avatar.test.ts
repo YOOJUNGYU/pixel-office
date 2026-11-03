@@ -82,7 +82,7 @@ describe('LanService avatar', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-avatar-'));
     const lan = new LanService({ ...profile }, { views: () => [] }, dir);
     const sendNow = vi.fn();
-    lan.net = { peers: (v) => peers[v] ?? [], sendNow, teamName: () => undefined };
+    lan.net = { ...lan.net, peers: (v) => peers[v] ?? [], sendNow, teamName: () => undefined };
     return { lan, sendNow };
   };
   beforeEach(() => vi.useFakeTimers());

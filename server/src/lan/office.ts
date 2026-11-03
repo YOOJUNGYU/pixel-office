@@ -21,8 +21,10 @@ import {
 } from '../../../core/src/lan.js';
 import type {
   ChatMessage,
+  DirectoryPersonMessage,
   OfficeErrorReason,
   OfficePersonMessage,
+  PeopleDirectory,
 } from '../../../core/src/messages.js';
 import {
   AVATAR_SAVE_DELAY_MS,
@@ -31,7 +33,7 @@ import {
   PING_TIMEOUT_MS,
 } from '../constants.js';
 import { inviteText, newInviteCode, parseInviteCode, teamKey } from './crypto.js';
-import type { TeamChannel } from './peerNet.js';
+import type { NetDirectory, TeamChannel } from './peerNet.js';
 import { fitPacket } from './peerNet.js';
 import type { EditableProfile, Profile, TeamOffice } from './profile.js';
 import {
@@ -91,7 +93,13 @@ export class LanService {
     peers(view: string): PeerPacket[];
     sendNow(): void;
     teamName(tag: string): string | undefined;
-  } = { peers: () => [], sendNow: () => {}, teamName: () => undefined };
+    directory(): NetDirectory;
+  } = {
+    peers: () => [],
+    sendNow: () => {},
+    teamName: () => undefined,
+    directory: () => ({ public: [], teams: {}, personal: [] }),
+  };
   private channels: { src: TeamOffice[]; list: TeamChannel[] } | null = null;
   /** This PC's OS account name: fixed, read at start, never from a client. */
   readonly account = osAccount();
@@ -276,7 +284,15 @@ export class LanService {
       { peer: this.self(), chat: this.ownChat(view), avatar: this.ownAvatar(view) },
       ...this.peersIn(view),
     ];
-    return rows.map(({ peer: p, chat, avatar }, i) => ({
+    return rows.map(({ peer, chat, avatar }, i) => ({
+      ...this.person(peer, i === 0),
+      ...(chat && { chat: toChatMessage(chat) }),
+      ...(avatar && { avatar: { ...avatar } }),
+    }));
+  }
+
+  private person(p: PeerInfo, self: boolean): DirectoryPersonMessage {
+    return {
       peerId: p.id,
       account: p.account,
       nickname: p.nickname,
@@ -285,10 +301,36 @@ export class LanService {
       hueShift: p.hueShift,
       ...(p.pet && { pet: p.pet }),
       ...(p.tagColors && { tagColors: p.tagColors }),
-      self: i === 0,
-      ...(chat && { chat: toChatMessage(chat) }),
-      ...(avatar && { avatar: { ...avatar } }),
-    }));
+      self,
+    };
+  }
+
+  /** People per area for the panel. Display only: never feeds office(), people() or notifications.
+   *  This PC is listed first in the area it is in; a peer row with my id is dropped. */
+  directory(): Omit<PeopleDirectory, 'type'> {
+    const net = this.net.directory();
+    const me = this.profile.peerId;
+    const tag = this.profile.offices[0]?.tag;
+    const mine = (area: 'public' | 'team' | 'personal') => {
+      const here = this.personal ? 'personal' : tag ? 'team' : 'public';
+      return here === area ? [this.person(this.self(), true)] : [];
+    };
+    const list = (own: DirectoryPersonMessage[], peers: PeerInfo[]) => {
+      const seen = new Set<string>([...own.map((p) => p.peerId), me]);
+      return [
+        ...own,
+        ...peers.filter((p) => !seen.has(p.id) && seen.add(p.id)).map((p) => this.person(p, false)),
+      ];
+    };
+    return {
+      public: list(mine('public'), net.public),
+      teams: this.officeList().map(({ tag: t, name }) => ({
+        tag: t,
+        name,
+        people: list(mine('team'), net.teams[t] ?? []),
+      })),
+      personal: list(mine('personal'), net.personal),
+    };
   }
 
   /** Another live PC in any office this PC can see (public while in it, every
