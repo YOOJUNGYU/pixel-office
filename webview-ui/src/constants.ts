@@ -486,3 +486,18 @@ export const VOID_TILE_OUTLINE_COLORS = {
 
 /** Transcript panel: within this many px of the bottom counts as "at the bottom" (keeps following new entries). */
 export const TRANSCRIPT_FOLLOW_SLACK_PX = 24;
+/** Transcript panel (left side, my agents only): width; narrow screens use `100vw - 16px`. */
+export const TRANSCRIPT_PANEL_WIDTH_PX = 480;
+/** A tool input/result longer than this many lines is folded behind [더 보기]. */
+export const TRANSCRIPT_FOLD_LINES = 12;
+/** Gap the panel keeps to the top-left name-tag toggle and the bottom-left toolbar. */
+export const TRANSCRIPT_PANEL_GAP_PX = 8;
+/** The name-tag toggle's height (`TagToggle`, measured 31.5), CSS px. */
+export const TAG_TOGGLE_HEIGHT_PX = 32;
+/** The bottom-left toolbar's top edge above the window bottom (`bottom-10` + its height), CSS px. */
+export const BOTTOM_TOOLBAR_RESERVE_PX = 56;
+export const TRANSCRIPT_PANEL_TOP_PX =
+  TAG_TOGGLE_TOP_PX + TAG_TOGGLE_HEIGHT_PX + TRANSCRIPT_PANEL_GAP_PX;
+export const TRANSCRIPT_PANEL_BOTTOM_PX = BOTTOM_TOOLBAR_RESERVE_PX + TRANSCRIPT_PANEL_GAP_PX;
+/** Above name tags, bubbles and room plates (≤ 43) and the chat bar; below plate popups (46) and modals. */
+export const TRANSCRIPT_PANEL_Z_INDEX = 45;

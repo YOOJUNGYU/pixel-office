@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import { test } from 'vitest';
 
-import { isAtBottom, openState, reduceTranscript } from '../src/lan/transcript.js';
+import { foldText, isAtBottom, openState, reduceTranscript } from '../src/lan/transcript.js';
 
 const e = (text: string) => ({ kind: 'user' as const, text });
 const info = { kind: 'main', provider: 'claude', num: 1, title: 't', folder: 'f' };
@@ -73,4 +73,10 @@ test('ended keeps entries and sets error', () => {
 test('isAtBottom within slack', () => {
   assert.equal(isAtBottom(76, 100, 200), true);
   assert.equal(isAtBottom(50, 100, 200), false);
+});
+
+test('foldText keeps the first N lines and counts the rest', () => {
+  assert.deepEqual(foldText('a\nb\nc', 2), { shown: 'a\nb', hidden: 1 });
+  assert.deepEqual(foldText('a\nb', 2), { shown: 'a\nb', hidden: 0 });
+  assert.deepEqual(foldText('', 2), { shown: '', hidden: 0 });
 });

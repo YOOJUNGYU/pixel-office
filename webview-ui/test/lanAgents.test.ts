@@ -588,8 +588,8 @@ test('isMine only for the self person', () => {
   assert.equal(lan.selfPeerId(), undefined);
   assert.equal(lan.isMine(agent('a', 'coding')), false);
   lan.applyPeople([
-    { peerId: 'p2', account: 'o', palette: 1, hueShift: 0 },
-    { peerId: 'p1', account: 'yoo', palette: 2, hueShift: 30, self: true },
+    { peerId: 'p2', account: 'o', palette: 1, hueShift: 0, nickname: '', self: false },
+    { peerId: 'p1', account: 'yoo', palette: 2, hueShift: 30, nickname: '', self: true },
   ]);
   assert.equal(lan.selfPeerId(), 'p1');
   assert.equal(lan.isMine(agent('a', 'coding')), true);
@@ -600,8 +600,8 @@ test('loungeAgentsOf lists folded lounge agents of that PC only', () => {
   const { lan } = setup();
   const other = { ...peer, id: 'p2' };
   lan.applyPeople([
-    { peerId: 'p1', account: 'yoo', palette: 2, hueShift: 30, self: true },
-    { peerId: 'p2', account: 'o', palette: 1, hueShift: 0 },
+    { peerId: 'p1', account: 'yoo', palette: 2, hueShift: 30, nickname: '', self: true },
+    { peerId: 'p2', account: 'o', palette: 1, hueShift: 0, nickname: '', self: false },
   ]);
   lan.apply([
     agent('a', 'lounge'),

@@ -41,7 +41,9 @@ import { ProfileModal } from './lan/ProfileModal.js';
 import { RoomPlates } from './lan/RoomPlates.js';
 import { TagToggle } from './lan/TagToggle.js';
 import { readTagsHidden, saveTagsHidden } from './lan/tagVisibility.js';
+import { TranscriptPanel } from './lan/TranscriptPanel.js';
 import { UpdateBanner } from './lan/UpdateBanner.js';
+import { useTranscript } from './lan/useTranscript.js';
 import { OfficeCanvas } from './office/components/OfficeCanvas.js';
 import { EditorState } from './office/editor/editorState.js';
 import { EditorToolbar } from './office/editor/EditorToolbar.js';
@@ -346,6 +348,26 @@ function App() {
 
   const touring = step !== null;
 
+  // My agent's transcript (left panel): opened by clicking one of my characters,
+  // closed by clicking it again, Esc (outside text fields), editing or the tour.
+  const tr = useTranscript();
+  const { close: closeTranscript } = tr;
+  const transcriptOpen = tr.state !== null;
+  useEffect(() => {
+    if (transcriptOpen && (editor.isEditMode || touring)) closeTranscript();
+  }, [transcriptOpen, editor.isEditMode, touring, closeTranscript]);
+  useEffect(() => {
+    if (!transcriptOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement;
+      if (e.key !== 'Escape' || el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)
+        return;
+      closeTranscript();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [transcriptOpen, closeTranscript]);
+
   // My avatar and the chat bar: only in an office this PC is live in (I am in its
   // snapshot), never while editing, touring or read-only.
   const avatarControls =
@@ -525,6 +547,13 @@ function App() {
           onZoomChange={editor.handleZoomChange}
           panRef={editor.panRef}
           tapSelectsFirst={isMobile}
+          onClick={(id) => {
+            // Only this PC's agents (never a peer's or a tour demo): the server checks again.
+            const a = lan.agentFor(id);
+            if (!a || !lan.isMine(a)) return;
+            if (tr.state?.id === a.id) tr.close();
+            else tr.open(a.id);
+          }}
         />
 
         <RoomPlates
@@ -569,6 +598,15 @@ function App() {
         />
 
         {!editor.isEditMode && <TagToggle tagsHidden={tagsHidden} onToggleTags={toggleTags} />}
+
+        {tr.state && !editor.isEditMode && (
+          <TranscriptPanel
+            key={tr.state.id}
+            state={tr.state}
+            onClose={tr.close}
+            onLoadEarlier={tr.loadEarlier}
+          />
+        )}
 
         {/* Vignette overlay */}
         <div

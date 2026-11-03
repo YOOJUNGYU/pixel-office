@@ -52,3 +52,9 @@ export function reduceTranscript(
 export function isAtBottom(scrollTop: number, clientHeight: number, scrollHeight: number): boolean {
   return scrollHeight - scrollTop - clientHeight <= TRANSCRIPT_FOLLOW_SLACK_PX;
 }
+
+/** The first `lines` lines of a long tool input/result, and how many lines are left out. */
+export function foldText(text: string, lines: number): { shown: string; hidden: number } {
+  const all = text.split('\n');
+  return { shown: all.slice(0, lines).join('\n'), hidden: Math.max(0, all.length - lines) };
+}

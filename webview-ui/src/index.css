@@ -68,6 +68,13 @@
   --chat-bubble-bg: #ffffff;
   --chat-bubble-fg: #1e1e2e;
   --chat-bubble-border: #1e1e2e;
+  /* Transcript panel: my prompts (accent tint), code blocks, tool chips, failed results. */
+  --transcript-user-bg: rgba(96, 48, 255, 0.2);
+  --transcript-user-border: #746fff;
+  --transcript-code-bg: #141422;
+  --transcript-chip-bg: #3a3a5c;
+  --transcript-chip-fg: rgba(255, 255, 255, 0.92);
+  --transcript-error-border: #d14249;
 }
 
 /* Light theme (Settings → 테마 / Theme, or the top-left toggle): near-white
@@ -116,6 +123,12 @@
   --chat-bubble-bg: #ffffff;
   --chat-bubble-fg: #181628;
   --chat-bubble-border: #4a4a6a;
+  --transcript-user-bg: rgba(96, 48, 255, 0.09);
+  --transcript-user-border: #6030ff;
+  --transcript-code-bg: #f2f3f7;
+  --transcript-chip-bg: #e3e5ed;
+  --transcript-chip-fg: #181628;
+  --transcript-error-border: #b8323a;
 }
 
 @theme inline {
