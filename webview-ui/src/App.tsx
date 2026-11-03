@@ -605,6 +605,7 @@ function App() {
           zoom={editor.zoom}
           panRef={editor.panRef}
           tagsHidden={tagsHidden && scene?.tags !== true}
+          personal={personal}
         />
 
         <ChatLayer

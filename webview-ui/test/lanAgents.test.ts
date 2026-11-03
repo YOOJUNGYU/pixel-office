@@ -327,6 +327,10 @@ test('name tags: one line — MAIN / SUB / SHELL badge, #n, nickname (else accou
   assert.equal(tagText(sub, parent), '#3 kim');
   assert.equal(tagText(shell, parent), '#3 kim');
   assert.equal(tagText(sub), 'kim', 'parent not in view: no number');
+  // personal mode: number only, no name
+  assert.equal(tagText(parent, undefined, false), '#3');
+  assert.equal(tagText(sub, parent, false), '#3');
+  assert.equal(tagText(sub, undefined, false), '');
   assert.equal(tagBadge(sub), 'SUB');
   assert.equal(tagBadge(shell), 'SHELL');
   assert.equal(tagBadge(parent), 'MAIN');

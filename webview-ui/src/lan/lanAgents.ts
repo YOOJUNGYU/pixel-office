@@ -48,12 +48,15 @@ export const providerName = (a: OfficeAgent): string =>
 /**
  * An agent's one-line name tag after its MAIN/SUB/SHELL badge (drawn separately): `#n` and the
  * nickname (else the account). A subagent or shell shows its parent's number (`parent` = the
- * parent's agent; without it, no number).
+ * parent's agent; without it, no number). `withName` false (personal mode: every agent is
+ * mine, my name is on my avatar) = the number alone.
  */
-export function tagText(a: OfficeAgent, parent?: OfficeAgent): string {
+export function tagText(a: OfficeAgent, parent?: OfficeAgent, withName = true): string {
   const main = a.kind === 'main' ? a : parent;
+  const num = main ? `#${main.num}` : '';
+  if (!withName) return num;
   const name = avatarLabel((main ?? a).peer);
-  return main ? `#${main.num} ${name}` : name;
+  return main ? `${num} ${name}` : name;
 }
 
 /**

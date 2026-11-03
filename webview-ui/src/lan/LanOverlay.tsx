@@ -89,6 +89,8 @@ interface LanOverlayProps {
   panRef: MutableRefObject<{ x: number; y: number }>;
   /** Agents' name tags hidden (except the hovered/selected character's); avatar tags always show. */
   tagsHidden: boolean;
+  /** Personal mode: agents' tags show MAIN/SUB/SHELL + #n only (my name is on my avatar). */
+  personal: boolean;
 }
 
 /**
@@ -104,6 +106,7 @@ export function LanOverlay({
   zoom,
   panRef,
   tagsHidden,
+  personal,
 }: LanOverlayProps) {
   // Re-render after every canvas frame (the on-demand schedule), never when idle.
   const [, setTick] = useState(0);
@@ -136,7 +139,11 @@ export function LanOverlay({
     const id = lan.idFor(a.key);
     const ch = id !== undefined ? officeState.characters.get(id) : undefined;
     if (!ch) continue;
-    const text = tagText(a, a.parentKey !== undefined ? byKey.get(a.parentKey) : undefined);
+    const text = tagText(
+      a,
+      a.parentKey !== undefined ? byKey.get(a.parentKey) : undefined,
+      !personal,
+    );
     const typing = ch.state === CharacterState.TYPE;
     tags.push({
       a,
