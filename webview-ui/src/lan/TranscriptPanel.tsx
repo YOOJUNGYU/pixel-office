@@ -24,7 +24,7 @@ import { t, useLang } from '../i18n.js';
 import { badgeColors } from './badgeColors.js';
 import type { Family } from './highlight.js';
 import { highlight, languageOf } from './highlight.js';
-import type { TranscriptState } from './transcript.js';
+import type { TranscriptState, TranscriptStatus } from './transcript.js';
 import { clampPanelWidth, clampZoom, foldText, isAtBottom } from './transcript.js';
 import {
   headingText,
@@ -51,10 +51,15 @@ const CODE_STYLE = { background: 'var(--transcript-code-bg)' };
  */
 export const TranscriptPanel = memo(function TranscriptPanel({
   state,
+  status,
+  activity,
   onClose,
   onLoadEarlier,
 }: {
   state: TranscriptState;
+  /** What the agent is doing now, and (working) its activity line. */
+  status: TranscriptStatus;
+  activity: string;
   onClose(): void;
   onLoadEarlier(): void;
 }) {
@@ -176,6 +181,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({
           ×
         </button>
       </div>
+      <StatusBar status={status} activity={activity} />
       <div className="relative flex-1 min-h-0">
         <div
           ref={scroller}
@@ -281,6 +287,39 @@ function readZoom(): number {
   } catch {
     return TRANSCRIPT_ZOOM_DEFAULT;
   }
+}
+
+const STATUS_COLOR: Record<TranscriptStatus, string> = {
+  thinking: 'var(--transcript-status-thinking)',
+  working: 'var(--transcript-status-working)',
+  waiting: 'var(--transcript-status-waiting)',
+  idle: 'var(--color-text-muted)',
+  ended: 'var(--color-text-muted)',
+};
+
+/** The agent's live state under the header: a (pulsing while busy) dot and a label. */
+function StatusBar({ status, activity }: { status: TranscriptStatus; activity: string }) {
+  const busy = status === 'thinking' || status === 'working' || status === 'waiting';
+  return (
+    <div
+      role="status"
+      data-transcript-status={status}
+      className="flex items-center gap-6 px-8 py-2 border-b-2 border-border text-xs min-w-0"
+    >
+      <span
+        className={`shrink-0 w-[8px] h-[8px] ${busy ? 'pixel-pulse' : ''}`}
+        style={{ background: STATUS_COLOR[status] }}
+      />
+      <span className="shrink-0 font-bold" style={{ color: STATUS_COLOR[status] }}>
+        {t(`transcript.status.${status}`)}
+      </span>
+      {status === 'working' && activity && (
+        <span className="truncate text-text-muted" title={activity}>
+          {activity}
+        </span>
+      )}
+    </div>
+  );
 }
 
 /** Content zoom: a slider and its percentage; click the number to type an exact one. */

@@ -79,6 +79,10 @@
   --transcript-inline-code-fg: #f5a3c7;
   --transcript-old-border: #d14249;
   --transcript-new-border: #3fb36b;
+  /* Transcript status bar: thinking / working / waiting for me. */
+  --transcript-status-thinking: #b39dff;
+  --transcript-status-working: #3fd07a;
+  --transcript-status-waiting: #ffb547;
   /* Syntax colours in transcript code blocks (lan/highlight.ts token kinds). */
   --syntax-kw: #c792ea;
   --syntax-str: #a5d68a;
@@ -149,6 +153,9 @@
   --transcript-inline-code-fg: #a3265b;
   --transcript-old-border: #b8323a;
   --transcript-new-border: #1f8a4c;
+  --transcript-status-thinking: #6a3fd6;
+  --transcript-status-working: #1f8a4c;
+  --transcript-status-waiting: #b86e00;
   --syntax-kw: #7c3aad;
   --syntax-str: #2f7d32;
   --syntax-num: #b3541e;

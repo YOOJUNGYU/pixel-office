@@ -502,6 +502,8 @@ export const TRANSCRIPT_PANEL_EDGE_PX = 16;
 export const TRANSCRIPT_RESIZE_STEP_PX = 32;
 /** The splitter's grab area (straddles the panel's right border), CSS px. */
 export const TRANSCRIPT_RESIZE_HANDLE_PX = 8;
+/** A pointer moved further than this between press and click = a drag, not an outside click. */
+export const TRANSCRIPT_OUTSIDE_DRAG_PX = 5;
 /** Transcript content zoom (%), separate from the office zoom: slider range, step, default. */
 export const TRANSCRIPT_ZOOM_MIN = 50;
 export const TRANSCRIPT_ZOOM_MAX = 200;

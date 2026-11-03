@@ -26,6 +26,7 @@ import {
   TOP_RIGHT_Z_INDEX,
   TOUR_AUTOSTART_DELAY_MS,
   TOUR_FIT_FILL,
+  TRANSCRIPT_OUTSIDE_DRAG_PX,
   ZOOM_MAX,
   ZOOM_MIN,
 } from './constants.js';
@@ -39,6 +40,7 @@ import { useAvatarKeys } from './lan/avatarKeys.js';
 import { ChatLayer } from './lan/ChatLayer.js';
 import { areaSections } from './lan/directoryModel.js';
 import { InstallPrompt } from './lan/InstallPrompt.js';
+import { activityText } from './lan/lanAgents.js';
 import { LanOverlay } from './lan/LanOverlay.js';
 import { NicknameNotice } from './lan/NicknameNotice.js';
 import { isPersonal } from './lan/offices.js';
@@ -49,6 +51,7 @@ import { ProfileModal } from './lan/ProfileModal.js';
 import { RoomPlates } from './lan/RoomPlates.js';
 import { TagToggle } from './lan/TagToggle.js';
 import { readTagsHidden, saveTagsHidden } from './lan/tagVisibility.js';
+import { transcriptStatus } from './lan/transcript.js';
 import { TranscriptPanel } from './lan/TranscriptPanel.js';
 import { UpdateBanner } from './lan/UpdateBanner.js';
 import { useTranscript } from './lan/useTranscript.js';
@@ -361,9 +364,40 @@ function App() {
   const tr = useTranscript();
   const { close: closeTranscript } = tr;
   const transcriptOpen = tr.state !== null;
+  // A click outside the panel closes it, unless that click itself opened / toggled a
+  // transcript (my agent on the canvas, the avatar list) or ended a drag (map pan).
+  const keepTranscriptRef = useRef(false);
+  useEffect(() => {
+    if (!transcriptOpen) return;
+    let down: { x: number; y: number } | null = null;
+    const onDown = (e: PointerEvent) => {
+      down = { x: e.clientX, y: e.clientY };
+      keepTranscriptRef.current = false;
+    };
+    const onClick = (e: MouseEvent) => {
+      const keep = keepTranscriptRef.current;
+      keepTranscriptRef.current = false;
+      if (keep) return;
+      if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > TRANSCRIPT_OUTSIDE_DRAG_PX)
+        return;
+      const inside =
+        e.target instanceof Element &&
+        e.target.closest('[data-transcript-panel], [data-avatar-agent-list]');
+      if (!inside) closeTranscript();
+    };
+    window.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('click', onClick); // bubble: after React's onClick handlers
+    return () => {
+      window.removeEventListener('pointerdown', onDown, true);
+      window.removeEventListener('click', onClick);
+    };
+  }, [transcriptOpen, closeTranscript]);
+
   // My characters: only the one whose transcript is open is outlined (never all of mine).
   const selfPeer = people.find((p) => p.self)?.peerId ?? null;
   const transcriptId = tr.state?.id;
+  const trAgent =
+    transcriptId === undefined ? undefined : lan.all().find((x) => x.id === transcriptId);
   useEffect(() => {
     officeState.ownPeer = selfPeer;
     const a = transcriptId === undefined ? undefined : lan.all().find((x) => x.id === transcriptId);
@@ -579,6 +613,7 @@ function App() {
             // Only this PC's agents (never a peer's or a tour demo): the server checks again.
             const a = lan.agentFor(id);
             if (!a || !lan.isMine(a)) return;
+            keepTranscriptRef.current = true;
             if (tr.state?.id === a.id) tr.close();
             else tr.open(a.id);
           }}
@@ -597,6 +632,7 @@ function App() {
             zoom={editor.zoom}
             panRef={editor.panRef}
             onPick={(id) => {
+              keepTranscriptRef.current = true;
               setListPeer(null);
               tr.open(id);
             }}
@@ -652,6 +688,8 @@ function App() {
           <TranscriptPanel
             key={tr.state.id}
             state={tr.state}
+            status={transcriptStatus(trAgent)}
+            activity={trAgent ? activityText(trAgent) : ''}
             onClose={tr.close}
             onLoadEarlier={tr.loadEarlier}
           />

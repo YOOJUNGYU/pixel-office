@@ -10,6 +10,7 @@ import {
   listSide,
   openState,
   reduceTranscript,
+  transcriptStatus,
 } from '../src/lan/transcript.js';
 
 const e = (text: string) => ({ kind: 'user' as const, text });
@@ -112,4 +113,13 @@ test('clampZoom keeps a whole percentage within 50–200', () => {
   assert.equal(clampZoom(10), 50);
   assert.equal(clampZoom(900), 200);
   assert.equal(clampZoom(NaN), 100);
+});
+
+test('transcriptStatus: ended, waiting, idle, thinking, working', () => {
+  assert.equal(transcriptStatus(undefined), 'ended');
+  assert.equal(transcriptStatus({ act: 'edit', target: 'a.ts', permission: true }), 'waiting');
+  assert.equal(transcriptStatus({ act: 'idle', target: '', permission: false }), 'idle');
+  assert.equal(transcriptStatus({ act: 'tool', target: '', permission: false }), 'thinking');
+  assert.equal(transcriptStatus({ act: 'tool', target: 'mcp__x', permission: false }), 'working');
+  assert.equal(transcriptStatus({ act: 'run', target: 'npm test', permission: false }), 'working');
 });

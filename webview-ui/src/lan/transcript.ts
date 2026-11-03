@@ -1,3 +1,4 @@
+import type { OfficeAgent } from '../../../core/src/lan.js';
 import type { TranscriptEntry, TranscriptInfo } from '../../../core/src/messages.js';
 import {
   TRANSCRIPT_FOLLOW_SLACK_PX,
@@ -88,4 +89,16 @@ export function clampPanelWidth(width: number, viewport: number): number {
 export function clampZoom(zoom: number): number {
   if (!Number.isFinite(zoom)) return TRANSCRIPT_ZOOM_DEFAULT;
   return Math.round(Math.min(TRANSCRIPT_ZOOM_MAX, Math.max(TRANSCRIPT_ZOOM_MIN, zoom)));
+}
+
+/** What the agent behind an open transcript is doing now (no agent = it ended). */
+export type TranscriptStatus = 'waiting' | 'thinking' | 'working' | 'idle' | 'ended';
+export function transcriptStatus(
+  a: Pick<OfficeAgent, 'act' | 'target' | 'permission'> | undefined,
+): TranscriptStatus {
+  if (!a) return 'ended';
+  if (a.permission) return 'waiting';
+  if (a.act === 'idle') return 'idle';
+  // A turn with no tool running yet (setThinking: act 'tool', no target) = thinking.
+  return a.act === 'tool' && !a.target ? 'thinking' : 'working';
 }
