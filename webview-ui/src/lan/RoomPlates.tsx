@@ -221,7 +221,7 @@ function RoomTip({ room, lan, plate }: { room: Room; lan: LanAgents; plate: Plat
   );
 }
 
-function AgentCard({ a, parent }: { a: OfficeAgent; parent?: OfficeAgent }) {
+export function AgentCard({ a, parent }: { a: OfficeAgent; parent?: OfficeAgent }) {
   return (
     <div data-agent-card={a.key} className="flex items-center gap-8 min-w-0">
       <span className="shrink-0 flex bg-bg-dark border-2 border-border">

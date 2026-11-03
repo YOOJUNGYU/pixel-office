@@ -501,3 +501,11 @@ export const TRANSCRIPT_PANEL_TOP_PX =
 export const TRANSCRIPT_PANEL_BOTTOM_PX = BOTTOM_TOOLBAR_RESERVE_PX + TRANSCRIPT_PANEL_GAP_PX;
 /** Above name tags, bubbles and room plates (≤ 43) and the chat bar; below plate popups (46) and modals. */
 export const TRANSCRIPT_PANEL_Z_INDEX = 45;
+
+// ── My avatar's lounge-agent list ─────────────────────────────
+/** The list beside my avatar (my agents folded into it, click one = its transcript), CSS px. */
+export const AVATAR_LIST_WIDTH_PX = 260;
+/** Gap between the avatar's side and the list, and the list's margin inside the office view. */
+export const AVATAR_LIST_GAP_PX = 12;
+/** Like a plate popup: above tags, bubbles, plates and the transcript panel (45). */
+export const AVATAR_LIST_Z_INDEX = 46;

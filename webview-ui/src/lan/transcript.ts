@@ -58,3 +58,13 @@ export function foldText(text: string, lines: number): { shown: string; hidden: 
   const all = text.split('\n');
   return { shown: all.slice(0, lines).join('\n'), hidden: Math.max(0, all.length - lines) };
 }
+
+/** Which side of my avatar the lounge-agent list goes: right when it fits in the viewport. */
+export function listSide(
+  avatarScreenX: number,
+  listWidth: number,
+  viewportWidth: number,
+  gap: number,
+): 'right' | 'left' {
+  return avatarScreenX + gap + listWidth <= viewportWidth ? 'right' : 'left';
+}

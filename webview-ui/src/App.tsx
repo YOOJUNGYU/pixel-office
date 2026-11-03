@@ -28,6 +28,7 @@ import { useEditorKeyboard } from './hooks/useEditorKeyboard.js';
 import { useExtensionMessages } from './hooks/useExtensionMessages.js';
 import { useIsMobile } from './hooks/useIsMobile.js';
 import { t, useLang } from './i18n.js';
+import { AvatarAgentList } from './lan/AvatarAgentList.js';
 import { useAvatarKeys } from './lan/avatarKeys.js';
 import { ChatLayer } from './lan/ChatLayer.js';
 import { InstallPrompt } from './lan/InstallPrompt.js';
@@ -353,20 +354,29 @@ function App() {
   const tr = useTranscript();
   const { close: closeTranscript } = tr;
   const transcriptOpen = tr.state !== null;
+  // The list of my lounge agents beside my avatar (click my avatar): closed like
+  // the panel, by a click elsewhere (AvatarAgentList) and when a card opens one.
+  const [listPeer, setListPeer] = useState<string | null>(null);
+  const closeList = useCallback(() => setListPeer(null), []);
   useEffect(() => {
-    if (transcriptOpen && (editor.isEditMode || touring)) closeTranscript();
+    if (editor.isEditMode || touring) {
+      if (transcriptOpen) closeTranscript();
+      setListPeer(null);
+    }
   }, [transcriptOpen, editor.isEditMode, touring, closeTranscript]);
   useEffect(() => {
-    if (!transcriptOpen) return;
+    if (!transcriptOpen && listPeer === null) return;
     const onKey = (e: KeyboardEvent) => {
       const el = document.activeElement;
       if (e.key !== 'Escape' || el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)
         return;
-      closeTranscript();
+      // The list first when both are open.
+      if (listPeer !== null) setListPeer(null);
+      else closeTranscript();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [transcriptOpen, closeTranscript]);
+  }, [transcriptOpen, listPeer, closeTranscript]);
 
   // My avatar and the chat bar: only in an office this PC is live in (I am in its
   // snapshot), never while editing, touring or read-only.
@@ -554,7 +564,27 @@ function App() {
             if (tr.state?.id === a.id) tr.close();
             else tr.open(a.id);
           }}
+          onAvatarClick={(peerId, selected) => {
+            const mine = peerId === lan.selfPeerId();
+            setListPeer(mine && selected && lan.loungeAgentsOf(peerId).length > 0 ? peerId : null);
+          }}
         />
+
+        {listPeer !== null && !editor.isEditMode && !touring && (
+          <AvatarAgentList
+            officeState={officeState}
+            lan={lan}
+            peerId={listPeer}
+            containerRef={containerRef}
+            zoom={editor.zoom}
+            panRef={editor.panRef}
+            onPick={(id) => {
+              setListPeer(null);
+              tr.open(id);
+            }}
+            onClose={closeList}
+          />
+        )}
 
         <RoomPlates
           officeState={officeState}

@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 
 import { test } from 'vitest';
 
-import { foldText, isAtBottom, openState, reduceTranscript } from '../src/lan/transcript.js';
+import {
+  foldText,
+  isAtBottom,
+  listSide,
+  openState,
+  reduceTranscript,
+} from '../src/lan/transcript.js';
 
 const e = (text: string) => ({ kind: 'user' as const, text });
 const info = { kind: 'main', provider: 'claude', num: 1, title: 't', folder: 'f' };
@@ -79,4 +85,11 @@ test('foldText keeps the first N lines and counts the rest', () => {
   assert.deepEqual(foldText('a\nb\nc', 2), { shown: 'a\nb', hidden: 1 });
   assert.deepEqual(foldText('a\nb', 2), { shown: 'a\nb', hidden: 0 });
   assert.deepEqual(foldText('', 2), { shown: '', hidden: 0 });
+});
+
+test('listSide: right when it fits, else left', () => {
+  assert.equal(listSide(100, 260, 1000, 12), 'right');
+  assert.equal(listSide(900, 260, 1000, 12), 'left');
+  assert.equal(listSide(728, 260, 1000, 12), 'right');
+  assert.equal(listSide(729, 260, 1000, 12), 'left');
 });

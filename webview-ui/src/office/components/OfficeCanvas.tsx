@@ -56,6 +56,8 @@ interface OfficeCanvasProps {
    *  character fires onClick. Desktop keeps single-click
    *  focus with tap-again-to-deselect. */
   tapSelectsFirst?: boolean;
+  /** An avatar was clicked: `selected` = its PC is now the selection (false = clicked again, off). */
+  onAvatarClick?: (peerId: string, selected: boolean) => void;
 }
 
 export function OfficeCanvas({
@@ -73,6 +75,7 @@ export function OfficeCanvas({
   onZoomChange,
   panRef,
   tapSelectsFirst = false,
+  onAvatarClick,
 }: OfficeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -659,6 +662,7 @@ export function OfficeCanvas({
           officeState.selectedAgentId = null;
           officeState.cameraFollowId = null;
           officeState.selectedPeer = again ? null : peer;
+          onAvatarClick?.(peer, !again);
           return;
         }
       }
@@ -723,7 +727,7 @@ export function OfficeCanvas({
       }
       officeState.selectedPeer = null;
     },
-    [officeState, onClick, screenToWorld, screenToTile, tapSelectsFirst],
+    [officeState, onClick, onAvatarClick, screenToWorld, screenToTile, tapSelectsFirst],
   );
 
   const handleClick = useCallback(
