@@ -360,3 +360,17 @@ describe('context use (local only)', () => {
     expect(s.local.context).toEqual({ used: 175_556, window: 258_400 });
   });
 });
+
+describe('changed lines', () => {
+  it('apply_patch (custom exec, escaped) counts its +/- lines', () => {
+    const s = mk();
+    applyCodexLine(
+      s,
+      exec(
+        'const p = "*** Begin Patch\\n*** Update File: /x/a.ts\\n@@\\n-a\\n+b\\n+c\\n*** End Patch";\ntext(await tools.apply_patch(p));',
+      ),
+      0,
+    );
+    expect(toViews(s)[0].diff).toEqual({ add: 2, del: 1 });
+  });
+});

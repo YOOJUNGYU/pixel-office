@@ -162,7 +162,14 @@ export interface AgentView {
   todo?: AgentTodo;
   /** A tool result just failed; the sender sets it for FAIL_SHOW_MS only. */
   fail?: true;
+  /** Lines added / removed by this session's edits so far (counts only). */
+  diff?: AgentDiff;
 }
+export interface AgentDiff {
+  add: number;
+  del: number;
+}
+export const DIFF_MAX = 10_000_000;
 export interface AgentTodo {
   done: number;
   total: number;
@@ -425,6 +432,11 @@ function parseView(raw: unknown): AgentView | null {
     if (done !== null && total !== null && done <= total) view.todo = { done, total };
   }
   if (raw.fail === true) view.fail = true;
+  if (isObj(raw.diff)) {
+    const add = int(raw.diff.add, 0, DIFF_MAX);
+    const del = int(raw.diff.del, 0, DIFF_MAX);
+    if (add !== null && del !== null && add + del > 0) view.diff = { add, del };
+  }
   if (raw.parentId !== undefined) {
     const parentId = str(raw.parentId, MAX_ID);
     if (parentId === null) return null;

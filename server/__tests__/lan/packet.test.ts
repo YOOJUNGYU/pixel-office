@@ -33,7 +33,10 @@ const parse = (p: unknown) => parsePeerPacket(JSON.stringify(p));
 describe('parsePeerPacket', () => {
   it('status signals: valid ones kept, a bad one dropped alone', () => {
     const one = (over: object) => parse(packet({ views: [{ ...view(), ...over }] }))?.views[0];
-    expect(one({ ageSec: 60, todo: { done: 2, total: 5 }, fail: true })).toMatchObject({
+    expect(
+      one({ ageSec: 60, todo: { done: 2, total: 5 }, fail: true, diff: { add: 4, del: 2 } }),
+    ).toMatchObject({
+      diff: { add: 4, del: 2 },
       ageSec: 60,
       todo: { done: 2, total: 5 },
       fail: true,
@@ -47,12 +50,15 @@ describe('parsePeerPacket', () => {
       { todo: { done: 1, total: TODO_MAX + 1 } },
       { todo: [1, 2] },
       { fail: 1 },
+      { diff: { add: -1, del: 0 } },
+      { diff: { add: 0, del: 0 } },
     ]) {
       const got = one(bad);
       expect(got).toBeDefined();
       expect(got).not.toHaveProperty('ageSec');
       expect(got).not.toHaveProperty('todo');
       expect(got).not.toHaveProperty('fail');
+      expect(got).not.toHaveProperty('diff');
     }
     // an older view without them is unchanged
     expect(one({})).toEqual(view());

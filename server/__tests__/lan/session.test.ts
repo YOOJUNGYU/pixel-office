@@ -109,3 +109,17 @@ describe('session state', () => {
     });
   });
 });
+
+describe('changed lines', () => {
+  it('lineDiff counts lines as multisets; patchDiff skips headers', async () => {
+    const { lineDiff, patchDiff } = await import('../../src/lan/session.js');
+    expect(lineDiff('a\nb\nc', 'a\nB\nc\nd')).toEqual({ add: 2, del: 1 });
+    expect(lineDiff('', 'x\ny\n')).toEqual({ add: 2, del: 0 });
+    expect(lineDiff('same', 'same')).toEqual({ add: 0, del: 0 });
+    expect(
+      patchDiff(
+        '*** Begin Patch\n*** Update File: a.ts\n@@\n-old\n+new\n+more\n--- a\n+++ b\n*** End Patch',
+      ),
+    ).toEqual({ add: 2, del: 1 });
+  });
+});

@@ -2,8 +2,10 @@ import type { Act, Room } from '../../../core/src/lan.js';
 import { FAIL_SHOW_MS } from '../constants.js';
 import type { SessionState } from './session.js';
 import {
+  addDiff,
   lineTime,
   notePrompt,
+  patchDiff,
   programName,
   setActivity,
   setIdle,
@@ -106,6 +108,8 @@ function onItem(s: SessionState, p: Obj, now: number): void {
       const d = describe(fn, input);
       const stdinId = fn === 'write_stdin' ? STDIN_SID_RE.exec(input)?.[1] : undefined;
       if (fn === 'update_plan') s.todo = todoOf(planStatuses(input));
+      // ponytail: counted at the call, a rejected patch still counts
+      if (fn === 'apply_patch') addDiff(s, patchDiff(unescape(input)));
       return onToolCall(s, fn || str(p.name), callId, d, now, stdinId);
     }
     case 'function_call':
@@ -121,6 +125,7 @@ function onItem(s: SessionState, p: Obj, now: number): void {
         ? shellActivity(legacyShell(args))
         : describe(name, '');
       if (name === 'update_plan') s.todo = todoOf(planStatuses(str(p.arguments)));
+      if (name === 'apply_patch') addDiff(s, patchDiff(str(args.input ?? args.patch)));
       return onToolCall(s, name, callId, d, now);
     }
     case 'web_search_call':

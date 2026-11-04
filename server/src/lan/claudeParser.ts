@@ -4,7 +4,9 @@ import type { Act, Room } from '../../../core/src/lan.js';
 import { CLAUDE_CONTEXT_WINDOW, CLAUDE_CONTEXT_WINDOW_LARGE, FAIL_SHOW_MS } from '../constants.js';
 import type { SessionState } from './session.js';
 import {
+  addDiff,
   isPrompt,
+  lineDiff,
   lineTime,
   notePrompt,
   programName,
@@ -141,6 +143,7 @@ function onUser(s: SessionState, content: unknown, now: number, meta: boolean): 
       if (r.is_error === true && !NOT_A_FAILURE.test(text)) s.failUntil = now + FAIL_SHOW_MS;
       const id = BG_RE.exec(text)?.[1];
       const call = turnOf(s).tools.get(str(r.tool_use_id));
+      if (call && r.is_error !== true) addDiff(s, editDiff(call.name, call.input));
       if (id && call?.input.run_in_background === true) {
         s.shells.set(id, {
           target: call.target,
@@ -183,6 +186,22 @@ function noteUsage(s: SessionState, u: Record<string, unknown> | undefined): voi
   const big =
     used > CLAUDE_CONTEXT_WINDOW || s.local.context?.window === CLAUDE_CONTEXT_WINDOW_LARGE;
   s.local.context = { used, window: big ? CLAUDE_CONTEXT_WINDOW_LARGE : CLAUDE_CONTEXT_WINDOW };
+}
+
+/** Lines an edit tool changed (counted once its result came back without an error). */
+function editDiff(name: string, input: Input): { add: number; del: number } {
+  if (name === 'Edit') return lineDiff(str(input.old_string), str(input.new_string));
+  if (name === 'Write') return lineDiff('', str(input.content)); // ponytail: an overwrite's old lines are unknown
+  if (name === 'MultiEdit' && Array.isArray(input.edits)) {
+    const d = { add: 0, del: 0 };
+    for (const e of input.edits as Input[]) {
+      const one = lineDiff(str(e?.old_string), str(e?.new_string));
+      d.add += one.add;
+      d.del += one.del;
+    }
+    return d;
+  }
+  return { add: 0, del: 0 };
 }
 
 /** Apply one line of a Claude Code session JSONL to the session state. */

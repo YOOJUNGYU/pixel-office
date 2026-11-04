@@ -87,12 +87,14 @@ describe('status signals and hiding', () => {
     ageSec: 90,
     todo: { done: 1, total: 3 },
     fail: true,
+    diff: { add: 3, del: 1 },
   } as unknown as AgentView;
   it('hideView drops ageSec, todo and fail', () => {
     const h = hideView(v);
     expect(h).not.toHaveProperty('ageSec');
     expect(h).not.toHaveProperty('todo');
     expect(h).not.toHaveProperty('fail');
+    expect(h).not.toHaveProperty('diff');
     expect(h).toMatchObject({ act: 'idle', hidden: true, target: '' });
   });
   it('redactView keeps them (counts and a flag only)', () => {

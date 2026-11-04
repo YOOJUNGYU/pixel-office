@@ -1,5 +1,12 @@
-import type { Act, AgentTodo, AgentView, Provider, Room } from '../../../core/src/lan.js';
-import { AGE_MAX_SEC, TODO_MAX } from '../../../core/src/lan.js';
+import type {
+  Act,
+  AgentDiff,
+  AgentTodo,
+  AgentView,
+  Provider,
+  Room,
+} from '../../../core/src/lan.js';
+import { AGE_MAX_SEC, DIFF_MAX, TODO_MAX } from '../../../core/src/lan.js';
 import {
   LINE_CLOCK_SLACK_MS,
   PERMISSION_DELAY_MS,
@@ -38,6 +45,8 @@ export interface SessionState {
   failUntil: number;
   /** Task list progress (counts only, never the items); null = no list. */
   todo: AgentTodo | null;
+  /** Lines added / removed by this session's edits (from what was read of the transcript). */
+  diff: AgentDiff;
   pendingTool: { name: string; since: number; exempt: boolean } | null;
   textOnlyAt: number | null;
   turnEnded: boolean;
@@ -97,6 +106,7 @@ export function newSession(
     actSig: 'idle',
     failUntil: 0,
     todo: null,
+    diff: { add: 0, del: 0 },
     pendingTool: null,
     textOnlyAt: null,
     turnEnded: false,
@@ -194,6 +204,41 @@ export function todoOf(statuses: string[]): AgentTodo | null {
   return { done: Math.min(statuses.filter((x) => x === 'completed').length, total), total };
 }
 
+const linesOf = (t: string): string[] => (t ? t.replace(/\n$/, '').split('\n') : []);
+
+/** Lines removed / added going from `before` to `after`, as multisets (moved lines are free). */
+export function lineDiff(before: string, after: string): AgentDiff {
+  const left = new Map<string, number>();
+  for (const l of linesOf(before)) left.set(l, (left.get(l) ?? 0) + 1);
+  let add = 0;
+  for (const l of linesOf(after)) {
+    const n = left.get(l) ?? 0;
+    if (n > 0) left.set(l, n - 1);
+    else add++;
+  }
+  let del = 0;
+  for (const n of left.values()) del += n;
+  return { add, del };
+}
+
+/** `+` / `-` body lines of an apply_patch text (headers `***`, `+++`, `---` not counted). */
+export function patchDiff(patch: string): AgentDiff {
+  let add = 0;
+  let del = 0;
+  for (const l of patch.split('\n')) {
+    if (l.startsWith('+') && !l.startsWith('+++')) add++;
+    else if (l.startsWith('-') && !l.startsWith('---')) del++;
+  }
+  return { add, del };
+}
+
+export function addDiff(s: SessionState, d: AgentDiff): void {
+  s.diff = {
+    add: Math.min(DIFF_MAX, s.diff.add + d.add),
+    del: Math.min(DIFF_MAX, s.diff.del + d.del),
+  };
+}
+
 const ageOf = (since: number, now: number): number =>
   Math.min(AGE_MAX_SEC, Math.max(0, Math.floor((now - since) / 1000)));
 
@@ -238,6 +283,7 @@ export function toViews(s: SessionState, brief = false, now = 0): AgentView[] {
   if (s.act !== 'idle') self.ageSec = ageOf(s.actSince, now);
   if (s.todo) self.todo = { ...s.todo };
   if (now < s.failUntil) self.fail = true;
+  if (s.diff.add || s.diff.del) self.diff = { ...s.diff };
   const shells = [...s.shells].map(([shellId, sh]): AgentView => ({
     id: `${s.id}/sh/${shellId}`,
     provider: s.provider,

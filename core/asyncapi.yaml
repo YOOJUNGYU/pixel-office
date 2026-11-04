@@ -969,8 +969,23 @@ components:
         fail:
           type: boolean
           description: A tool result just failed (sent for a few seconds only).
+        diff:
+          $ref: '#/components/schemas/AgentDiff'
         peer:
           $ref: '#/components/schemas/PeerInfoMessage'
+
+    AgentDiff:
+      description: Lines added / removed by the session's edits so far (counts only, from what was read of its transcript).
+      type: object
+      additionalProperties: false
+      required: [add, del]
+      properties:
+        add:
+          type: integer
+          minimum: 0
+        del:
+          type: integer
+          minimum: 0
 
     AgentTodo:
       description: Task list progress, counts only (never the items).

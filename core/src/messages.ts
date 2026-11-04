@@ -190,6 +190,7 @@ export interface OfficeAgentMessage {
   ageSec?: number;
   todo?: AgentTodo;
   fail?: boolean;
+  diff?: AgentDiff;
   peer: PeerInfoMessage;
 }
 
@@ -217,6 +218,11 @@ export type AgentAct =
 export interface AgentTodo {
   done: number;
   total: number;
+}
+
+export interface AgentDiff {
+  add: number;
+  del: number;
 }
 
 export interface PeerInfoMessage {

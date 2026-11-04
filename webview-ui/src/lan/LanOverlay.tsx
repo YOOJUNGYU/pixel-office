@@ -58,6 +58,7 @@ import {
   tagBadge,
   tagText,
 } from './lanAgents.js';
+import { SignalText } from './SignalText.js';
 import { elapsedText, elapsedWarn, iconOnly, todoPercent, todoText } from './statusSignals.js';
 import { stackTags, type TagBox } from './tagStack.js';
 import { tagVisible } from './tagVisibility.js';
@@ -551,6 +552,7 @@ export function LanOverlay({
           {t(`room.${hovered.room}`)}
         </span>
         <span>{activityText(hovered)}</span>
+        <SignalText a={hovered} />
         {hovered.reason && <span className="text-text-muted">“{hovered.reason}”</span>}
       </div>,
     );

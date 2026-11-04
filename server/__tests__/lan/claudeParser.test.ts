@@ -392,3 +392,52 @@ describe('context use (local only)', () => {
     expect(JSON.stringify(toViews(s, true))).not.toMatch(/20001|1000000/);
   });
 });
+
+describe('changed lines', () => {
+  const user = (content: unknown) => JSON.stringify({ type: 'user', message: { content } });
+  const ok = (id: string, is_error = false) => ({
+    type: 'tool_result',
+    tool_use_id: id,
+    content: 'ok',
+    is_error,
+  });
+  it('counts Edit / MultiEdit / Write once their result is fine; an errored one is not', () => {
+    const s = mk();
+    applyClaudeLine(
+      s,
+      assistant(
+        toolUse('Edit', { file_path: '/a', old_string: 'a\nb', new_string: 'a\nB\nC' }, 't1'),
+      ),
+      0,
+    );
+    expect(toViews(s)[0].diff).toBeUndefined(); // not before the result
+    applyClaudeLine(s, user([ok('t1')]), 0);
+    expect(toViews(s)[0].diff).toEqual({ add: 2, del: 1 });
+    applyClaudeLine(
+      s,
+      assistant(toolUse('Write', { file_path: '/b', content: '1\n2\n3' }, 't2')),
+      0,
+    );
+    applyClaudeLine(s, user([ok('t2', true)]), 0);
+    expect(s.diff).toEqual({ add: 2, del: 1 });
+    applyClaudeLine(
+      s,
+      assistant(
+        toolUse(
+          'MultiEdit',
+          {
+            file_path: '/c',
+            edits: [
+              { old_string: 'x', new_string: 'y' },
+              { old_string: '', new_string: 'z' },
+            ],
+          },
+          't3',
+        ),
+      ),
+      0,
+    );
+    applyClaudeLine(s, user([ok('t3')]), 0);
+    expect(s.diff).toEqual({ add: 4, del: 2 });
+  });
+});

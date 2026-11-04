@@ -3,19 +3,25 @@ import { LAN_ALERT_COLOR } from '../constants.js';
 import { t } from '../i18n.js';
 import { elapsedText, elapsedWarn, todoText } from './statusSignals.js';
 
-/** Task count, elapsed time and a fresh failure as plain text, for panels (room card, the
+/** Task count, changed lines, elapsed time and a fresh failure as plain text, for panels (room card, the
  *  session window's status line). Panel colours, not the bubble's: readable in both themes. */
 export function SignalText({
   a,
 }: {
-  a: Pick<OfficeAgent, 'ageSec' | 'permission' | 'todo' | 'fail'>;
+  a: Pick<OfficeAgent, 'ageSec' | 'permission' | 'todo' | 'fail' | 'diff'>;
 }) {
   const elapsed = elapsedText(a.ageSec);
   const todo = todoText(a);
-  if (!elapsed && !todo && !a.fail) return null;
+  if (!elapsed && !todo && !a.fail && !a.diff) return null;
   return (
     <span className="shrink-0 flex items-center gap-4 text-text-muted">
       {todo && <span data-todo={todo}>{t('signal.todo', { n: todo })}</span>}
+      {a.diff && (
+        <span data-diff className="font-mono" title={t('signal.diff')}>
+          <span style={{ color: 'var(--transcript-new-border)' }}>+{a.diff.add}</span>{' '}
+          <span style={{ color: 'var(--transcript-old-border)' }}>−{a.diff.del}</span>
+        </span>
+      )}
       {elapsed && (
         <span
           data-elapsed={elapsed}

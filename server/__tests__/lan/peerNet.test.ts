@@ -6,6 +6,7 @@ import * as zlib from 'zlib';
 import type { PeerPacket } from '../../../core/src/lan.js';
 import {
   AGE_MAX_SEC,
+  DIFF_MAX,
   MAX_PACKET_BYTES,
   parsePeerPacket,
   PUBLIC_VIEW,
@@ -266,6 +267,7 @@ describe('PeerNet public office', () => {
       ageSec: AGE_MAX_SEC,
       todo: { done: TODO_MAX, total: TODO_MAX },
       fail: true as const,
+      diff: { add: DIFF_MAX, del: DIFF_MAX },
     });
     const id = 'i'.repeat(64);
     const packet = fitPacket({
