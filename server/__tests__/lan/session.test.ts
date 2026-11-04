@@ -93,7 +93,7 @@ describe('session state', () => {
 
   it('toViews appends shell views in server room', () => {
     const s = mk();
-    s.shells.set('b1', { target: 'npm run dev', brief: 'npm' });
+    s.shells.set('b1', { target: 'npm run dev', brief: 'npm', since: 0 });
     s.target = 'ssh dev@db01';
     s.brief = 'ssh';
     expect(toViews(s, true).map((x) => x.target)).toEqual(['ssh', 'npm']);

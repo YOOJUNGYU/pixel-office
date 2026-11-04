@@ -112,7 +112,7 @@ export function fillMissingRooms<T extends RoomAreasLayout>(layout: T, fallback:
 export const PET_IDS = ['claudio', 'gitcat'] as const;
 export type PetId = (typeof PET_IDS)[number];
 export const isPetId = (x: unknown): x is PetId => (PET_IDS as readonly unknown[]).includes(x);
-const ACTS = [
+export const ACTS = [
   'idle',
   'edit',
   'read',
@@ -155,7 +155,21 @@ export interface AgentView {
   /** Children only: talking with its parent right now (handed a task, reporting back, or a
    *  SendMessage to it); viewers show the two face to face. Older peers ignore it. */
   talk?: true;
+  /** Seconds since the current act started, from the session's own line timestamps (not
+   *  when it was read). A receiver ages it by its own clock. Absent when idle/hidden. */
+  ageSec?: number;
+  /** Task list progress (TodoWrite / update_plan): counts only, never the items. */
+  todo?: AgentTodo;
+  /** A tool result just failed; the sender sets it for FAIL_SHOW_MS only. */
+  fail?: true;
 }
+export interface AgentTodo {
+  done: number;
+  total: number;
+}
+/** Bounds of the optional AgentView fields (larger values are dropped on receive). */
+export const AGE_MAX_SEC = 7 * 24 * 3600;
+export const TODO_MAX = 999;
 export interface PeerInfo {
   id: string;
   /** OS login account name: fixed, always shown. */
@@ -402,6 +416,15 @@ function parseView(raw: unknown): AgentView | null {
   };
   if (raw.hidden === true) view.hidden = true;
   if (raw.talk === true) view.talk = true;
+  // Optional fields: a bad one is dropped alone, the view stays.
+  const age = int(raw.ageSec, 0, AGE_MAX_SEC);
+  if (age !== null) view.ageSec = age;
+  if (isObj(raw.todo)) {
+    const done = int(raw.todo.done, 0, TODO_MAX);
+    const total = int(raw.todo.total, 1, TODO_MAX);
+    if (done !== null && total !== null && done <= total) view.todo = { done, total };
+  }
+  if (raw.fail === true) view.fail = true;
   if (raw.parentId !== undefined) {
     const parentId = str(raw.parentId, MAX_ID);
     if (parentId === null) return null;

@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
+import type { OfficeAgent } from '../../../core/src/lan.js';
 import type { TranscriptEntry } from '../../../core/src/messages.js';
 import {
   LAN_KIND_BADGES,
@@ -17,6 +18,7 @@ import { t, useLang } from '../i18n.js';
 import { badgeColors } from './badgeColors.js';
 import type { Family } from './highlight.js';
 import { highlight, languageOf } from './highlight.js';
+import { SignalText } from './SignalText.js';
 import type { TranscriptState, TranscriptStatus } from './transcript.js';
 import { clampZoom, foldText, isAtBottom } from './transcript.js';
 import {
@@ -39,6 +41,8 @@ export interface TranscriptPanelProps {
   /** What the agent is doing now, and (working) its activity line. */
   status: TranscriptStatus;
   activity: string;
+  /** Its live view (elapsed time, task count, failure), when it is in the office. */
+  agent?: OfficeAgent;
   onClose(): void;
   onLoadEarlier(): void;
 }
@@ -55,6 +59,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({
   state,
   status,
   activity,
+  agent,
   onClose,
   onLoadEarlier,
 }: TranscriptPanelProps) {
@@ -161,7 +166,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({
           ×
         </button>
       </div>
-      <StatusBar status={status} activity={activity} />
+      <StatusBar status={status} activity={activity} agent={agent} />
       <div className="relative flex-1 min-h-0">
         <div
           ref={scroller}
@@ -228,7 +233,15 @@ const STATUS_COLOR: Record<TranscriptStatus, string> = {
 };
 
 /** The agent's live state under the header: a (pulsing while busy) dot and a label. */
-function StatusBar({ status, activity }: { status: TranscriptStatus; activity: string }) {
+function StatusBar({
+  status,
+  activity,
+  agent,
+}: {
+  status: TranscriptStatus;
+  activity: string;
+  agent?: OfficeAgent;
+}) {
   const busy = status === 'thinking' || status === 'working' || status === 'waiting';
   return (
     <div
@@ -247,6 +260,11 @@ function StatusBar({ status, activity }: { status: TranscriptStatus; activity: s
       {status === 'working' && activity && (
         <span className="truncate text-sm text-text" title={activity}>
           {activity}
+        </span>
+      )}
+      {agent && status !== 'ended' && (
+        <span className="ml-auto text-sm">
+          <SignalText a={agent} />
         </span>
       )}
     </div>

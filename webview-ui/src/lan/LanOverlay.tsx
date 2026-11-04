@@ -2,12 +2,16 @@ import { type MutableRefObject, type RefObject, useEffect, useRef, useState } fr
 
 import type { OfficeAgent } from '../../../core/src/lan.js';
 import {
+  ACT_ICON_INLINE_PX,
+  ACT_ICON_ONLY_BELOW_SCALE,
+  ACT_ICON_SCREEN_PX,
   AVATAR_TAG_HEIGHT_PX,
   BUBBLE_SITTING_OFFSET_PX,
   BUBBLE_VERTICAL_OFFSET_PX,
   CHARACTER_SITTING_OFFSET_PX,
   CHAT_BORDER_PX,
   CHAT_TAIL_PX,
+  FAIL_DROP_OFFSET_X,
   LAN_ACTIVITY_BADGE_GAP_PX,
   LAN_ACTIVITY_LINE_PX,
   LAN_ACTIVITY_MAX_WIDTH_PX,
@@ -30,6 +34,10 @@ import {
   LAN_TAG_STACK_GAP_PX,
   LAN_TAG_Z_INDEX,
   PET_HEAD_DROP_PX,
+  STATUS_CHIP_FONT,
+  STATUS_CHIP_PAD_X_PX,
+  STATUS_PART_GAP_PX,
+  TODO_BAR_HEIGHT_PX,
 } from '../constants.js';
 import { t } from '../i18n.js';
 import { onFrame } from '../office/engine/gameLoop.js';
@@ -38,6 +46,8 @@ import { overlayProjection, renderScale } from '../office/projection.js';
 import { getCachedSprite } from '../office/sprites/spriteCache.js';
 import { BUBBLE_PERMISSION_SPRITE } from '../office/sprites/spriteData.js';
 import { type Character, CharacterState } from '../office/types.js';
+import { ActIcon } from './ActIcon.js';
+import { actIcon, type IconId } from './actIcons.js';
 import { badgeColors } from './badgeColors.js';
 import { bubbleScale, clampRows, stackBubbles, wrapLines } from './chat.js';
 import {
@@ -48,11 +58,44 @@ import {
   tagBadge,
   tagText,
 } from './lanAgents.js';
+import { elapsedText, elapsedWarn, iconOnly, todoPercent, todoText } from './statusSignals.js';
 import { stackTags, type TagBox } from './tagStack.js';
 import { tagVisible } from './tagVisibility.js';
 import { textWidth } from './textWidth.js';
 
 const measureTag = (s: string) => textWidth(s, LAN_TAG_FONT);
+/** A chip's width with its gap before it (0 when empty). */
+const chipW = (s: string) =>
+  s ? textWidth(s, STATUS_CHIP_FONT) + 2 * STATUS_CHIP_PAD_X_PX + STATUS_PART_GAP_PX : 0;
+
+/** Task count chip, filled up to its progress. */
+function TodoChip({ a }: { a: OfficeAgent }) {
+  const pct = todoPercent(a);
+  return (
+    <span
+      data-todo={todoText(a)}
+      className="shrink-0 text-2xs font-bold leading-none"
+      style={{
+        padding: `1px ${STATUS_CHIP_PAD_X_PX}px`,
+        background: `linear-gradient(to right, var(--todo-fill) ${pct}%, var(--todo-track) ${pct}%)`,
+      }}
+    >
+      {todoText(a)}
+    </span>
+  );
+}
+
+/** The failure drop beside a head: fixed size, so it shows at any zoom. */
+const failDrop = (key: string, left: number, top: number) => (
+  <div
+    key={key}
+    data-fail={key}
+    className="absolute pointer-events-none"
+    style={{ left, top: top - ACT_ICON_SCREEN_PX, zIndex: LAN_TAG_Z_INDEX }}
+  >
+    <ActIcon icon="fail" size={ACT_ICON_SCREEN_PX} color="var(--fail-drop)" />
+  </div>
+);
 
 /** The permission bubble sprite, blitted into a DOM canvas above the tags. */
 /** `scale` = fractional-zoom stretch on top of the integer-zoom sprite (see renderScale). */
@@ -284,6 +327,12 @@ export function LanOverlay({
       key: string;
       a: OfficeAgent;
       text: string;
+      /** Icon-only bubble (zoomed out): drawn at screen size, not scaled. */
+      icon?: IconId;
+      inline?: IconId;
+      elapsed: string;
+      /** The bubble's own scale: k, or 1 for the icon-only one. */
+      s: number;
       /** Personal mode: the text wrapped, ≤ LAN_ACTIVITY_PERSONAL_LINES (else one clipped line). */
       rows?: string[];
       x: number;
@@ -303,11 +352,40 @@ export function LanOverlay({
           (ch.pet ? PET_HEAD_DROP_PX : 0) -
           LAN_BUBBLE_HEAD_OFFSET,
       );
+      if (a.fail && !a.permission)
+        nodes.push(failDrop(`fail:${a.key}`, project.toScreenX(ch.x + FAIL_DROP_OFFSET_X), head));
+      // The ❗ already says "waiting": no act icon on it.
+      const icon = a.permission ? null : actIcon(a);
+      const elapsed = elapsedText(a.ageSec);
+      if (iconOnly(k, ACT_ICON_ONLY_BELOW_SCALE)) {
+        // Zoomed out, text unreadable: the icon alone (none when idle or waiting).
+        if (!icon) continue;
+        const pad = LAN_ACTIVITY_PAD_X_PX + CHAT_BORDER_PX;
+        const side = ACT_ICON_SCREEN_PX + 2 * pad;
+        lines.push({
+          key: a.key,
+          a,
+          text,
+          icon,
+          elapsed,
+          s: 1,
+          x: project.toScreenX(ch.x),
+          head,
+          w0: side,
+          w: side,
+          h: side + (a.todo ? TODO_BAR_HEIGHT_PX + STATUS_PART_GAP_PX : 0),
+          bottom: head - CHAT_TAIL_PX,
+        });
+        continue;
+      }
       const chrome =
         2 * (LAN_ACTIVITY_PAD_X_PX + CHAT_BORDER_PX) +
         LAN_TAG_BADGE_CHROME_PX +
         textWidth(providerName(a), LAN_TAG_BADGE_FONT) +
-        (personal ? LAN_ACTIVITY_BADGE_GAP_PX : 0);
+        (personal ? LAN_ACTIVITY_BADGE_GAP_PX : 0) +
+        (icon ? ACT_ICON_INLINE_PX + STATUS_PART_GAP_PX : 0) +
+        chipW(todoText(a)) +
+        chipW(elapsed);
       const rows = personal
         ? clampRows(
             wrapLines(text, LAN_ACTIVITY_MAX_WIDTH_PX - chrome, measureTag),
@@ -322,6 +400,9 @@ export function LanOverlay({
         a,
         text,
         rows,
+        inline: icon ?? undefined,
+        elapsed,
+        s: k,
         x: project.toScreenX(ch.x),
         head,
         // Unscaled size; w/h/bottom below are on screen (× k).
@@ -334,7 +415,7 @@ export function LanOverlay({
         bottom: head - CHAT_TAIL_PX * k,
       });
     }
-    for (const l of lines) l.w = l.w0 * k;
+    for (const l of lines) l.w = l.w0 * l.s;
     const bottoms = stackBubbles(lines, LAN_TAG_STACK_GAP_PX * k);
     lines.forEach((l, i) =>
       nodes.push(
@@ -342,51 +423,99 @@ export function LanOverlay({
           key={`act-tail:${l.key}`}
           className="absolute pointer-events-none"
           style={{
-            left: l.x - (CHAT_BORDER_PX * k) / 2,
+            left: l.x - (CHAT_BORDER_PX * l.s) / 2,
             top: bottoms[i],
-            width: CHAT_BORDER_PX * k,
+            width: CHAT_BORDER_PX * l.s,
             height: Math.max(0, l.head - bottoms[i]),
             background: 'var(--agent-bubble-border)',
             zIndex: LAN_TAG_Z_INDEX,
           }}
         />,
-        <div
-          key={`act:${l.key}`}
-          data-activity={l.key}
-          className={`bubble-agent flex gap-4 whitespace-nowrap text-sm leading-none pointer-events-none ${l.rows && l.rows.length > 1 ? 'items-start' : 'items-center'}`}
-          style={{
-            left: l.x - l.w / 2,
-            top: bottoms[i] - l.h,
-            width: l.w0,
-            height: l.h / k,
-            transform: `scale(${k})`,
-            transformOrigin: '0 0',
-            padding: `${LAN_ACTIVITY_PAD_Y_PX}px ${LAN_ACTIVITY_PAD_X_PX}px`,
-            zIndex: LAN_TAG_Z_INDEX,
-          }}
-        >
-          <span
-            data-provider={l.a.provider}
-            className="shrink-0 px-2 text-2xs font-bold leading-none"
-            style={{ background: LAN_PROVIDER_COLORS[l.a.provider], color: LAN_PROVIDER_BADGE_FG }}
+        l.icon ? (
+          <div
+            key={`act:${l.key}`}
+            data-activity={l.key}
+            data-icon-only
+            className="bubble-agent flex flex-col items-center pointer-events-none"
+            style={{
+              left: l.x - l.w / 2,
+              top: bottoms[i] - l.h,
+              width: l.w,
+              height: l.h,
+              padding: `${LAN_ACTIVITY_PAD_X_PX}px`,
+              gap: STATUS_PART_GAP_PX,
+              zIndex: LAN_TAG_Z_INDEX,
+              ...(elapsedWarn(l.a) && { borderColor: 'var(--elapsed-warn-fg)' }),
+            }}
           >
-            {providerName(l.a)}
-          </span>
-          {l.rows && l.rows.length > 1 ? (
+            <ActIcon icon={l.icon} size={ACT_ICON_SCREEN_PX} />
+            {l.a.todo && (
+              <span
+                className="block w-full shrink-0"
+                style={{
+                  height: TODO_BAR_HEIGHT_PX,
+                  background: `linear-gradient(to right, var(--todo-fill) ${todoPercent(l.a)}%, var(--todo-track) ${todoPercent(l.a)}%)`,
+                }}
+              />
+            )}
+          </div>
+        ) : (
+          <div
+            key={`act:${l.key}`}
+            data-activity={l.key}
+            className={`bubble-agent flex gap-4 whitespace-nowrap text-sm leading-none pointer-events-none ${l.rows && l.rows.length > 1 ? 'items-start' : 'items-center'}`}
+            style={{
+              left: l.x - l.w / 2,
+              top: bottoms[i] - l.h,
+              width: l.w0,
+              height: l.h / k,
+              transform: `scale(${k})`,
+              transformOrigin: '0 0',
+              padding: `${LAN_ACTIVITY_PAD_Y_PX}px ${LAN_ACTIVITY_PAD_X_PX}px`,
+              zIndex: LAN_TAG_Z_INDEX,
+            }}
+          >
             <span
-              className="min-w-0 flex flex-col"
-              style={{ lineHeight: `${LAN_ACTIVITY_LINE_PX}px` }}
+              data-provider={l.a.provider}
+              className="shrink-0 px-2 text-2xs font-bold leading-none"
+              style={{
+                background: LAN_PROVIDER_COLORS[l.a.provider],
+                color: LAN_PROVIDER_BADGE_FG,
+              }}
             >
-              {l.rows.map((r, j) => (
-                <span key={j} className="whitespace-pre">
-                  {r}
-                </span>
-              ))}
+              {providerName(l.a)}
             </span>
-          ) : (
-            <span className="min-w-0 overflow-hidden text-ellipsis">{l.text}</span>
-          )}
-        </div>,
+            {l.inline && <ActIcon icon={l.inline} size={ACT_ICON_INLINE_PX} />}
+            {l.rows && l.rows.length > 1 ? (
+              <span
+                className="min-w-0 flex flex-col"
+                style={{ lineHeight: `${LAN_ACTIVITY_LINE_PX}px` }}
+              >
+                {l.rows.map((r, j) => (
+                  <span key={j} className="whitespace-pre">
+                    {r}
+                  </span>
+                ))}
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis">{l.text}</span>
+            )}
+            {l.a.todo && <TodoChip a={l.a} />}
+            {l.elapsed && (
+              <span
+                data-elapsed={l.elapsed}
+                className="shrink-0 text-2xs font-bold leading-none"
+                style={{
+                  padding: `1px ${STATUS_CHIP_PAD_X_PX}px`,
+                  color: elapsedWarn(l.a) ? 'var(--elapsed-warn-fg)' : undefined,
+                  opacity: elapsedWarn(l.a) ? 1 : 0.7,
+                }}
+              >
+                {l.elapsed}
+              </span>
+            )}
+          </div>
+        ),
       ),
     );
   }

@@ -90,13 +90,21 @@ export function demoAgents(texts: DemoTexts, walkerRoom: Room = 'lounge'): Offic
     act: 'edit',
     target: 'src/login.ts',
     reason: texts.editReason,
+    ageSec: 180,
+    todo: { done: 3, total: 7 },
   });
   const reader = main(b, 'library', {
     act: 'read',
     target: 'docs/api.md',
     reason: texts.readReason,
   });
-  const runner = main(c, 'server', { provider: 'codex', act: 'run', target: 'npm test' });
+  const runner = main(c, 'server', {
+    provider: 'codex',
+    act: 'run',
+    target: 'npm test',
+    ageSec: 12 * 60, // long enough to show the warning colour
+    fail: true,
+  });
   const waiting = walkerRoom === 'lounge';
   const waiter = main(d, walkerRoom, {
     num: 2,

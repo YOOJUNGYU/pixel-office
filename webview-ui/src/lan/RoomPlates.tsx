@@ -3,6 +3,7 @@ import { type MutableRefObject, type RefObject, useEffect, useState } from 'reac
 import type { OfficeAgent, Room } from '../../../core/src/lan.js';
 import { ROOM_LABELS, ROOM_ORDER } from '../../../core/src/lan.js';
 import {
+  ACT_ICON_INLINE_PX,
   LAN_ALERT_COLOR,
   LAN_PROVIDER_BADGE_FG,
   LAN_PROVIDER_COLORS,
@@ -19,6 +20,8 @@ import { onFrame } from '../office/engine/gameLoop.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { overlayProjection } from '../office/projection.js';
 import { TILE_SIZE } from '../office/types.js';
+import { ActIcon } from './ActIcon.js';
+import { actIcon } from './actIcons.js';
 import { badgeColors } from './badgeColors.js';
 import {
   activityText,
@@ -30,6 +33,7 @@ import {
   tagText,
 } from './lanAgents.js';
 import { CharacterPreview } from './ProfileModal.js';
+import { SignalText } from './SignalText.js';
 
 interface Plate {
   label: string;
@@ -255,7 +259,11 @@ export function AgentCard({ a, parent }: { a: OfficeAgent; parent?: OfficeAgent 
               ! {t('bubble.permission')}
             </span>
           )}
+          {!a.permission && actIcon(a) && (
+            <ActIcon icon={actIcon(a)!} size={ACT_ICON_INLINE_PX} color="var(--color-text-muted)" />
+          )}
           <span className="truncate text-text-muted">{activityText(a)}</span>
+          <SignalText a={a} />
         </span>
       </span>
     </div>

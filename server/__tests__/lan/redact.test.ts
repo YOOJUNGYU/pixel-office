@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { AgentView } from '../../../core/src/lan.js';
-import { redactText, redactView } from '../../src/lan/redact.js';
+import { hideView, redactText, redactView } from '../../src/lan/redact.js';
 
 const cases: Array<[string, string]> = [
   ['/home/kim/proj/src/auth/login.ts 수정 중', 'login.ts 수정 중'],
@@ -74,5 +74,28 @@ describe('redactView', () => {
       num: 1,
     } as unknown as AgentView;
     expect(redactView(v)).toEqual({ ...v, target: 'c.ts', reason: '' });
+  });
+});
+
+describe('status signals and hiding', () => {
+  const v = {
+    id: 's1',
+    act: 'edit',
+    target: '/a/b/c.ts',
+    reason: '',
+    num: 1,
+    ageSec: 90,
+    todo: { done: 1, total: 3 },
+    fail: true,
+  } as unknown as AgentView;
+  it('hideView drops ageSec, todo and fail', () => {
+    const h = hideView(v);
+    expect(h).not.toHaveProperty('ageSec');
+    expect(h).not.toHaveProperty('todo');
+    expect(h).not.toHaveProperty('fail');
+    expect(h).toMatchObject({ act: 'idle', hidden: true, target: '' });
+  });
+  it('redactView keeps them (counts and a flag only)', () => {
+    expect(redactView(v)).toMatchObject({ ageSec: 90, todo: { done: 1, total: 3 }, fail: true });
   });
 });

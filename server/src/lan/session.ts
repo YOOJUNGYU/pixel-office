@@ -1,5 +1,7 @@
-import type { Act, AgentView, Provider, Room } from '../../../core/src/lan.js';
+import type { Act, AgentTodo, AgentView, Provider, Room } from '../../../core/src/lan.js';
+import { AGE_MAX_SEC, TODO_MAX } from '../../../core/src/lan.js';
 import {
+  LINE_CLOCK_SLACK_MS,
   PERMISSION_DELAY_MS,
   ROOM_DEBOUNCE_MS,
   SESSION_PROMPT_MAX,
@@ -27,6 +29,15 @@ export interface SessionState {
   /** Claude permission mode is bypassPermissions: approval prompts cannot happen */
   bypass: boolean;
   lastLineAt: number;
+  /** The current line's own timestamp (ms epoch; read time when it has none or a bad one). */
+  lineAt: number;
+  /** When (act, target, permission) last changed, in line time: AgentView.ageSec. */
+  actSince: number;
+  actSig: string;
+  /** A tool result failed: AgentView.fail until then (ms epoch, read time); 0 = none. */
+  failUntil: number;
+  /** Task list progress (counts only, never the items); null = no list. */
+  todo: AgentTodo | null;
   pendingTool: { name: string; since: number; exempt: boolean } | null;
   textOnlyAt: number | null;
   turnEnded: boolean;
@@ -37,7 +48,10 @@ export interface SessionState {
   /** shellId -> target (command or its description) and its brief */
   /** Running background shells. `command` / `output` (Claude's output file) are LOCAL ONLY:
    *  only the transcript panel reads them, never views()/packets. */
-  shells: Map<string, { target: string; brief: string; command?: string; output?: string }>;
+  shells: Map<
+    string,
+    { target: string; brief: string; since: number; command?: string; output?: string }
+  >;
   /** LOCAL ONLY (notifications on this PC): never copied into an AgentView, so never sent. */
   local: LocalInfo;
 }
@@ -76,6 +90,11 @@ export function newSession(
     permission: false,
     bypass: false,
     lastLineAt: now,
+    lineAt: now,
+    actSince: now,
+    actSig: 'idle',
+    failUntil: 0,
+    todo: null,
     pendingTool: null,
     textOnlyAt: null,
     turnEnded: false,
@@ -148,7 +167,33 @@ export function setIdle(s: SessionState, now: number): void {
   s.pendingTool = null;
   s.permission = false;
   s.turnEnded = true;
+  // A finished list is not left hanging over the next turn.
+  if (s.todo && s.todo.done >= s.todo.total) s.todo = null;
 }
+
+/** A line's own `timestamp` (ISO) in ms; missing, bad or ahead of the clock → `now`. */
+export function lineTime(raw: unknown, now: number): number {
+  const t = typeof raw === 'string' ? Date.parse(raw) : NaN;
+  return Number.isFinite(t) && t <= now + LINE_CLOCK_SLACK_MS ? t : now;
+}
+
+/** Restarts the act clock when what the agent shows changed (after a line or a tick). */
+export function noteAct(s: SessionState): void {
+  const sig = `${s.act}\0${s.target}\0${String(s.permission)}`;
+  if (sig === s.actSig) return;
+  s.actSig = sig;
+  s.actSince = s.lineAt;
+}
+
+/** Task list progress from statuses (one per item): null when the list is empty. */
+export function todoOf(statuses: string[]): AgentTodo | null {
+  const total = Math.min(statuses.length, TODO_MAX);
+  if (!total) return null;
+  return { done: Math.min(statuses.filter((x) => x === 'completed').length, total), total };
+}
+
+const ageOf = (since: number, now: number): number =>
+  Math.min(AGE_MAX_SEC, Math.max(0, Math.floor((now - since) / 1000)));
 
 export function tick(s: SessionState, now: number): void {
   const p = s.pendingTool;
@@ -188,6 +233,9 @@ export function toViews(s: SessionState, brief = false, now = 0): AgentView[] {
   };
   if (s.kind === 'subagent') self.parentId = s.parentId;
   if (s.kind === 'subagent' && now < s.talkUntil) self.talk = true;
+  if (s.act !== 'idle') self.ageSec = ageOf(s.actSince, now);
+  if (s.todo) self.todo = { ...s.todo };
+  if (now < s.failUntil) self.fail = true;
   const shells = [...s.shells].map(([shellId, sh]): AgentView => ({
     id: `${s.id}/sh/${shellId}`,
     provider: s.provider,
@@ -199,6 +247,7 @@ export function toViews(s: SessionState, brief = false, now = 0): AgentView[] {
     act: 'run',
     target: brief ? sh.brief : sh.target,
     reason: '',
+    ageSec: ageOf(sh.since, now),
   }));
   return [self, ...shells];
 }

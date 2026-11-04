@@ -186,6 +186,9 @@ export interface OfficeAgentMessage {
   reason: string;
   hidden?: boolean;
   talk?: boolean;
+  ageSec?: number;
+  todo?: AgentTodo;
+  fail?: boolean;
   peer: PeerInfoMessage;
 }
 
@@ -209,6 +212,11 @@ export type AgentAct =
   | 'ask'
   | 'image'
   | 'tool';
+
+export interface AgentTodo {
+  done: number;
+  total: number;
+}
 
 export interface PeerInfoMessage {
   id: string;

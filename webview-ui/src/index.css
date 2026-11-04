@@ -65,6 +65,11 @@
   --agent-bubble-bg: #2c2f4a;
   --agent-bubble-fg: rgba(255, 255, 255, 0.92);
   --agent-bubble-border: #8e92c4;
+  /* Status signals in agent bubbles: stuck-long elapsed time, task progress, failure drop. */
+  --elapsed-warn-fg: #ffb547;
+  --todo-fill: #3fd07a;
+  --todo-track: rgba(255, 255, 255, 0.18);
+  --fail-drop: #6cc4ff;
   --chat-bubble-bg: #ffffff;
   --chat-bubble-fg: #1e1e2e;
   --chat-bubble-border: #1e1e2e;
@@ -140,6 +145,10 @@
   --agent-bubble-bg: #34385a;
   --agent-bubble-fg: #ffffff;
   --agent-bubble-border: #1e2038;
+  --elapsed-warn-fg: #ffc46b;
+  --todo-fill: #4fe08a;
+  --todo-track: rgba(255, 255, 255, 0.22);
+  --fail-drop: #2f8fe0;
   --chat-bubble-bg: #ffffff;
   --chat-bubble-fg: #181628;
   --chat-bubble-border: #4a4a6a;

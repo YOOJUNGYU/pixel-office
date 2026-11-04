@@ -4,7 +4,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as zlib from 'zlib';
 
 import type { PeerPacket } from '../../../core/src/lan.js';
-import { MAX_PACKET_BYTES, parsePeerPacket, PUBLIC_VIEW } from '../../../core/src/lan.js';
+import {
+  AGE_MAX_SEC,
+  MAX_PACKET_BYTES,
+  parsePeerPacket,
+  PUBLIC_VIEW,
+  TODO_MAX,
+} from '../../../core/src/lan.js';
 import {
   MAX_DATAGRAM_BYTES,
   MAX_HELLO_PEERS,
@@ -29,6 +35,7 @@ import {
 } from '../../src/lan/crypto.js';
 import type { Inner, TeamChannel } from '../../src/lan/peerNet.js';
 import {
+  aged,
   broadcastAddresses,
   fitPacket,
   parseCard,
@@ -255,6 +262,10 @@ describe('PeerNet public office', () => {
       act: 'run' as const,
       target: '"'.repeat(120),
       reason: randomUUID().repeat(5).slice(0, 180) + '가'.repeat(20),
+      // the optional status signals at their largest
+      ageSec: AGE_MAX_SEC,
+      todo: { done: TODO_MAX, total: TODO_MAX },
+      fail: true as const,
     });
     const id = 'i'.repeat(64);
     const packet = fitPacket({
@@ -1181,5 +1192,26 @@ describe('PeerNet split presence', () => {
       }
       expect(net.assemblies.size).toBe(MAX_PRESENCE_ASSEMBLIES);
     });
+  });
+});
+
+describe('aged', () => {
+  const v = (ageSec?: number) => ({
+    id: 's',
+    provider: 'claude' as const,
+    kind: 'main' as const,
+    num: 1,
+    room: 'coding' as const,
+    permission: false,
+    act: 'edit' as const,
+    target: '',
+    reason: '',
+    ...(ageSec === undefined ? {} : { ageSec }),
+  });
+  it('grows each view age by the time the packet has been stored, on this clock', () => {
+    const p = { ...pkt('A'), views: [v(120), v()] };
+    expect(aged(p, 60_500).views.map((x) => x.ageSec)).toEqual([180, undefined]);
+    expect(aged(p, 999)).toBe(p); // under a second: untouched
+    expect(aged({ ...p, views: [v(AGE_MAX_SEC)] }, 10_000).views[0].ageSec).toBe(AGE_MAX_SEC);
   });
 });

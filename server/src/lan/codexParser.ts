@@ -1,6 +1,15 @@
 import type { Act, Room } from '../../../core/src/lan.js';
+import { FAIL_SHOW_MS } from '../constants.js';
 import type { SessionState } from './session.js';
-import { notePrompt, programName, setActivity, setIdle, setThinking } from './session.js';
+import {
+  lineTime,
+  notePrompt,
+  programName,
+  setActivity,
+  setIdle,
+  setThinking,
+  todoOf,
+} from './session.js';
 
 type Obj = Record<string, unknown>;
 
@@ -21,6 +30,10 @@ const PATCH_RE = /\*\*\* (?:Update|Add|Delete) File: (.+?)(?:\\n|\n|$)/;
 const SID_RE = /"session_id"\s*:\s*(\d+)/;
 const STDIN_SID_RE = /\bsession_id"?\s*:\s*(\d+)/;
 const EXIT_RE = /"exit_code"/;
+const EXIT_CODE_RE = /"exit_code"\s*:\s*(-?\d+)/;
+/** update_plan items' statuses, in JSON arguments or a custom exec's JS object literal. */
+const STATUS_RE = /\bstatus"?\s*:\s*"(\w+)"/g;
+const planStatuses = (args: string): string[] => [...args.matchAll(STATUS_RE)].map((m) => m[1]);
 const LIBRARY_CMD =
   /^(?:(?:rg|grep|cat|head|tail|ls|find|fd|wc|nl|tree|less)\b|sed\s+-n\b|git\s+(?:log|show|diff|status|grep|blame)\b)/;
 const SHELLS = /(^|[\\/])(?:ba|z)?sh(?:\.exe)?$/;
@@ -92,6 +105,7 @@ function onItem(s: SessionState, p: Obj, now: number): void {
       const fn = p.name === 'exec' ? (FN_RE.exec(input)?.[1] ?? '') : str(p.name);
       const d = describe(fn, input);
       const stdinId = fn === 'write_stdin' ? STDIN_SID_RE.exec(input)?.[1] : undefined;
+      if (fn === 'update_plan') s.todo = todoOf(planStatuses(input));
       return onToolCall(s, fn || str(p.name), callId, d, now, stdinId);
     }
     case 'function_call':
@@ -106,6 +120,7 @@ function onItem(s: SessionState, p: Obj, now: number): void {
       const d = ['shell', 'exec_command', 'local_shell_call'].includes(name)
         ? shellActivity(legacyShell(args))
         : describe(name, '');
+      if (name === 'update_plan') s.todo = todoOf(planStatuses(str(p.arguments)));
       return onToolCall(s, name, callId, d, now);
     }
     case 'web_search_call':
@@ -120,12 +135,18 @@ function onItem(s: SessionState, p: Obj, now: number): void {
         : [textOf(p.output)];
       for (const t of outs) {
         const sid = SID_RE.exec(t)?.[1];
+        const code = EXIT_CODE_RE.exec(t)?.[1];
+        if (code !== undefined && Number(code) !== 0) s.failUntil = now + FAIL_SHOW_MS;
         if (EXIT_RE.test(t)) {
           const id = sid ?? call?.stdinId;
           if (id) s.shells.delete(id);
         } else if (sid && !s.shells.has(sid)) {
           // only a "still running" exec output starts a shell; write_stdin errors never do
-          s.shells.set(sid, { target: call?.target ?? s.target, brief: call?.brief ?? s.brief });
+          s.shells.set(sid, {
+            target: call?.target ?? s.target,
+            brief: call?.brief ?? s.brief,
+            since: s.lineAt,
+          });
         }
       }
       return;
@@ -170,7 +191,8 @@ export function applyCodexLine(s: SessionState, line: string, now: number): void
   }
   if (!rec || typeof rec !== 'object') return;
   s.lastLineAt = now;
-  const { type, payload } = rec as Obj;
+  const { type, payload, timestamp } = rec as Obj;
+  s.lineAt = lineTime(timestamp, now);
   const cwd = obj(payload).cwd;
   if ((type === 'turn_context' || type === 'session_meta') && typeof cwd === 'string') {
     s.local.cwd = cwd; // local only (notifications)

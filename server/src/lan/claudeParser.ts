@@ -1,8 +1,18 @@
 import * as path from 'node:path';
 
 import type { Act, Room } from '../../../core/src/lan.js';
+import { FAIL_SHOW_MS } from '../constants.js';
 import type { SessionState } from './session.js';
-import { isPrompt, notePrompt, programName, setActivity, setIdle, setThinking } from './session.js';
+import {
+  isPrompt,
+  lineTime,
+  notePrompt,
+  programName,
+  setActivity,
+  setIdle,
+  setThinking,
+  todoOf,
+} from './session.js';
 
 type Input = Record<string, unknown>;
 interface Block {
@@ -13,6 +23,7 @@ interface Block {
   input?: Input;
   tool_use_id?: string;
   content?: unknown;
+  is_error?: unknown;
 }
 
 interface Turn {
@@ -30,6 +41,8 @@ const BG_RE = /Command running in background with ID: ([\w-]+)/;
 const TASK_ID_RE = /<task-id>([^<]+)<\/task-id>/;
 const OUTPUT_RE = /Output is being written to: (.+?\.output)(?=[.\s]|$)/;
 const DONE_RE = /<status>(completed|failed|killed)<\/status>/;
+/** is_error results that are not the tool failing: the user said no, or a hook blocked it. */
+const NOT_A_FAILURE = /^(?:The user doesn't want to proceed|Permission to use |\S+ hook error:)/;
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 const clip = (v: string, n: number): string => v.replace(/\s+/g, ' ').trim().slice(0, n);
@@ -100,6 +113,9 @@ function onAssistant(s: SessionState, content: Block[], now: number): void {
         continue;
       }
       if (b.name === 'SendMessage' && str(input.to)) s.talkTo = { to: str(input.to), at: now };
+      // ponytail: TaskCreate/TaskUpdate (delta-only task tools) not counted — no local sample to pin their shape
+      if (b.name === 'TodoWrite' && Array.isArray(input.todos))
+        s.todo = todoOf(input.todos.map((x) => str((x as { status?: unknown } | null)?.status)));
       const [room, act, target, exempt, brief = target] = describe(b.name, input);
       const clipped = clip(target, 120);
       const briefClipped = clip(brief, 120);
@@ -122,12 +138,14 @@ function onUser(s: SessionState, content: unknown, now: number, meta: boolean): 
     s.permission = false;
     for (const r of results) {
       const text = textOf(r.content);
+      if (r.is_error === true && !NOT_A_FAILURE.test(text)) s.failUntil = now + FAIL_SHOW_MS;
       const id = BG_RE.exec(text)?.[1];
       const call = turnOf(s).tools.get(str(r.tool_use_id));
       if (id && call?.input.run_in_background === true) {
         s.shells.set(id, {
           target: call.target,
           brief: call.brief,
+          since: s.lineAt,
           command: str(call.input.command),
           output: shellOutput(OUTPUT_RE.exec(text)?.[1], id),
         });
@@ -162,6 +180,7 @@ export function applyClaudeLine(s: SessionState, line: string, now: number): voi
     cwd?: unknown;
     customTitle?: unknown;
     aiTitle?: unknown;
+    timestamp?: unknown;
   };
   try {
     rec = JSON.parse(line);
@@ -170,6 +189,7 @@ export function applyClaudeLine(s: SessionState, line: string, now: number): voi
   }
   if (!rec || typeof rec !== 'object') return;
   s.lastLineAt = now;
+  s.lineAt = lineTime(rec.timestamp, now);
   // `permission-mode` records and user records carry the current mode
   if (typeof rec.permissionMode === 'string') {
     s.bypass = rec.permissionMode === 'bypassPermissions';

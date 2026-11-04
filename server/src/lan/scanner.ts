@@ -24,7 +24,7 @@ import type { CheckPids, RegEntry } from './liveness.js';
 import { checkPids, domainOf, readRegistry } from './liveness.js';
 import type { Roots } from './roots.js';
 import type { SessionState } from './session.js';
-import { folderOf, newSession, tick, toViews } from './session.js';
+import { folderOf, newSession, noteAct, tick, toViews } from './session.js';
 import type { Parse } from './transcript.js';
 import { codexShellParse, rawParse } from './transcript.js';
 
@@ -232,6 +232,7 @@ export class Scanner {
         // ENOENT/EACCES/UNC hiccup: keep last mtime, TTL removes it eventually
       }
       tick(t.s, now);
+      noteAct(t.s); // a tick-raised ❗ dates from the last line (the tool call)
       if (t.s.kind === 'subagent') {
         if (!t.s.turnEnded) t.endedAt = null;
         else if (t.endedAt === null) {
@@ -499,7 +500,10 @@ export class Scanner {
         t.dropFirst = false;
         continue;
       }
-      if (line.trim()) t.apply(t.s, line, now);
+      if (line.trim()) {
+        t.apply(t.s, line, now);
+        noteAct(t.s);
+      }
     }
   }
 

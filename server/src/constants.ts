@@ -49,6 +49,10 @@ export const CHILD_ENDED_HIDE_MS = 10_000;
 /** A subagent talks with its parent this long (task handed over, result reported, SendMessage).
  *  Shorter than CHILD_ENDED_HIDE_MS, so a finished child still shows while it reports. */
 export const TALK_MS = 5_000;
+/** A failed tool result shows on the agent (AgentView.fail) this long. */
+export const FAIL_SHOW_MS = 8_000;
+/** A transcript line stamped further ahead than this (a skewed clock) counts as read now. */
+export const LINE_CLOCK_SLACK_MS = 60_000;
 /** A SendMessage whose recipient's transcript isn't tracked yet waits this long for it (discover cycle). */
 export const TALK_PENDING_MS = 15_000;
 /** Bytes replayed from the end of a newly found transcript. */

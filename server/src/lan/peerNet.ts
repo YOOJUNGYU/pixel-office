@@ -4,6 +4,7 @@ import * as zlib from 'zlib';
 
 import type { LayoutRev, PeerInfo, PeerPacket } from '../../../core/src/lan.js';
 import {
+  AGE_MAX_SEC,
   MAX_PACKET_BYTES,
   newerLayout,
   parseLayoutRev,
@@ -110,6 +111,19 @@ export function fitPacket(p: PeerPacket): PeerPacket {
   };
   while (views.length && !fits()) views.pop();
   return { ...p, views };
+}
+
+/** A stored packet `ms` after it arrived: each view's ageSec grown by that much on this PC's
+ *  own clock (ages travel, never timestamps: PCs' clocks differ). */
+export function aged(p: PeerPacket, ms: number): PeerPacket {
+  const add = Math.floor(ms / 1000);
+  if (add <= 0 || !p.views.some((v) => v.ageSec !== undefined)) return p;
+  return {
+    ...p,
+    views: p.views.map((v) =>
+      v.ageSec === undefined ? v : { ...v, ageSec: Math.min(AGE_MAX_SEC, v.ageSec + add) },
+    ),
+  };
 }
 
 /** base64 length of a sealed plaintext (ciphertext + GCM tag). */
@@ -462,7 +476,7 @@ export class PeerNet {
     const t = this.now();
     const out: PeerPacket[] = [];
     for (const e of this.seen.get(view)?.values() ?? [])
-      if (t - e.at <= PEER_TTL_MS) out.push(e.packet);
+      if (t - e.at <= PEER_TTL_MS) out.push(aged(e.packet, t - e.at));
     return out;
   }
 

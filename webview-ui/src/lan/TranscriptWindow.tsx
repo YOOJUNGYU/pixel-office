@@ -45,6 +45,7 @@ export function TranscriptWindow({ id }: { id: string }) {
         state={state}
         status={transcriptStatus(agent)}
         activity={agent ? activityText(agent) : ''}
+        agent={agent}
         onClose={() => window.close()}
         onLoadEarlier={() => loadEarlier(id)}
       />

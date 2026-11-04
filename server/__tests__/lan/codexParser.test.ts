@@ -10,7 +10,7 @@ import {
   codexSessionMeta,
   parseCodexIndex,
 } from '../../src/lan/codexParser.js';
-import { newSession, tick, toViews } from '../../src/lan/session.js';
+import { newSession, noteAct, tick, toViews } from '../../src/lan/session.js';
 
 const fixture = (name: string) =>
   readFileSync(join(__dirname, 'fixtures', name), 'utf8')
@@ -97,7 +97,7 @@ describe('applyCodexLine', () => {
     const s = mk();
     applyCodexLine(s, exec('tools.exec_command({cmd:"pnpm dev"})'), 0);
     applyCodexLine(s, output('{"session_id":7933,"output":""}'), 0);
-    expect(s.shells.get('7933')).toEqual({ target: 'pnpm dev', brief: 'pnpm' });
+    expect(s.shells.get('7933')).toMatchObject({ target: 'pnpm dev', brief: 'pnpm' });
     applyCodexLine(s, output('{"session_id":7933,"exit_code":0}'), 0);
     expect(s.shells.size).toBe(0);
   });
@@ -288,5 +288,54 @@ describe('local title (notifications only)', () => {
         cwd: '/w/fe',
       },
     );
+  });
+});
+
+describe('status signals (todo, fail, age)', () => {
+  it('update_plan counts completed items (custom exec and JSON arguments)', () => {
+    const s = mk();
+    applyCodexLine(
+      s,
+      exec(
+        'text(await tools.update_plan({plan:[{step:"a",status:"completed"},{step:"b",status:"in_progress"}]}));',
+      ),
+      0,
+    );
+    expect(toViews(s)[0].todo).toEqual({ done: 1, total: 2 });
+    applyCodexLine(
+      s,
+      item({
+        type: 'function_call',
+        name: 'update_plan',
+        call_id: 'c2',
+        arguments: JSON.stringify({ plan: [{ step: 'a', status: 'completed' }] }),
+      }),
+      0,
+    );
+    expect(s.todo).toEqual({ done: 1, total: 1 });
+    expect(JSON.stringify(toViews(s, true))).not.toMatch(/"step"|"a"/);
+  });
+
+  it('a non-zero exit_code fails, zero does not', () => {
+    const s = mk();
+    applyCodexLine(s, output('{"exit_code":0,"output":"ok"}'), 1_000);
+    expect(s.failUntil).toBe(0);
+    applyCodexLine(s, output('{"exit_code":1,"output":"boom"}'), 1_000);
+    expect(toViews(s, false, 1_000)[0].fail).toBe(true);
+  });
+
+  it('the line timestamp dates the act', () => {
+    const s = mk();
+    const now = Date.parse('2026-11-04T10:10:00Z');
+    applyCodexLine(
+      s,
+      JSON.stringify({
+        ...JSON.parse(event({ type: 'task_started' })),
+        timestamp: '2026-11-04T10:00:00Z',
+      }),
+      now,
+    );
+    noteAct(s);
+    expect(toViews(s, false, now)[0].ageSec).toBe(600);
   });
 });

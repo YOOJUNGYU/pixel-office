@@ -13,6 +13,10 @@ const ko = {
   'room.lounge': '대기실',
 
   'act.idle': '대기 중',
+  'elapsed.m': '{m}분',
+  'elapsed.hm': '{h}시간 {m}분',
+  'signal.todo': '할 일 {n}',
+  'signal.fail': '방금 실패함',
   'act.edit': '{t} 수정 중',
   'act.edit.empty': '파일 수정 중',
   'act.read': '{t} 읽는 중',
@@ -395,6 +399,10 @@ const en: Record<Key, string> = {
   'room.lounge': 'Lounge',
 
   'act.idle': 'Idle',
+  'elapsed.m': '{m}m',
+  'elapsed.hm': '{h}h {m}m',
+  'signal.todo': 'Tasks {n}',
+  'signal.fail': 'Just failed',
   'act.edit': 'Editing {t}',
   'act.edit.empty': 'Editing a file',
   'act.read': 'Reading {t}',

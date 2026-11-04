@@ -92,5 +92,7 @@ export function redactView(v: AgentView): AgentView {
 /** "Hide my work": only room, provider, kind, the tree and waiting (!) are shared. `act` must stay a
  *  known one (≤ 1.0.8 peers drop a packet with an unknown act): idle, flagged `hidden`. */
 export function hideView(v: AgentView): AgentView {
-  return { ...v, act: 'idle', target: '', reason: '', hidden: true };
+  // The optional work signals (age, task counts, failure) never leave a hidden PC.
+  const { ageSec: _a, todo: _t, fail: _f, ...rest } = v;
+  return { ...rest, act: 'idle', target: '', reason: '', hidden: true };
 }

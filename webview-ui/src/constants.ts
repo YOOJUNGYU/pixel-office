@@ -335,7 +335,26 @@ export const LAN_ALERT_COLOR = '#e8202a';
 export const LAN_ALERT_OUTLINE_COLOR = '#2b0608';
 /** The "!" glyph (sprite pixels, before the outline): bar, gap, dot. */
 export const LAN_ALERT_GLYPH = ['###', '###', '###', '###', '.#.', '...', '###', '###'];
-/** Hover bubble wraps long summaries/reasons at this width (CSS px). */
+// ── Status signals over agents (act icon, elapsed time, task progress, failure) ──
+/** Below this bubble scale (text no longer readable) an agent's bubble is its act icon alone. */
+export const ACT_ICON_ONLY_BELOW_SCALE = 0.6;
+/** The icon-only bubble's icon and the failure drop: fixed on screen (CSS px, 2× the 8×8 art). */
+export const ACT_ICON_SCREEN_PX = 16;
+/** The icon inside a full bubble (unscaled bubble px; the bubble scales with the map). */
+export const ACT_ICON_INLINE_PX = 11;
+/** Chip text in a bubble (task count, elapsed): same face as the provider badge. */
+export const STATUS_CHIP_FONT = 'bold 11px Pretendard';
+/** Horizontal padding inside a chip (each side) and the bubble's gap between its parts, px. */
+export const STATUS_CHIP_PAD_X_PX = 2;
+export const STATUS_PART_GAP_PX = 4;
+/** Task progress bar under the icon-only bubble's icon, CSS px. */
+export const TODO_BAR_HEIGHT_PX = 2;
+/** Elapsed time turns to the warning colour after this long: waiting for me / anything else. */
+export const ELAPSED_WARN_PERMISSION_MS = 2 * 60_000;
+export const ELAPSED_WARN_MS = 10 * 60_000;
+/** The failure drop sits this many world px right of a character's centre (its sprite edge). */
+export const FAIL_DROP_OFFSET_X = 8;
+
 export const LAN_BUBBLE_MAX_WIDTH_PX = 300;
 /** Hover bubble sits this many world px above a character's feet (sprite height). */
 export const LAN_BUBBLE_HEAD_OFFSET = 32;

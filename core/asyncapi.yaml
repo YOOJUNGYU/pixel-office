@@ -937,8 +937,30 @@ components:
         talk:
           type: boolean
           description: Children only, true for a few seconds while it talks with its parent (task handed over, result reported, SendMessage).
+        ageSec:
+          type: integer
+          minimum: 0
+          description: Seconds since the current act started in the session (from the transcript's line timestamps); absent when idle or hidden.
+        todo:
+          $ref: '#/components/schemas/AgentTodo'
+        fail:
+          type: boolean
+          description: A tool result just failed (sent for a few seconds only).
         peer:
           $ref: '#/components/schemas/PeerInfoMessage'
+
+    AgentTodo:
+      description: Task list progress, counts only (never the items).
+      type: object
+      additionalProperties: false
+      required: [done, total]
+      properties:
+        done:
+          type: integer
+          minimum: 0
+        total:
+          type: integer
+          minimum: 1
 
     PeerInfoMessage:
       type: object

@@ -4,8 +4,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { Act } from '../../../core/src/lan.js';
+import { FAIL_SHOW_MS } from '../../src/constants.js';
 import { applyClaudeLine } from '../../src/lan/claudeParser.js';
-import { newSession, tick, toViews } from '../../src/lan/session.js';
+import { newSession, noteAct, tick, toViews } from '../../src/lan/session.js';
 
 const fixture = (name: string) =>
   readFileSync(join(__dirname, 'fixtures', name), 'utf8')
@@ -99,7 +100,9 @@ describe('applyClaudeLine', () => {
 
   it('KillShell / TaskStop remove the shell, keep activity', () => {
     const s = mk();
-    s.shells.set('b1', { target: 'x', brief: 'x' }).set('b2', { target: 'y', brief: 'y' });
+    s.shells
+      .set('b1', { target: 'x', brief: 'x', since: 0 })
+      .set('b2', { target: 'y', brief: 'y', since: 0 });
     s.target = 'keep';
     applyClaudeLine(s, assistant(toolUse('KillShell', { shell_id: 'b1' })), 0);
     applyClaudeLine(s, assistant(toolUse('TaskStop', { task_id: 'b2' })), 0);
@@ -254,5 +257,114 @@ describe('local title (notifications only)', () => {
     applyClaudeLine(s, line({ type: 'ai-title', aiTitle: 'Newer' }), 0);
     expect(s.local).toMatchObject({ customTitle: 'Mine', aiTitle: 'Newer' });
     expect(JSON.stringify(toViews(s))).not.toMatch(/Mine|Newer|검색|repo/);
+  });
+});
+
+describe('status signals (age, todo, fail)', () => {
+  const user = (content: unknown) => JSON.stringify({ type: 'user', message: { content } });
+  const result = (text: string, is_error = true) => ({
+    type: 'tool_result',
+    tool_use_id: 'tu_x',
+    content: text,
+    is_error,
+  });
+  const at = (iso: string, rec: string) => JSON.stringify({ ...JSON.parse(rec), timestamp: iso });
+
+  it('the act clock comes from the line timestamp, not the read time', () => {
+    const s = mk();
+    const t0 = Date.parse('2026-11-04T10:00:00Z');
+    const now = t0 + 5 * 60_000;
+    // a first scan reads old lines at once: each act still dates from its own line
+    applyClaudeLine(
+      s,
+      at('2026-11-04T10:00:00Z', assistant(toolUse('Edit', { file_path: '/a/x.ts' }))),
+      now,
+    );
+    noteAct(s);
+    expect(toViews(s, false, now)[0].ageSec).toBe(300);
+    // same act + target later: the clock keeps running
+    applyClaudeLine(
+      s,
+      at('2026-11-04T10:02:00Z', assistant(toolUse('Edit', { file_path: '/a/x.ts' }))),
+      now,
+    );
+    noteAct(s);
+    expect(toViews(s, false, now)[0].ageSec).toBe(300);
+    // another target restarts it
+    applyClaudeLine(
+      s,
+      at('2026-11-04T10:04:00Z', assistant(toolUse('Edit', { file_path: '/a/y.ts' }))),
+      now,
+    );
+    noteAct(s);
+    expect(toViews(s, false, now)[0].ageSec).toBe(60);
+  });
+
+  it('no / bad / future timestamp counts as read now; idle has no age', () => {
+    const s = mk();
+    applyClaudeLine(s, at('garbage', assistant(toolUse('Read', { file_path: '/a' }))), 9_000);
+    noteAct(s);
+    expect(s.actSince).toBe(9_000);
+    applyClaudeLine(
+      s,
+      at('2099-01-01T00:00:00Z', assistant(toolUse('Grep', { pattern: 'p' }))),
+      10_000,
+    );
+    noteAct(s);
+    expect(s.actSince).toBe(10_000);
+    applyClaudeLine(s, JSON.stringify({ type: 'system', subtype: 'turn_duration' }), 11_000);
+    noteAct(s);
+    expect(toViews(s, false, 20_000)[0].ageSec).toBeUndefined();
+  });
+
+  it('a tick-raised ❗ dates from the tool call line', () => {
+    const s = mk();
+    const t0 = Date.parse('2026-11-04T10:00:00Z');
+    applyClaudeLine(
+      s,
+      at('2026-11-04T10:00:00Z', assistant(toolUse('Bash', { command: 'rm x' }))),
+      t0,
+    );
+    noteAct(s);
+    tick(s, t0 + 60_000);
+    noteAct(s);
+    expect(s.permission).toBe(true);
+    expect(toViews(s, false, t0 + 60_000)[0].ageSec).toBe(60);
+  });
+
+  it('TodoWrite counts only; a finished list goes at the turn end', () => {
+    const s = mk();
+    const todos = (...st: string[]) => st.map((status, i) => ({ content: `secret ${i}`, status }));
+    applyClaudeLine(
+      s,
+      assistant(toolUse('TodoWrite', { todos: todos('completed', 'in_progress', 'pending') })),
+      0,
+    );
+    expect(toViews(s)[0].todo).toEqual({ done: 1, total: 3 });
+    expect(JSON.stringify(toViews(s, true))).not.toContain('secret');
+    applyClaudeLine(s, JSON.stringify({ type: 'system', subtype: 'turn_duration' }), 0);
+    expect(s.todo).toEqual({ done: 1, total: 3 }); // unfinished: kept across turns
+    applyClaudeLine(
+      s,
+      assistant(toolUse('TodoWrite', { todos: todos('completed', 'completed') })),
+      0,
+    );
+    applyClaudeLine(s, JSON.stringify({ type: 'system', subtype: 'turn_duration' }), 0);
+    expect(s.todo).toBeNull();
+    applyClaudeLine(s, assistant(toolUse('TodoWrite', { todos: [] })), 0);
+    expect(toViews(s)[0].todo).toBeUndefined();
+  });
+
+  it('an is_error result shows fail for FAIL_SHOW_MS; refusals and hook blocks do not', () => {
+    const s = mk();
+    applyClaudeLine(s, user([result('Exit code 1')]), 1_000);
+    expect(toViews(s, false, 1_000)[0].fail).toBe(true);
+    expect(toViews(s, false, 1_000 + FAIL_SHOW_MS)[0].fail).toBeUndefined();
+    const t = mk();
+    applyClaudeLine(t, user([result("The user doesn't want to proceed with this tool use.")]), 0);
+    applyClaudeLine(t, user([result('Permission to use Bash with command x has been denied.')]), 0);
+    applyClaudeLine(t, user([result('PreToolUse:Bash hook error: blocked')]), 0);
+    applyClaudeLine(t, user([result('ok', false)]), 0);
+    expect(t.failUntil).toBe(0);
   });
 });

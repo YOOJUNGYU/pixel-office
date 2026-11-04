@@ -2,7 +2,13 @@
 import { describe, expect, it } from 'vitest';
 
 import type { AgentView, PeerPacket } from '../../../core/src/lan.js';
-import { MAX_PACKET_BYTES, parsePeerInfo, parsePeerPacket } from '../../../core/src/lan.js';
+import {
+  AGE_MAX_SEC,
+  MAX_PACKET_BYTES,
+  parsePeerInfo,
+  parsePeerPacket,
+  TODO_MAX,
+} from '../../../core/src/lan.js';
 
 const view = (over: Partial<AgentView> = {}): AgentView => ({
   id: 's1',
@@ -25,6 +31,33 @@ const packet = (over: Partial<PeerPacket> = {}): PeerPacket => ({
 const parse = (p: unknown) => parsePeerPacket(JSON.stringify(p));
 
 describe('parsePeerPacket', () => {
+  it('status signals: valid ones kept, a bad one dropped alone', () => {
+    const one = (over: object) => parse(packet({ views: [{ ...view(), ...over }] }))?.views[0];
+    expect(one({ ageSec: 60, todo: { done: 2, total: 5 }, fail: true })).toMatchObject({
+      ageSec: 60,
+      todo: { done: 2, total: 5 },
+      fail: true,
+    });
+    for (const bad of [
+      { ageSec: -1 },
+      { ageSec: 1.5 },
+      { ageSec: AGE_MAX_SEC + 1 },
+      { todo: { done: 3, total: 2 } },
+      { todo: { done: 0, total: 0 } },
+      { todo: { done: 1, total: TODO_MAX + 1 } },
+      { todo: [1, 2] },
+      { fail: 1 },
+    ]) {
+      const got = one(bad);
+      expect(got).toBeDefined();
+      expect(got).not.toHaveProperty('ageSec');
+      expect(got).not.toHaveProperty('todo');
+      expect(got).not.toHaveProperty('fail');
+    }
+    // an older view without them is unchanged
+    expect(one({})).toEqual(view());
+  });
+
   it('hidden: only true survives', () => {
     expect(parse(packet({ views: [{ ...view(), hidden: true }] }))?.views[0].hidden).toBe(true);
     const bad = { ...view(), hidden: 'yes' };
