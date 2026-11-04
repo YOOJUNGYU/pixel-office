@@ -183,10 +183,16 @@ export function SettingsModal({
       )}
       {notify && (
         <div data-tour="settings-notify">
-          {(['presence', 'agents'] as const).map((k) => (
+          {(
+            [
+              ['presence', 'settings.notifyPresence'],
+              ['agents', 'settings.notifyAgents'],
+              ['chat', 'settings.notifyChat'],
+            ] as const
+          ).map(([k, label]) => (
             <Checkbox
               key={k}
-              label={t(k === 'presence' ? 'settings.notifyPresence' : 'settings.notifyAgents')}
+              label={t(label)}
               checked={notify[k]}
               onChange={() => {
                 const next = { ...notify, [k]: !notify[k] };

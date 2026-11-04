@@ -156,6 +156,7 @@ export interface SettingsLoaded {
   externalAssetDirectories: string[];
   notifyPresence: boolean;
   notifyAgents: boolean;
+  notifyChat: boolean;
 }
 
 export interface ExternalAssetDirectoriesUpdated {
@@ -498,6 +499,7 @@ export interface SetNotifications {
   type: 'setNotifications';
   presence?: boolean;
   agents?: boolean;
+  chat?: boolean;
 }
 
 export interface OpenTranscript {

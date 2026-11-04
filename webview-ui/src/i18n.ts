@@ -150,6 +150,7 @@ const ko = {
   'settings.autostart': '로그인할 때 자동 실행',
   'settings.notifyPresence': '접속·퇴장 알림 (PC 알림)',
   'settings.notifyAgents': '내 에이전트 알림 (응답 대기·작업 완료)',
+  'settings.notifyChat': '채팅 알림 (새 말풍선마다 한 번)',
   'settings.language': '언어 / Language',
   'settings.theme': '테마 / Theme',
   'theme.dark': '다크',
@@ -370,9 +371,9 @@ const ko = {
     '팀 이름을 정해 만들면 초대 코드(PO2-…)가 나옵니다. 팀원은 그 코드로 참여합니다.\n팀 오피스의 내용은 팀원끼리만 암호화되어 오가고, 언제든 나갈 수 있습니다.',
   'tour.system.title': '자동 실행 · 알림 · 업데이트',
   'tour.system.body':
-    '로그인할 때 자동 실행과 PC 알림(접속·퇴장, 내 에이전트의 응답 대기·작업 완료)을 켜고 끕니다.\n새 버전은 자동으로 받아 다시 시작합니다. [업데이트 확인] 으로 바로 확인할 수도 있습니다.',
+    '로그인할 때 자동 실행과 PC 알림(접속·퇴장, 내 에이전트의 응답 대기·작업 완료, 채팅)을 켜고 끕니다.\n새 버전은 자동으로 받아 다시 시작합니다. [업데이트 확인] 으로 바로 확인할 수도 있습니다.',
   'tour.system.bodyNoAutostart':
-    'PC 알림(접속·퇴장, 내 에이전트의 응답 대기·작업 완료)을 켜고 끕니다.\n새 버전은 자동으로 받아 다시 시작합니다. [업데이트 확인] 으로 바로 확인할 수도 있습니다.',
+    'PC 알림(접속·퇴장, 내 에이전트의 응답 대기·작업 완료, 채팅)을 켜고 끕니다.\n새 버전은 자동으로 받아 다시 시작합니다. [업데이트 확인] 으로 바로 확인할 수도 있습니다.',
   'tour.layoutButton.title': '레이아웃 편집',
   'tour.layoutButton.body': '사무실 배치를 직접 꾸밀 수 있습니다. 편집기를 열어 볼게요.',
   'tour.floor.title': '바닥',
@@ -546,6 +547,7 @@ const en: Record<Key, string> = {
   'settings.autostart': 'Start at login',
   'settings.notifyPresence': 'Join/leave notifications (PC)',
   'settings.notifyAgents': 'My agents: waiting for me / finished (PC)',
+  'settings.notifyChat': 'Chat notifications (once per new bubble)',
   'settings.language': '언어 / Language',
   'settings.theme': '테마 / Theme',
   'theme.dark': 'Dark',
@@ -765,9 +767,9 @@ const en: Record<Key, string> = {
     'Create a team to get an invite code (PO2-…); teammates join with it.\nA team office is encrypted between its members, and you can leave any time.',
   'tour.system.title': 'Start at login · Notifications · Updates',
   'tour.system.body':
-    'Turn start at login and PC notifications (join/leave, my agents waiting or finished) on or off.\nNew versions are installed automatically; [Check for updates] checks right now.',
+    'Turn start at login and PC notifications (join/leave, my agents waiting or finished, chat) on or off.\nNew versions are installed automatically; [Check for updates] checks right now.',
   'tour.system.bodyNoAutostart':
-    'Turn PC notifications (join/leave, my agents waiting or finished) on or off.\nNew versions are installed automatically; [Check for updates] checks right now.',
+    'Turn PC notifications (join/leave, my agents waiting or finished, chat) on or off.\nNew versions are installed automatically; [Check for updates] checks right now.',
   'tour.layoutButton.title': 'Layout editor',
   'tour.layoutButton.body': 'Arrange the office yourself. Let’s open the editor.',
   'tour.floor.title': 'Floor',

@@ -82,6 +82,7 @@ The people panel on the right has three areas, **Public office / Team / Personal
 - **PC notifications** (Windows · Mac; they arrive with the window closed as long as the tray icon runs; each can be turned off in Settings):
   - **Join/leave**: someone enters or leaves the public office.
   - **My agents**: my Claude · Codex is waiting for me or finished (with the session title and project folder, on this PC only).
+  - **Chat**: someone in the office on screen posts a new bubble, once per bubble (`name: text`). Bubbles already up and those of someone who just came online are not announced.
 
 ### More
 

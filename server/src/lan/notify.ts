@@ -1,6 +1,7 @@
 // OS notifications, decided here on the server (so they work with no window open):
 // - join/leave of the public office: diff of consecutive ticks' people by peerId;
-// - this PC's own main agents: waiting for an answer (❗ / ask) and turn finished.
+// - this PC's own main agents: waiting for an answer (❗ / ask) and turn finished;
+// - a new chat bubble of someone in the office on screen (once per bubble).
 // Pure watchers driven by `Notifier.tick` every SNAPSHOT_INTERVAL_MS (cli.ts); the
 // body goes to the tray helper (tray.ts, base64 on its stdin) or, without one, the log.
 import type { AgentView } from '../../../core/src/lan.js';
@@ -21,6 +22,7 @@ interface Person {
   account: string;
   nickname: string;
   self: boolean;
+  chat?: { id: string; text: string };
 }
 
 export interface PresenceChange {
@@ -76,6 +78,45 @@ export class PresenceWatcher {
         out.left.push(g.label);
         this.gone.delete(id);
       }
+    }
+    return out;
+  }
+}
+
+export interface ChatEvent {
+  label: string;
+  text: string;
+}
+
+/**
+ * Chat bubbles of the office on screen (any view; self ignored). A bubble is announced
+ * once, when a peer already known since an earlier tick shows a chat id it did not have
+ * before: the first tick after a reset (start, view switch) and a peer's first
+ * appearance are the baseline, so bubbles that were already up (they never expire) and
+ * those of people who just came online never notify. Peers are kept while absent, so a
+ * peer that drops out for a moment does not re-announce its bubble.
+ */
+export class ChatWatcher {
+  view: string | null = null;
+  /** peerId → last chat id seen ('' = none); null = take the next tick as the baseline. */
+  private known: Map<string, string> | null = null;
+
+  reset(view: string | null): void {
+    this.view = view;
+    this.known = null;
+  }
+
+  apply(people: Person[]): ChatEvent[] {
+    const out: ChatEvent[] = [];
+    const first = !this.known;
+    const known = (this.known ??= new Map());
+    for (const p of people) {
+      if (p.self) continue;
+      const id = p.chat?.id ?? '';
+      const prev = known.get(p.peerId);
+      known.set(p.peerId, id);
+      if (first || prev === undefined || !p.chat || id === prev) continue;
+      out.push({ label: peerLabel(p), text: p.chat.text });
     }
     return out;
   }
@@ -184,14 +225,20 @@ export function agentText(lang: NotifyLang, e: AgentEvent, short = false): strin
     : `${head}\n${clip(e.title, NOTIFY_TITLE_MAX)} — ${verb}`;
 }
 
+/** One line per bubble: `name: text`. */
+export const chatText = (e: ChatEvent): string =>
+  `${clip(e.label, NOTIFY_NAME_MAX)}: ${clip(e.text, NOTIFY_BODY_MAX)}`;
+
 export interface NotifySettings {
   presence: boolean;
   agents: boolean;
+  chat: boolean;
 }
 
 export class Notifier {
   private readonly presence = new PresenceWatcher();
   private readonly agents = new AgentWatcher();
+  private readonly chats = new ChatWatcher();
 
   constructor(
     private readonly src: {
@@ -209,16 +256,20 @@ export class Notifier {
   tick(now = Date.now()): void {
     const view = this.src.view();
     if (view !== this.presence.view) this.presence.reset(view); // start / another office: new baseline
-    const change = this.presence.apply(this.src.people(view), now);
+    if (view !== this.chats.view) this.chats.reset(view);
+    const people = this.src.people(view);
+    const change = this.presence.apply(people, now);
+    const chats = this.chats.apply(people);
     const { local } = this.src;
     const events = this.agents.apply(local.views(), (id) => local.info(id));
-    if (change.joined.length + change.left.length + events.length === 0) return;
+    if (change.joined.length + change.left.length + events.length + chats.length === 0) return;
     const { lang } = this.out;
     const settings = this.src.settings();
     for (const body of settings.presence ? presenceText(lang, change) : []) this.send(body);
     if (settings.agents && events.length > 0) {
       this.send(events.map((e) => agentText(lang, e, events.length > 1)).join('\n'));
     }
+    if (settings.chat && chats.length > 0) this.send(chats.map(chatText).join('\n'));
   }
 
   private send(body: string): void {

@@ -338,6 +338,7 @@ components:
         - externalAssetDirectories
         - notifyPresence
         - notifyAgents
+        - notifyChat
       properties:
         type:
           const: settingsLoaded
@@ -353,6 +354,9 @@ components:
         notifyAgents:
           type: boolean
           description: OS notification when one of this PC's agents waits for an answer or finishes (default true).
+        notifyChat:
+          type: boolean
+          description: OS notification, once per bubble, for a new chat of someone in the office on screen (default true).
 
     ExternalAssetDirectoriesUpdated:
       description: External asset directory list changed (after add/remove).
@@ -1080,6 +1084,8 @@ components:
         presence:
           type: boolean
         agents:
+          type: boolean
+        chat:
           type: boolean
 
     # ── Supporting schemas ─────────────────────────────────────────
