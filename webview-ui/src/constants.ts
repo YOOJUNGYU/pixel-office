@@ -500,10 +500,6 @@ export const DEV_SERVER_VERSION = '0.0.0';
 export const VERSION_RELOAD_KEY = 'pixel-office.reloadedFor';
 
 // ── Room legend (top left) ───────────────────────────────────
-/** localStorage: '0' = name tags always shown (per viewer); unset or '1' = hidden (hover shows one). */
-export const TAGS_HIDDEN_KEY = 'pixel-office.tagsHidden';
-/** Name-tag toggle, below the theme/zoom row, CSS px. */
-export const TAG_TOGGLE_TOP_PX = 56;
 
 // ── People panel ─────────────────────────────────────────────
 /** localStorage: '1' = collapsed, '0' = expanded (per viewer); unset = by screen width. */
@@ -571,12 +567,6 @@ export const ACTIVITY_STRIP_TICK_MS = 15_000;
 export const TRANSCRIPT_ZOOM_KEY = 'pixel-office.transcript.zoom';
 /** A tool input/result longer than this many lines is folded behind [더 보기]. */
 export const TRANSCRIPT_FOLD_LINES = 12;
-/** Gap the panel keeps to the top-left name-tag toggle and the bottom-left toolbar. */
-export const TRANSCRIPT_PANEL_GAP_PX = 8;
-/** The name-tag toggle's height (`TagToggle`, measured 31.5), CSS px. */
-export const TAG_TOGGLE_HEIGHT_PX = 32;
-/** The bottom-left toolbar's top edge above the window bottom (`bottom-10` + its height), CSS px. */
-export const BOTTOM_TOOLBAR_RESERVE_PX = 56;
 /** Above name tags, bubbles and room plates (≤ 43) and the chat bar; below plate popups (46) and modals. */
 export const TRANSCRIPT_PANEL_Z_INDEX = 45;
 /** Popout window: default size, and the BroadcastChannel its open ids are announced on. */

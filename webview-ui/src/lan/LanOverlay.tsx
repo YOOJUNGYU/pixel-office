@@ -71,7 +71,6 @@ import {
   todoText,
 } from './statusSignals.js';
 import { stackTags, type TagBox } from './tagStack.js';
-import { tagVisible } from './tagVisibility.js';
 import { textWidth } from './textWidth.js';
 
 const measureTag = (s: string) => textWidth(s, LAN_TAG_FONT);
@@ -173,8 +172,6 @@ interface LanOverlayProps {
   containerRef: RefObject<HTMLDivElement | null>;
   zoom: number;
   panRef: MutableRefObject<{ x: number; y: number }>;
-  /** Agents' name tags hidden (except the hovered/selected character's); avatar tags always show. */
-  tagsHidden: boolean;
   /** Personal mode: agents' tags show MAIN/SUB/SHELL + #n only (my name is on my avatar). */
   personal: boolean;
 }
@@ -191,7 +188,6 @@ export function LanOverlay({
   containerRef,
   zoom,
   panRef,
-  tagsHidden,
   personal,
 }: LanOverlayProps) {
   // Re-render after every canvas frame (the on-demand schedule), never when idle.
@@ -219,7 +215,7 @@ export function LanOverlay({
   const nodes = [];
   const byKey = new Map(lan.all().map((a) => [a.key, a] as const));
   // Project every tag first, then stack the ones that collide (side-by-side characters).
-  const tags: Array<{ a: OfficeAgent; ch: Character; text: string; show: boolean }> = [];
+  const tags: Array<{ a: OfficeAgent; ch: Character; text: string }> = [];
   const boxes: TagBox[] = [];
   for (const a of lan.all()) {
     const id = lan.idFor(a.key);
@@ -235,7 +231,6 @@ export function LanOverlay({
       a,
       ch,
       text,
-      show: tagVisible(tagsHidden, ch.id, officeState.hoveredAgentId, officeState.selectedAgentId),
     });
     boxes.push({
       x: project.toScreenX(ch.x),
@@ -254,7 +249,6 @@ export function LanOverlay({
   for (const av of lan.avatars()) {
     const ch = officeState.characters.get(av.id);
     if (!ch || ch.matrixEffect === 'despawn') continue;
-    if (!tagVisible(tagsHidden, av.id, null, null, true)) continue;
     avatarTags.push({
       ...av,
       box: {
@@ -266,15 +260,13 @@ export function LanOverlay({
       },
     });
   }
-  // Only visible tags take part in stacking (one line, the same height for both).
-  const shown = boxes.map((_, i) => i).filter((i) => tags[i].show);
+  // Agent and avatar tags stack together (one line, the same height for both).
   const stacked = stackTags(
-    [...shown.map((i) => boxes[i]), ...avatarTags.map((v) => v.box)],
+    [...boxes, ...avatarTags.map((v) => v.box)],
     Math.max(LAN_TAG_HEIGHT_PX, AVATAR_TAG_HEIGHT_PX) * k,
     LAN_TAG_STACK_GAP_PX * k,
   );
-  const tops: number[] = [];
-  shown.forEach((i, k) => (tops[i] = stacked[k]));
+  const tops = stacked.slice(0, boxes.length);
   /** The red "!" above a head (a waiting agent, or an avatar holding one). */
   const alert = (key: string, ch: Character) => {
     const typing = ch.state === CharacterState.TYPE;
@@ -315,7 +307,7 @@ export function LanOverlay({
         className={`absolute -translate-x-1/2 whitespace-nowrap text-sm leading-none px-3 py-1 pointer-events-none ${lit ? 'outline-2 outline-accent-bright' : ''}`}
         style={{
           left: v.box.x,
-          top: stacked[shown.length + k],
+          top: stacked[boxes.length + k],
           background: v.tagColors?.bg ?? 'var(--avatar-tag-bg)',
           color: v.tagColors?.fg ?? 'var(--avatar-tag-fg)',
           border: v.self ? '2px solid var(--avatar-tag-self-border)' : undefined,
@@ -332,37 +324,36 @@ export function LanOverlay({
     const x = boxes[i].x;
     const lit = a.peer.id === lan.highlightPeer;
     const own = !lit && a.peer.id === mine?.peerId ? mine.tagColors : undefined;
-    if (tags[i].show)
-      nodes.push(
-        <div
-          key={a.key}
-          data-agent-key={a.key}
-          className={`absolute -translate-x-1/2 flex items-center gap-4 whitespace-nowrap text-sm leading-none px-3 py-1 pointer-events-none ${lit ? 'bg-accent text-on-accent outline-2 outline-accent-bright' : own ? '' : 'bg-bg/75 text-text'}`}
-          style={{
-            left: x,
-            top: tops[i],
-            ...tagScale,
-            ...(own && { background: own.bg, color: own.fg }),
-            zIndex: lit ? LAN_PERMISSION_Z_INDEX : LAN_TAG_Z_INDEX,
-          }}
+    nodes.push(
+      <div
+        key={a.key}
+        data-agent-key={a.key}
+        className={`absolute -translate-x-1/2 flex items-center gap-4 whitespace-nowrap text-sm leading-none px-3 py-1 pointer-events-none ${lit ? 'bg-accent text-on-accent outline-2 outline-accent-bright' : own ? '' : 'bg-bg/75 text-text'}`}
+        style={{
+          left: x,
+          top: tops[i],
+          ...tagScale,
+          ...(own && { background: own.bg, color: own.fg }),
+          zIndex: lit ? LAN_PERMISSION_Z_INDEX : LAN_TAG_Z_INDEX,
+        }}
+      >
+        <span
+          data-badge={a.kind}
+          className="shrink-0 px-2 text-2xs font-bold leading-none"
+          style={badgeColors(a.kind)}
         >
-          <span
-            data-badge={a.kind}
-            className="shrink-0 px-2 text-2xs font-bold leading-none"
-            style={badgeColors(a.kind)}
-          >
-            {tagBadge(a)}
-          </span>
-          {text}
-          {a.ctx && <CtxChip a={a} />}
-        </div>,
-      );
+          {tagBadge(a)}
+        </span>
+        {text}
+        {a.ctx && <CtxChip a={a} />}
+      </div>,
+    );
     if (a.permission) alert(`${a.key}!`, ch);
   }
 
-  // Tags & bubbles shown: every working agent also has a speech bubble above its head (provider
+  // Every working agent also has a speech bubble above its head (provider
   // badge + what it does), drawn like the chat bubbles: pixel panel, tail down to the head.
-  if (!tagsHidden) {
+  {
     const lines: Array<{
       key: string;
       a: OfficeAgent;

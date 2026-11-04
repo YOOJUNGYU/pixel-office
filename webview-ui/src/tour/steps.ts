@@ -36,8 +36,6 @@ export interface Scene {
   people?: boolean;
   /** The first room plate's tooltip shown without a hover. */
   legend?: boolean;
-  /** Name tags shown even if the viewer keeps them hidden. */
-  tags?: boolean;
 }
 
 /** Things a step needs on this screen; steps whose needs are unmet are dropped. */
@@ -101,7 +99,7 @@ export const STEPS: Step[] = [
     targets: [{ dom: 'room-plate' }, { dom: 'tags-toggle' }],
     scene: { legend: true },
   },
-  { id: 'tag', targets: [{ agent: 'tag' }], scene: { tags: true } },
+  { id: 'tag', targets: [{ agent: 'tag' }] },
   {
     id: 'bubble',
     targets: [{ agent: 'bubble' }, { dom: 'hover-bubble' }],
@@ -110,7 +108,6 @@ export const STEPS: Step[] = [
   {
     id: 'family',
     targets: [{ agent: 'child' }],
-    scene: { tags: true },
     requires: ['family'],
   },
   {

@@ -77,8 +77,6 @@ const ko = {
   'transcript.kind.tool': '도구',
   'transcript.kind.result': '결과',
   'transcript.kind.meta': '시스템',
-  'tags.hide': '이름표·말풍선 숨기기',
-  'tags.show': '이름표·말풍선 보이기',
   'legend.coding':
     '파일을 직접 고칠 때 (Edit·Write, Codex apply_patch), 작업 목록 정리 (TodoWrite·update_plan)',
   'legend.library':
@@ -87,8 +85,7 @@ const ko = {
   'legend.lounge':
     '입력·승인 대기, 작업 끝남 — 그 PC의 캐릭터로 합쳐짐 (머리 위 빨간 ! = 확인 필요)',
   'tour.roomLegend.title': '방 안내',
-  'tour.roomLegend.body':
-    '방 명패에 마우스를 올리면 어떤 일을 할 때 그 방으로 가는지 보입니다. 에이전트의 이름표와 작업 말풍선은 기본으로 보이고, 왼쪽 위 [이름표·말풍선 숨기기] 버튼으로 한꺼번에 숨길 수 있습니다(숨겨도 마우스를 올린 캐릭터는 보임).',
+  'tour.roomLegend.body': '방 명패에 마우스를 올리면 어떤 일을 할 때 그 방으로 가는지 보입니다.',
   'app.restarting': '새 버전으로 다시 시작합니다…',
   'server.offTitle': 'Pixel Office 서버가 꺼져 있습니다',
   'server.quitTitle': 'Pixel Office 를 종료했습니다',
@@ -475,8 +472,6 @@ const en: Record<Key, string> = {
   'transcript.kind.tool': 'Tool',
   'transcript.kind.result': 'Result',
   'transcript.kind.meta': 'System',
-  'tags.hide': 'Hide tags & bubbles',
-  'tags.show': 'Show tags & bubbles',
   'legend.coding': 'Editing files; keeping the task list (TodoWrite, update_plan)',
   'legend.library':
     'Thinking (before any tool), reading, searching code and the web (incl. read-only shell commands), other tools',
@@ -484,8 +479,7 @@ const en: Record<Key, string> = {
   'legend.lounge':
     "Waiting for input/approval or done — merged into the PC's character (red ! = needs you)",
   'tour.roomLegend.title': 'Rooms',
-  'tour.roomLegend.body':
-    'Hover a room plate to see which activity sends an agent there. Agent name tags and activity bubbles show by default; the button at the top left hides them all at once (a hovered character still shows its own).',
+  'tour.roomLegend.body': 'Hover a room plate to see which activity sends an agent there.',
   'app.restarting': 'Restarting into the new version…',
   'server.offTitle': 'The Pixel Office server is off',
   'server.quitTitle': 'Pixel Office was quit',

@@ -4,7 +4,6 @@ import { ROOM_DEFAULT_COLORS } from '../../core/src/lan.js';
 import type { OfficePersonMessage } from '../../core/src/messages.js';
 import { arrowDir, avatarDirName, LanAgents } from '../src/lan/lanAgents.js';
 import { avatarLabel, disambiguate } from '../src/lan/nicknames.js';
-import { tagVisible } from '../src/lan/tagVisibility.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
 import type { OfficeLayout } from '../src/office/types.js';
 import { CharacterState, Direction, TileType } from '../src/office/types.js';
@@ -196,11 +195,5 @@ describe('name tags', () => {
       [],
     );
     expect(people.map(avatarLabel)).toEqual(['kim', 'kim · bbbb']);
-  });
-
-  it('the toggle hides agent tags only; avatar tags always show', () => {
-    expect(tagVisible(true, 1, null, null)).toBe(false);
-    expect(tagVisible(true, 1, null, null, true)).toBe(true);
-    expect(tagVisible(false, 1, null, null, true)).toBe(true);
   });
 });

@@ -47,8 +47,6 @@ import { peopleRows } from './lan/peopleModel.js';
 import { PeoplePanel } from './lan/PeoplePanel.js';
 import { ProfileModal } from './lan/ProfileModal.js';
 import { RoomPlates } from './lan/RoomPlates.js';
-import { TagToggle } from './lan/TagToggle.js';
-import { readTagsHidden, saveTagsHidden } from './lan/tagVisibility.js';
 import { openPopout, usePopoutIds } from './lan/transcriptWindows.js';
 import { UpdateBanner } from './lan/UpdateBanner.js';
 import { OfficeCanvas } from './office/components/OfficeCanvas.js';
@@ -205,14 +203,6 @@ function App() {
     zoom,
     panRef,
   ]);
-
-  const [tagsHidden, setTagsHidden] = useState(readTagsHidden);
-  const toggleTags = useCallback(() => {
-    setTagsHidden((h) => {
-      saveTagsHidden(!h);
-      return !h;
-    });
-  }, []);
 
   /** Leave the editor without saving: every edit is dropped (asks first when there are any). */
   const cancelEditing = useCallback(() => {
@@ -617,7 +607,6 @@ function App() {
           containerRef={containerRef}
           zoom={editor.zoom}
           panRef={editor.panRef}
-          tagsHidden={tagsHidden && scene?.tags !== true}
           personal={personal}
         />
 
@@ -643,8 +632,6 @@ function App() {
           onZoomChange={editor.handleZoomChange}
           showZoom={!isMobile}
         />
-
-        {!editor.isEditMode && <TagToggle tagsHidden={tagsHidden} onToggleTags={toggleTags} />}
 
         {/* Vignette overlay */}
         <div
