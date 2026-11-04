@@ -1,9 +1,6 @@
 import type { OfficeAgent } from '../../../core/src/lan.js';
 import type { TranscriptEntry, TranscriptInfo } from '../../../core/src/messages.js';
 import {
-  TRANSCRIPT_DIALOG_KEEP_PX,
-  TRANSCRIPT_DIALOG_MIN_H_PX,
-  TRANSCRIPT_DIALOG_MIN_W_PX,
   TRANSCRIPT_FOLLOW_SLACK_PX,
   TRANSCRIPT_ZOOM_DEFAULT,
   TRANSCRIPT_ZOOM_MAX,
@@ -94,44 +91,4 @@ export function transcriptStatus(
   if (a.act === 'idle') return 'idle';
   // A turn with no tool running yet (setThinking: act 'tool', no target) = thinking.
   return a.act === 'tool' && !a.target ? 'thinking' : 'working';
-}
-
-export interface Rect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-/** Resize grip: the edges it moves (`n`/`s` top/bottom, `w`/`e` left/right; corners = two). */
-export type ResizeGrip = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
-
-/** `from` resized by dragging `grip` by (dx, dy): the opposite edges stay put, the size
- *  never drops under the minimum, and the top edge never goes above the window. */
-export function resizeRect(from: Rect, grip: ResizeGrip, dx: number, dy: number): Rect {
-  let { x, y, w, h } = from;
-  if (grip.includes('e')) w = Math.max(TRANSCRIPT_DIALOG_MIN_W_PX, from.w + dx);
-  if (grip.includes('s')) h = Math.max(TRANSCRIPT_DIALOG_MIN_H_PX, from.h + dy);
-  if (grip.includes('w')) {
-    w = Math.max(TRANSCRIPT_DIALOG_MIN_W_PX, from.w - dx);
-    x = from.x + from.w - w;
-  }
-  if (grip.includes('n')) {
-    const bottom = from.y + from.h;
-    h = Math.min(bottom, Math.max(TRANSCRIPT_DIALOG_MIN_H_PX, from.h - dy));
-    y = bottom - h;
-  }
-  return { x, y, w, h };
-}
-
-/** A dialog's box kept usable: at least the minimum size, no bigger than the window, and
- *  enough of it (its header) on screen to grab it again. */
-export function clampRect(r: Rect, view: { w: number; h: number }): Rect {
-  const w = Math.round(Math.max(TRANSCRIPT_DIALOG_MIN_W_PX, Math.min(r.w, view.w)));
-  const h = Math.round(Math.max(TRANSCRIPT_DIALOG_MIN_H_PX, Math.min(r.h, view.h)));
-  const x = Math.round(
-    Math.min(Math.max(r.x, TRANSCRIPT_DIALOG_KEEP_PX - w), view.w - TRANSCRIPT_DIALOG_KEEP_PX),
-  );
-  const y = Math.round(Math.min(Math.max(r.y, 0), view.h - TRANSCRIPT_DIALOG_KEEP_PX));
-  return { x, y, w, h };
 }

@@ -122,7 +122,7 @@ export const STEPS: Step[] = [
   { id: 'people', targets: [{ dom: 'people' }], scene: { people: true } },
   // Arrow keys + the chat bar (hidden during the tour): a centred explanation.
   { id: 'chat', targets: [], requires: ['chat'] },
-  // Session details of my agents (dialogs, resize, snap zones): a centred explanation.
+  // Session details of my agents (popout windows): a centred explanation.
   { id: 'transcript', targets: [], requires: ['chat'] },
   { id: 'settingsButton', targets: [{ dom: 'settings-button' }] },
   {

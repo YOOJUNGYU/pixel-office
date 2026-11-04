@@ -1,4 +1,4 @@
-import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import type { TranscriptEntry } from '../../../core/src/messages.js';
@@ -36,10 +36,6 @@ const CODE_STYLE = { background: 'var(--transcript-code-bg)' };
 
 export interface TranscriptPanelProps {
   state: TranscriptState;
-  /** Dialog only: move this transcript into its own window. */
-  onPopout?: () => void;
-  /** Dialog only: a press on the header (not its controls) starts a drag. */
-  onHeaderPointerDown?: (e: ReactPointerEvent) => void;
   /** What the agent is doing now, and (working) its activity line. */
   status: TranscriptStatus;
   activity: string;
@@ -48,12 +44,12 @@ export interface TranscriptPanelProps {
 }
 
 /**
- * One of my agents' full session transcript, filling its frame (a TranscriptDialog or a
- * popout window): header (badge, #n, provider, title, folder, zoom, ⧉ popout, ×), a
+ * One of my agents' full session transcript, filling its popout window: header (badge, #n,
+ * provider, title, folder, zoom, ×), a
  * status line, then every entry. Opens at the bottom, follows new entries while scrolled
  * to the bottom (else a "new below" button), loads earlier pages at the top (and by
  * itself while it does not fill the panel) and keeps the reading position when they
- * arrive. The header (outside its buttons) is the dialog's drag handle. Memoized.
+ * arrive. Memoized.
  */
 export const TranscriptPanel = memo(function TranscriptPanel({
   state,
@@ -61,8 +57,6 @@ export const TranscriptPanel = memo(function TranscriptPanel({
   activity,
   onClose,
   onLoadEarlier,
-  onPopout,
-  onHeaderPointerDown,
 }: TranscriptPanelProps) {
   useLang();
   const scroller = useRef<HTMLDivElement>(null);
@@ -126,12 +120,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({
         if (e.key === 'Escape') onClose();
       }}
     >
-      <div
-        className={`flex items-center gap-6 px-8 py-4 border-b-2 border-border min-w-0 select-none ${onHeaderPointerDown ? 'cursor-move' : ''}`}
-        onPointerDown={(e) => {
-          if (!(e.target as Element).closest('button, input')) onHeaderPointerDown?.(e);
-        }}
-      >
+      <div className="flex items-center gap-6 px-8 py-4 border-b-2 border-border min-w-0 select-none">
         {info && (
           <>
             <span
@@ -162,17 +151,6 @@ export const TranscriptPanel = memo(function TranscriptPanel({
           </>
         )}
         <ZoomControl zoom={zoom} onChange={changeZoom} />
-        {onPopout && (
-          <button
-            type="button"
-            className="shrink-0 px-4 text-sm text-text-muted hover:text-text cursor-pointer bg-transparent border-0"
-            title={t('transcript.popout')}
-            aria-label={t('transcript.popout')}
-            onClick={onPopout}
-          >
-            ⧉
-          </button>
-        )}
         <button
           type="button"
           className="shrink-0 px-6 text-base text-text-muted hover:text-text cursor-pointer bg-transparent border-0"
@@ -256,17 +234,18 @@ function StatusBar({ status, activity }: { status: TranscriptStatus; activity: s
     <div
       role="status"
       data-transcript-status={status}
-      className="flex items-center gap-6 px-8 py-2 border-b-2 border-border text-xs min-w-0"
+      className={`flex items-center gap-8 px-10 py-4 border-b-2 border-border text-base min-w-0 ${busy ? 'transcript-status-busy' : ''}`}
+      style={{ '--status-color': STATUS_COLOR[status] } as CSSProperties}
     >
       <span
-        className={`shrink-0 w-[8px] h-[8px] ${busy ? 'pixel-pulse' : ''}`}
+        className={`shrink-0 w-[10px] h-[10px] ${busy ? 'pixel-pulse' : ''}`}
         style={{ background: STATUS_COLOR[status] }}
       />
       <span className="shrink-0 font-bold" style={{ color: STATUS_COLOR[status] }}>
         {t(`transcript.status.${status}`)}
       </span>
       {status === 'working' && activity && (
-        <span className="truncate text-text-muted" title={activity}>
+        <span className="truncate text-sm text-text" title={activity}>
           {activity}
         </span>
       )}

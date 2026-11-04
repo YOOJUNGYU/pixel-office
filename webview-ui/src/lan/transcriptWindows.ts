@@ -1,36 +1,16 @@
-// Where transcripts open (in-page dialog or popout window, per viewer), and which ids
-// popout windows have open (announced over a BroadcastChannel, so the office outlines them).
+// Transcripts always open in popout windows; the ids they have open are announced over a
+// BroadcastChannel, so the office outlines them.
 import { useEffect, useState } from 'react';
 
 import {
   TRANSCRIPT_CHANNEL,
   TRANSCRIPT_HEARTBEAT_MS,
-  TRANSCRIPT_OPEN_IN_KEY,
   TRANSCRIPT_WINDOW_H_PX,
   TRANSCRIPT_WINDOW_W_PX,
 } from '../constants.js';
 
-export type OpenIn = 'dialog' | 'window';
-export const OPEN_IN: readonly OpenIn[] = ['dialog', 'window'];
-
 /** The URL query a popout window carries its agent id in. */
 const PARAM = 'transcript';
-
-export function getOpenIn(): OpenIn {
-  try {
-    return localStorage.getItem(TRANSCRIPT_OPEN_IN_KEY) === 'window' ? 'window' : 'dialog';
-  } catch {
-    return 'dialog';
-  }
-}
-
-export function setOpenIn(v: OpenIn): void {
-  try {
-    localStorage.setItem(TRANSCRIPT_OPEN_IN_KEY, v);
-  } catch {
-    // blocked: the choice just is not kept
-  }
-}
 
 /** This window is a popout: the agent id it shows, else null. */
 export function popoutId(search: string = window.location.search): string | null {

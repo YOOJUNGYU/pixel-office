@@ -80,11 +80,6 @@
   --transcript-old-border: #d14249;
   --transcript-new-border: #3fb36b;
   /* Transcript status bar: thinking / working / waiting for me. */
-  /* Dialog snap zones (Shift-drag): idle and lit. */
-  --zone-bg: rgba(96, 48, 255, 0.1);
-  --zone-border: rgba(160, 140, 255, 0.7);
-  --zone-active-bg: rgba(96, 48, 255, 0.35);
-  --zone-active-border: #c8b8ff;
   --transcript-status-thinking: #b39dff;
   --transcript-status-working: #3fd07a;
   --transcript-status-waiting: #ffb547;
@@ -158,13 +153,9 @@
   --transcript-inline-code-fg: #a3265b;
   --transcript-old-border: #b8323a;
   --transcript-new-border: #1f8a4c;
-  --zone-bg: rgba(96, 48, 255, 0.07);
-  --zone-border: rgba(96, 48, 255, 0.55);
-  --zone-active-bg: rgba(96, 48, 255, 0.25);
-  --zone-active-border: #4a1fd6;
   --transcript-status-thinking: #6a3fd6;
-  --transcript-status-working: #1f8a4c;
-  --transcript-status-waiting: #b86e00;
+  --transcript-status-working: #176b3a;
+  --transcript-status-waiting: #8a5200;
   --syntax-kw: #7c3aad;
   --syntax-str: #2f7d32;
   --syntax-num: #b3541e;
@@ -402,6 +393,27 @@
   }
   50% {
     opacity: 0.3;
+  }
+}
+
+/* Transcript status bar while the agent is busy: its colour breathes softly behind it,
+   easing in and out like a slow bounce. */
+@keyframes transcript-status-breathe {
+  0%,
+  100% {
+    background-color: color-mix(in srgb, var(--status-color) 6%, transparent);
+  }
+  50% {
+    background-color: color-mix(in srgb, var(--status-color) 20%, transparent);
+  }
+}
+.transcript-status-busy {
+  animation: transcript-status-breathe 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .transcript-status-busy {
+    animation: none;
+    background-color: color-mix(in srgb, var(--status-color) 12%, transparent);
   }
 }
 

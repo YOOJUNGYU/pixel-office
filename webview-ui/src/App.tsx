@@ -39,7 +39,6 @@ import { useAvatarKeys } from './lan/avatarKeys.js';
 import { ChatLayer } from './lan/ChatLayer.js';
 import { areaSections } from './lan/directoryModel.js';
 import { InstallPrompt } from './lan/InstallPrompt.js';
-import { activityText } from './lan/lanAgents.js';
 import { LanOverlay } from './lan/LanOverlay.js';
 import { NicknameNotice } from './lan/NicknameNotice.js';
 import { isPersonal } from './lan/offices.js';
@@ -50,12 +49,8 @@ import { ProfileModal } from './lan/ProfileModal.js';
 import { RoomPlates } from './lan/RoomPlates.js';
 import { TagToggle } from './lan/TagToggle.js';
 import { readTagsHidden, saveTagsHidden } from './lan/tagVisibility.js';
-import { transcriptStatus } from './lan/transcript.js';
-import { TranscriptDialog } from './lan/TranscriptDialog.js';
-import { getOpenIn, openPopout, usePopoutIds } from './lan/transcriptWindows.js';
+import { openPopout, usePopoutIds } from './lan/transcriptWindows.js';
 import { UpdateBanner } from './lan/UpdateBanner.js';
-import { useTranscripts } from './lan/useTranscript.js';
-import { ZoneEditor } from './lan/ZoneEditor.js';
 import { OfficeCanvas } from './office/components/OfficeCanvas.js';
 import { EditorState } from './office/editor/editorState.js';
 import { EditorToolbar } from './office/editor/EditorToolbar.js';
@@ -362,43 +357,12 @@ function App() {
   const touring = step !== null;
 
   // My agents' transcripts: opened by clicking one of my characters (or a card of the
-  // avatar list), each in its own dialog — or its own window (Settings → open in). They
-  // close only by their × (or Esc for the top dialog); editing or the tour closes the dialogs.
-  const tr = useTranscripts();
-  const { closeAll: closeTranscripts } = tr;
-  const transcriptOpen = tr.list.length > 0;
-  /** Dialog ids, back to front (pressed last = on top). */
-  const [front, setFront] = useState<string[]>([]);
-  const openTranscript = useCallback(
-    (id: string) => {
-      if (getOpenIn() === 'window') {
-        openPopout(id);
-        return;
-      }
-      tr.open(id);
-      setFront((f) => [...f.filter((x) => x !== id), id]);
-    },
-    [tr],
-  );
-  const closeTranscript = useCallback(
-    (id: string) => {
-      tr.close(id);
-      setFront((f) => f.filter((x) => x !== id));
-    },
-    [tr],
-  );
-  const popOut = useCallback(
-    (id: string) => {
-      closeTranscript(id);
-      openPopout(id);
-    },
-    [closeTranscript],
-  );
+  // avatar list), always in their own popout window (openPopout, one per id).
   const popoutIds = usePopoutIds();
 
-  // My characters: only the ones whose transcript is open (dialog or window) are outlined.
+  // My characters: only the ones whose transcript window is open are outlined.
   const selfPeer = people.find((p) => p.self)?.peerId ?? null;
-  const openIds = [...tr.list.map((s) => s.id), ...popoutIds].sort().join('\n');
+  const openIds = popoutIds.join('\n');
   useEffect(() => {
     officeState.ownPeer = selfPeer;
     const ids = new Set(openIds ? openIds.split('\n') : []);
@@ -414,27 +378,22 @@ function App() {
   const [listPeer, setListPeer] = useState<string | null>(null);
   const closeList = useCallback(() => setListPeer(null), []);
   useEffect(() => {
-    if (editor.isEditMode || touring) {
-      if (transcriptOpen) closeTranscripts();
-      setListPeer(null);
-    }
-  }, [transcriptOpen, editor.isEditMode, touring, closeTranscripts]);
+    if (editor.isEditMode || touring) setListPeer(null);
+  }, [editor.isEditMode, touring]);
   useEffect(() => {
-    if (!transcriptOpen && listPeer === null) return;
+    if (listPeer === null) return;
     const onKey = (e: KeyboardEvent) => {
       const el = document.activeElement;
       if (e.key !== 'Escape' || el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)
         return;
-      // The list first when both are open. Esc also drops my PC's selection, so the
-      // next click on my avatar opens the list again (not the click-again "off").
-      if (listPeer !== null) {
-        officeState.selectedPeer = null; // the setter requests a render
-        setListPeer(null);
-      } else if (front.length) closeTranscript(front[front.length - 1]); // the top dialog
+      // Esc also drops my PC's selection, so the next click on my avatar opens the
+      // list again (not the click-again "off").
+      officeState.selectedPeer = null; // the setter requests a render
+      setListPeer(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [transcriptOpen, listPeer, closeTranscript, officeState, front]);
+  }, [listPeer, officeState]);
 
   // My avatar and the chat bar: only in an office this PC is live in (I am in its
   // snapshot), never while editing, touring or read-only.
@@ -619,7 +578,7 @@ function App() {
             // Only this PC's agents (never a peer's or a tour demo): the server checks again.
             const a = lan.agentFor(id);
             if (!a || !lan.isMine(a)) return;
-            openTranscript(a.id); // already open: brought to the front
+            openPopout(a.id); // already open: its window is focused
           }}
           onAvatarClick={(peerId, selected) => {
             const mine = peerId === lan.selfPeerId();
@@ -637,7 +596,7 @@ function App() {
             panRef={editor.panRef}
             onPick={(id) => {
               setListPeer(null);
-              openTranscript(id);
+              openPopout(id);
             }}
             onClose={closeList}
           />
@@ -686,29 +645,6 @@ function App() {
         />
 
         {!editor.isEditMode && <TagToggle tagsHidden={tagsHidden} onToggleTags={toggleTags} />}
-        {!editor.isEditMode && !touring && <ZoneEditor />}
-
-        {!editor.isEditMode &&
-          front.map((id, n) => {
-            const st = tr.list.find((x) => x.id === id);
-            if (!st) return null;
-            const a = lan.all().find((x) => x.id === id);
-            return (
-              <TranscriptDialog
-                key={id}
-                index={tr.list.indexOf(st)}
-                state={st}
-                status={transcriptStatus(a)}
-                activity={a ? activityText(a) : ''}
-                onClose={() => closeTranscript(id)}
-                onLoadEarlier={() => tr.loadEarlier(id)}
-                onPopout={() => popOut(id)}
-                onFront={() =>
-                  n !== front.length - 1 && setFront((f) => [...f.filter((x) => x !== id), id])
-                }
-              />
-            );
-          })}
 
         {/* Vignette overlay */}
         <div
