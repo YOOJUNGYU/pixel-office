@@ -13,6 +13,7 @@ import {
   FURNITURE_ANIM_INTERVAL_SEC,
   GREETER_ID,
   GREETER_TILE_MARGIN,
+  PC_SCREEN_FRAME_SEC,
   PET_HIT_HALF_WIDTH,
   PET_HIT_HALF_WIDTH_SIDE,
   PET_HIT_HEIGHT,
@@ -44,6 +45,7 @@ import { CharacterState, Direction, TILE_SIZE } from '../types.js';
 import { createCharacter, stepTile, updateCharacter } from './characters.js';
 import { requestRender } from './gameLoop.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
+import { screenSprite } from './pcScreens.js';
 import { anchorTile, closestFreeSeat } from './seatPlacement.js';
 import { ledMask, ledSprite } from './serverLeds.js';
 
@@ -1296,14 +1298,38 @@ export class OfficeState {
     return out;
   }
 
+  /** Front PCs that are on, with their agent's screen (code / terminal / document) painted in. */
+  private withScreens(
+    instances: FurnitureInstance[],
+    screenTiles: Map<string, NonNullable<Character['screen']>>,
+  ): FurnitureInstance[] {
+    if (!screenTiles.size) return instances;
+    const onSprites = new Set<SpriteData>();
+    for (const t of getAnimationFrames(getOnStateType('PC_FRONT_OFF')) ?? []) {
+      const sprite = getCatalogEntry(t)?.sprite;
+      if (sprite) onSprites.add(sprite);
+    }
+    const frame = Math.floor(this.furnitureAnimTimer / PC_SCREEN_FRAME_SEC);
+    return instances.map((f) => {
+      if (!onSprites.has(f.sprite)) return f;
+      const col = Math.floor(f.x / TILE_SIZE);
+      const row = Math.floor(f.y / TILE_SIZE);
+      const kind = screenTiles.get(`${col},${row}`) ?? screenTiles.get(`${col},${row + 1}`);
+      return kind ? { ...f, sprite: screenSprite(f.sprite, kind, frame) } : f;
+    });
+  }
+
   /** Rebuild furniture instances with auto-state applied (active agents turn electronics ON) */
   private rebuildFurnitureInstances(): void {
     // Collect tiles where active agents face desks
     const autoOnTiles = new Set<string>();
+    /** Faced tiles → the screen their agent's act shows (later agents win a shared tile). */
+    const screenTiles = new Map<string, NonNullable<Character['screen']>>();
     for (const ch of this.characters.values()) {
       if (!ch.isActive || !ch.seatId) continue;
       const seat = this.seats.get(ch.seatId);
       if (!seat) continue;
+      const before = autoOnTiles.size;
       // Find the desk tile(s) the agent faces from their seat
       const dCol =
         seat.facingDir === Direction.RIGHT ? 1 : seat.facingDir === Direction.LEFT ? -1 : 0;
@@ -1327,6 +1353,10 @@ export class OfficeState {
           autoOnTiles.add(`${baseCol - 1},${baseRow}`);
           autoOnTiles.add(`${baseCol + 1},${baseRow}`);
         }
+      }
+      if (ch.screen) {
+        // ponytail: tiles shared by two agents keep the last one's screen
+        for (const k of [...autoOnTiles].slice(before)) screenTiles.set(k, ch.screen);
       }
     }
 
@@ -1363,7 +1393,9 @@ export class OfficeState {
       return item;
     });
 
-    this.furniture = this.withServerLeds(layoutToFurnitureInstances(modifiedFurniture));
+    this.furniture = this.withServerLeds(
+      this.withScreens(layoutToFurnitureInstances(modifiedFurniture), screenTiles),
+    );
   }
 
   setAgentTool(id: number, tool: string | null): void {

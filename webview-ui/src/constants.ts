@@ -212,6 +212,21 @@ export const SERVER_LED_PIXELS: ReadonlyArray<{ x: number; y: number; color: str
 ];
 /** Each LED's on/off steps (one per furniture tick); PCs start at different steps. */
 export const SERVER_LED_PATTERNS = ['1101001110', '1000110100'];
+/** A front PC's screen (top-left pixel of its 10×5 area) and the colours of its frames
+ *  (office/engine/pcScreens.ts): code, terminal, document. One frame per this many seconds. */
+export const PC_SCREEN_ORIGIN = { x: 3, y: 5 } as const;
+export const PC_SCREEN_FRAME_SEC = 0.8;
+export const PC_SCREEN_COLORS: Readonly<Record<string, string>> = {
+  k: '#10261a',
+  g: '#4ade80',
+  G: '#22a35a',
+  b: '#0b0b10',
+  w: '#c8c8d0',
+  c: '#f0f0f0',
+  p: '#f4f4f0',
+  l: '#9aa0aa',
+  h: '#5a6070',
+};
 
 // ── Version Notice ──────────────────────────────────────────
 export const WHATS_NEW_AUTO_CLOSE_MS = 20000;

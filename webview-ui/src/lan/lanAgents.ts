@@ -5,6 +5,7 @@ import { LAN_KIND_BADGES, LAN_ROOM_TOOL } from '../constants.js';
 import { actText, t } from '../i18n.js';
 import { requestRender } from '../office/engine/gameLoop.js';
 import type { OfficeState } from '../office/engine/officeState.js';
+import { screenKind } from '../office/engine/pcScreens.js';
 import { Direction } from '../office/types.js';
 import { isDemoKey } from '../tour/demoAgents.js';
 import { avatarLabel } from './nicknames.js';
@@ -367,6 +368,12 @@ export class LanAgents {
         const seat = os.freeSeatNear(ROOM_LABELS[a.room], id);
         if (seat !== null) this.enterRoom(id, a.room, seat);
       }
+    }
+    // Each working character's PC screen follows its act (code / terminal / document).
+    for (const a of agents) {
+      const cid = this.ids.get(a.key);
+      const ch = cid !== undefined ? os.characters.get(cid) : undefined;
+      if (ch) ch.screen = screenKind(a);
     }
     requestRender('snapshot');
   }

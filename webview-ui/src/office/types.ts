@@ -189,6 +189,8 @@ export interface OfficeLayout {
 }
 
 export interface Character {
+  /** What its PC screen shows while it works at a front PC (pcScreens); unset = the PC's own. */
+  screen?: 'code' | 'term' | 'doc' | null;
   id: number;
   state: CharacterState;
   dir: Direction;
