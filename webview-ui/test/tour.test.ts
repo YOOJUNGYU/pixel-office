@@ -136,6 +136,7 @@ test('visibleSteps: full tour on a desktop owner, fewer steps on smaller screens
     'offices',
     'family',
     'chat',
+    'transcript',
   ]) {
     assert.ok(!phone.includes(id as never), id);
   }

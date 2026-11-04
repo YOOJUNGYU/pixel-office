@@ -103,6 +103,27 @@ export interface Rect {
   h: number;
 }
 
+/** Resize grip: the edges it moves (`n`/`s` top/bottom, `w`/`e` left/right; corners = two). */
+export type ResizeGrip = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+
+/** `from` resized by dragging `grip` by (dx, dy): the opposite edges stay put, the size
+ *  never drops under the minimum, and the top edge never goes above the window. */
+export function resizeRect(from: Rect, grip: ResizeGrip, dx: number, dy: number): Rect {
+  let { x, y, w, h } = from;
+  if (grip.includes('e')) w = Math.max(TRANSCRIPT_DIALOG_MIN_W_PX, from.w + dx);
+  if (grip.includes('s')) h = Math.max(TRANSCRIPT_DIALOG_MIN_H_PX, from.h + dy);
+  if (grip.includes('w')) {
+    w = Math.max(TRANSCRIPT_DIALOG_MIN_W_PX, from.w - dx);
+    x = from.x + from.w - w;
+  }
+  if (grip.includes('n')) {
+    const bottom = from.y + from.h;
+    h = Math.min(bottom, Math.max(TRANSCRIPT_DIALOG_MIN_H_PX, from.h - dy));
+    y = bottom - h;
+  }
+  return { x, y, w, h };
+}
+
 /** A dialog's box kept usable: at least the minimum size, no bigger than the window, and
  *  enough of it (its header) on screen to grab it again. */
 export function clampRect(r: Rect, view: { w: number; h: number }): Rect {

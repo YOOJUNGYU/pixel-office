@@ -354,6 +354,9 @@ const ko = {
   'tour.chat.title': '내 캐릭터와 채팅',
   'tour.chat.body':
     '에이전트와 별개로 사람마다 캐릭터가 하나 있습니다. 방향키(↑↓←→)로 내 캐릭터를 어느 방이든 움직이세요(대기실 의자에는 앉을 수 있음).\n아래 가운데 채팅창에 쓰고 Enter → 내 캐릭터 위에 말풍선(새로 쓰면 바뀌고 × 로 지움). 아무것도 선택되지 않았을 때 Space+Enter = 채팅창, Esc = 방향키로 복귀.',
+  'tour.transcript.title': '세션 상세',
+  'tour.transcript.body':
+    '내 에이전트 캐릭터를 누르면 그 세션의 대화 전체가 창으로 열립니다(대기실의 에이전트는 내 캐릭터를 눌러 고름). 창은 머리줄을 끌어 옮기고, 네 변과 네 모서리 어디서든 끌어 크기를 바꿉니다. ⧉ = 새 창으로.\n왼쪽 위 [창 배치 레이아웃]에서 영역을 나눠 두면, Shift 를 누른 채 창을 끌어 영역에 맞춰 놓을 수 있습니다(Ctrl = 여러 영역).',
   'tour.settingsButton.title': '설정',
   'tour.settingsButton.body': '언어, 테마, 프로필, 팀 오피스 같은 설정은 모두 여기에 있습니다.',
   'tour.language.title': '언어 · 테마',
@@ -746,6 +749,9 @@ const en: Record<Key, string> = {
   'tour.chat.title': 'Your character and chat',
   'tour.chat.body':
     'Besides agents, everyone has one character. Walk yours into any room with the arrow keys (↑↓←→); it can sit on lounge chairs.\nType in the chat bar at the bottom centre and press Enter → a bubble over your character (a new one replaces it, × deletes it). With nothing focused, Space+Enter = chat bar; Esc = back to the arrow keys.',
+  'tour.transcript.title': 'Session details',
+  'tour.transcript.body':
+    "Click one of your agent characters to open that session's whole conversation in a window (agents in the lounge: click your own character). Drag the header to move it, and any edge or corner to resize it. ⧉ = a new window.\nSplit the screen into zones with [Window layout] at the top left, then drag a window with Shift held to snap it into a zone (Ctrl = several zones).",
   'tour.settingsButton.title': 'Settings',
   'tour.settingsButton.body': 'Language, theme, profile, team offices and more live here.',
   'tour.language.title': 'Language & theme',

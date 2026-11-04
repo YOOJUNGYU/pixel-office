@@ -9,8 +9,20 @@ import {
   listSide,
   openState,
   reduceTranscript,
+  resizeRect,
   transcriptStatus,
 } from '../src/lan/transcript.js';
+
+test('resizeRect keeps the opposite edges and the minimum size', () => {
+  const r = { x: 100, y: 100, w: 500, h: 400 };
+  assert.deepEqual(resizeRect(r, 'e', 50, 50), { x: 100, y: 100, w: 550, h: 400 });
+  assert.deepEqual(resizeRect(r, 'nw', -20, -30), { x: 80, y: 70, w: 520, h: 430 });
+  assert.deepEqual(resizeRect(r, 'sw', 30, 10), { x: 130, y: 100, w: 470, h: 410 });
+  // shrinking past the minimum stops there, right/bottom edge fixed
+  assert.deepEqual(resizeRect(r, 'nw', 1000, 1000), { x: 280, y: 280, w: 320, h: 220 });
+  // the top edge stops at the window top
+  assert.deepEqual(resizeRect(r, 'n', 0, -500), { x: 100, y: 0, w: 500, h: 500 });
+});
 
 const e = (text: string) => ({ kind: 'user' as const, text });
 const info = { kind: 'main', provider: 'claude', num: 1, title: 't', folder: 'f' };

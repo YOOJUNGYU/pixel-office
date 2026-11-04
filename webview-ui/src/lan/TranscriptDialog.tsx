@@ -4,8 +4,6 @@ import {
   TRANSCRIPT_DIALOG_CASCADE_PX,
   TRANSCRIPT_DIALOG_GRIP_PX,
   TRANSCRIPT_DIALOG_HEIGHT_PX,
-  TRANSCRIPT_DIALOG_MIN_H_PX,
-  TRANSCRIPT_DIALOG_MIN_W_PX,
   TRANSCRIPT_DIALOG_SIZE_KEY,
   TRANSCRIPT_PANEL_TOP_PX,
   TRANSCRIPT_PANEL_WIDTH_PX,
@@ -13,8 +11,8 @@ import {
   ZONE_SNAP_SLACK_PX,
 } from '../constants.js';
 import { t } from '../i18n.js';
-import type { Rect } from './transcript.js';
-import { clampRect } from './transcript.js';
+import type { Rect, ResizeGrip } from './transcript.js';
+import { clampRect, resizeRect } from './transcript.js';
 import type { TranscriptPanelProps } from './TranscriptPanel.js';
 import { TranscriptPanel } from './TranscriptPanel.js';
 import { ZoneOverlay } from './ZoneEditor.js';
@@ -33,11 +31,11 @@ function savedSize(): { w: number; h: number } {
 
 const view = () => ({ w: window.innerWidth, h: window.innerHeight });
 
-type Grip = 'move' | 'e' | 's' | 'se';
+type Grip = 'move' | ResizeGrip;
 
 /**
- * One transcript as a floating, movable (header) and resizable (right / bottom edge,
- * corner) dialog. Several can be open; the one pressed last is on top (`onFront`).
+ * One transcript as a floating, movable (header) and resizable (every edge and corner)
+ * dialog. Several can be open; the one pressed last is on top (`onFront`).
  */
 export function TranscriptDialog({
   index,
@@ -97,13 +95,7 @@ export function TranscriptDialog({
       const dy = ev.clientY - d.y;
       const f = d.from;
       const next =
-        d.grip === 'move'
-          ? { ...f, x: f.x + dx, y: f.y + dy }
-          : {
-              ...f,
-              w: d.grip === 's' ? f.w : Math.max(TRANSCRIPT_DIALOG_MIN_W_PX, f.w + dx),
-              h: d.grip === 'e' ? f.h : Math.max(TRANSCRIPT_DIALOG_MIN_H_PX, f.h + dy),
-            };
+        d.grip === 'move' ? { ...f, x: f.x + dx, y: f.y + dy } : resizeRect(f, d.grip, dx, dy);
       setRect(clampRect(next, view()));
     };
     const up = (ev: PointerEvent) => {
@@ -135,7 +127,7 @@ export function TranscriptDialog({
     window.addEventListener('pointerup', up);
   };
 
-  const grip = (g: Exclude<Grip, 'move'>, style: React.CSSProperties, cursor: string) => (
+  const grip = (g: ResizeGrip, style: React.CSSProperties, cursor: string) => (
     <div
       aria-hidden
       className="absolute"
@@ -163,8 +155,14 @@ export function TranscriptDialog({
     >
       {snap && <ZoneOverlay rects={snap.zones} active={snap.on} />}
       <TranscriptPanel {...panel} onHeaderPointerDown={start('move')} />
-      {grip('e', { top: 0, right: -G / 2, width: G, bottom: G }, 'ew-resize')}
-      {grip('s', { left: 0, bottom: -G / 2, height: G, right: G }, 'ns-resize')}
+      {grip('n', { top: -G / 2, left: G, right: G, height: G }, 'ns-resize')}
+      {grip('s', { bottom: -G / 2, left: G, right: G, height: G }, 'ns-resize')}
+      {grip('w', { left: -G / 2, top: G, bottom: G, width: G }, 'ew-resize')}
+      {grip('e', { right: -G / 2, top: G, bottom: G, width: G }, 'ew-resize')}
+      {/* top corners stay within the header's padding (the × sits there) */}
+      {grip('nw', { left: -G / 2, top: -G / 2, width: G * 1.5, height: G * 1.5 }, 'nwse-resize')}
+      {grip('ne', { right: -G / 2, top: -G / 2, width: G * 1.5, height: G * 1.5 }, 'nesw-resize')}
+      {grip('sw', { left: -G / 2, bottom: -G / 2, width: G * 2, height: G * 2 }, 'nesw-resize')}
       {grip('se', { right: -G / 2, bottom: -G / 2, width: G * 2, height: G * 2 }, 'nwse-resize')}
     </div>
   );

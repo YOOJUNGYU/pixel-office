@@ -70,6 +70,12 @@ The people panel on the right has three areas, **Public office / Team / Personal
 - Type in the **chat bar** at the bottom centre and press **Enter** → a bubble over your character. One per person: a new one replaces it, **×** deletes it. No history. 100 characters, one per 2 seconds.
 - Shortcuts: with nothing selected, **Space+Enter** = chat bar; **Esc** in the chat bar = back to the arrow keys.
 
+### Session details (your agents only)
+
+- **Click one of your agent characters** to open that session's whole conversation (prompts, replies, tool calls, results) in a window. Agents folded into the lounge: click your own character and pick one. A shell shows its command's output. Only on this PC; nothing of it leaves the PC.
+- Several windows can be open. **Drag the header to move** one and **any edge or corner to resize** it (the last size is kept). The header's slider zooms the text, **⧉** opens it in a new window, **×** or **Esc** closes it. Settings → **Open session details in** can open them in new windows from the start.
+- **Window layout** (top left): split the screen into zones (columns, rows, grid…, drag the dividers), then drag a window with **Shift** held to snap it into a zone. Add **Ctrl** to span several zones.
+
 ### People panel and PC notifications
 
 - **People panel** on the right: everyone in this office (with or without agents). Click a name to jump to their agents.
