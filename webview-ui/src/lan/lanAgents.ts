@@ -265,6 +265,8 @@ export class LanAgents {
   private reconcile(): void {
     const agents = this.demo.length ? [...this.real, ...this.demo] : this.real;
     const os = this.os;
+    // A command running in 서버실 (any PC's, shells included) blinks its PCs' LEDs.
+    os.setServerBusy(agents.some((x) => x.room === 'server' && x.act === 'run'));
     const prevByKey = new Map<string, OfficeAgent>();
     for (const a of this.agents) prevByKey.set(a.key, a);
     const seen = new Set<string>();

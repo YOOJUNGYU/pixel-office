@@ -204,6 +204,14 @@ export const VISUAL_COLOR_PICKER_POPUP_GAP_PX = 6;
 
 // ── Furniture Animation ─────────────────────────────────────
 export const FURNITURE_ANIM_INTERVAL_SEC = 0.2;
+/** 서버실 PCs blink their LEDs while a command runs there (the furniture animation tick drives
+ *  them). Pixels on the PC_SIDE sprite (unmirrored coords) and the colour of each, lit. */
+export const SERVER_LED_PIXELS: ReadonlyArray<{ x: number; y: number; color: string }> = [
+  { x: 8, y: 19, color: '#3fe07a' },
+  { x: 10, y: 19, color: '#ffb02e' },
+];
+/** Each LED's on/off steps (one per furniture tick); PCs start at different steps. */
+export const SERVER_LED_PATTERNS = ['1101001110', '1000110100'];
 
 // ── Version Notice ──────────────────────────────────────────
 export const WHATS_NEW_AUTO_CLOSE_MS = 20000;

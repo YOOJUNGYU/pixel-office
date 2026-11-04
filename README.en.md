@@ -51,7 +51,7 @@ Once an activity lasts 3 seconds, the agent walks to its room and sits on a free
 
 - **Name tags**: one line — a **MAIN** / **SUB** / **SHELL** badge, `#number`, the nickname (else the PC account). **Hide tags & bubbles** at the top left hides agents' tags and bubbles together (shown by default). People's own characters always show their tag, in the colours each person picks in their profile (yours with a yellow frame).
 - **Bubble**: every working agent shows a Claude / Codex badge and what it is doing over its head; hover for the full text. A **red !** overhead = waiting for you (over the person's character when the agent has merged into it in the lounge).
-- A working agent's bubble shows an icon for what it does, task progress (3/7) and how long the current step has run (orange when long); a failed tool shows a drop beside its head for a moment. Zoomed out, the bubble is the icon alone.
+- A working agent's bubble shows an icon for what it does, task progress (3/7) and how long the current step has run (orange when long); a failed tool shows a drop beside its head for a moment. Zoomed out, the bubble is the icon alone. While a command runs in the server room, its PCs' LEDs blink.
 - **Subagents and shells** hold their parent's hand in the same room, and work on their own in another.
 - **Map**: drag to pan, wheel to zoom (or + / − at the top left).
 

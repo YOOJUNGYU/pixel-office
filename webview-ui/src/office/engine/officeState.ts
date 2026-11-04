@@ -37,6 +37,7 @@ import type {
   OfficeLayout,
   PlacedFurniture,
   Seat,
+  SpriteData,
   TileType as TileTypeVal,
 } from '../types.js';
 import { CharacterState, Direction, TILE_SIZE } from '../types.js';
@@ -44,6 +45,7 @@ import { createCharacter, stepTile, updateCharacter } from './characters.js';
 import { requestRender } from './gameLoop.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
 import { anchorTile, closestFreeSeat } from './seatPlacement.js';
+import { ledMask, ledSprite } from './serverLeds.js';
 
 /** Internal helper: facing-tile coords for a seat. Returns null for invalid direction. */
 function seatFacingOffset(direction: Direction): { dCol: number; dRow: number } {
@@ -67,6 +69,8 @@ export class OfficeState {
   furnitureAnimTimer = 0;
   /** Some ON furniture cycles animation frames (see rebuildFurnitureInstances). */
   private furnitureAnimated = false;
+  /** A command runs in 서버실 (LanAgents.reconcile): its PCs blink their LEDs. */
+  private serverBusy = false;
   private _selectedAgentId: number | null = null;
   private readonly selectionListeners = new Set<(id: number | null) => void>();
   get selectedAgentId(): number | null {
@@ -1259,6 +1263,39 @@ export class OfficeState {
     }
   }
 
+  /** 서버실 LEDs on/off (a command runs there); a change redraws the furniture. */
+  setServerBusy(busy: boolean): void {
+    if (busy === this.serverBusy) return;
+    this.serverBusy = busy;
+    this.rebuildFurnitureInstances();
+    requestRender('serverLeds');
+  }
+
+  /** 서버실's side PCs with this tick's LEDs lit (keeps the furniture animation ticking). */
+  private withServerLeds(instances: FurnitureInstance[]): FurnitureInstance[] {
+    if (!this.serverBusy) return instances;
+    const server = ROOM_LABELS.server;
+    const sides = new Set<SpriteData>();
+    for (const t of ['PC_SIDE', 'PC_SIDE:left']) {
+      const sprite = getCatalogEntry(t)?.sprite;
+      if (sprite) sides.add(sprite);
+    }
+    if (!sides.size) return instances;
+    const frame = Math.floor(this.furnitureAnimTimer / FURNITURE_ANIM_INTERVAL_SEC);
+    let any = false;
+    const out = instances.map((f) => {
+      if (!sides.has(f.sprite)) return f;
+      const col = Math.floor(f.x / TILE_SIZE);
+      const row = Math.floor((f.y + f.sprite.length - 1) / TILE_SIZE);
+      if (this.areaAt(col, row) !== server) return f;
+      any = true;
+      const sprite = ledSprite(f.sprite, ledMask(col, row, frame));
+      return sprite === f.sprite ? f : { ...f, sprite };
+    });
+    if (any) this.furnitureAnimated = true;
+    return out;
+  }
+
   /** Rebuild furniture instances with auto-state applied (active agents turn electronics ON) */
   private rebuildFurnitureInstances(): void {
     // Collect tiles where active agents face desks
@@ -1295,7 +1332,7 @@ export class OfficeState {
 
     this.furnitureAnimated = false;
     if (autoOnTiles.size === 0) {
-      this.furniture = layoutToFurnitureInstances(this.layout.furniture);
+      this.furniture = this.withServerLeds(layoutToFurnitureInstances(this.layout.furniture));
       return;
     }
 
@@ -1326,7 +1363,7 @@ export class OfficeState {
       return item;
     });
 
-    this.furniture = layoutToFurnitureInstances(modifiedFurniture);
+    this.furniture = this.withServerLeds(layoutToFurnitureInstances(modifiedFurniture));
   }
 
   setAgentTool(id: number, tool: string | null): void {
