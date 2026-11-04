@@ -66,6 +66,8 @@ export interface FurnitureInstance {
   zY: number;
   /** Render-time horizontal flip flag (for mirrored side variants) */
   mirrored?: boolean;
+  /** Drawn as is: no light-theme colour transform (the PC glow keeps its colour and alpha). */
+  raw?: true;
 }
 
 export interface ToolActivity {
@@ -191,6 +193,8 @@ export interface OfficeLayout {
 export interface Character {
   /** What its PC screen shows while it works at a front PC (pcScreens); unset = the PC's own. */
   screen?: 'code' | 'term' | 'doc' | null;
+  /** Its PC flashes red until then (OfficeState.furnitureAnimTimer seconds): a fresh failure. */
+  failFlashUntil?: number;
   id: number;
   state: CharacterState;
   dir: Direction;

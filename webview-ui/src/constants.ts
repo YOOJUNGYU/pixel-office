@@ -216,6 +216,40 @@ export const SERVER_LED_PATTERNS = ['1101001110', '1000110100'];
  *  (office/engine/pcScreens.ts): code, terminal, document. One frame per this many seconds. */
 export const PC_SCREEN_ORIGIN = { x: 3, y: 5 } as const;
 export const PC_SCREEN_FRAME_SEC = 0.8;
+/** Working PCs glow (office/engine/pcGlow.ts): halo width (sprite px), the pulse's alpha
+ *  steps (one per PC_GLOW_FRAME_SEC: stepped, so the scene wakes on a timer, not every
+ *  frame) and its colour per screen (`plain` = any other work). A failure flashes it red
+ *  for PC_FAIL_FLASH_SEC, on/off every PC_GLOW_FRAME_SEC. */
+export const PC_GLOW_RADIUS = 2;
+export const PC_GLOW_FRAME_SEC = 0.25;
+export const PC_GLOW_ALPHAS = [0.4, 0.55, 0.7, 0.85, 0.7, 0.55] as const;
+export const PC_GLOW_COLORS = {
+  code: '#2ee87a',
+  term: '#5f86ff',
+  doc: '#ffd84a',
+  plain: '#38b6ff',
+  fail: '#ff3b4e',
+} as const;
+export const PC_FAIL_FLASH_SEC = 1.5;
+/** One-shot effects over agents (lan/effects.ts): how long each plays, and at most this many
+ *  at once (a burst of snapshots never floods the screen). */
+export const FX_DURATION_MS = { plus: 1600, confetti: 1800, smoke: 1600 } as const;
+export const FX_MAX = 40;
+/** "+12" / "−3" text over the map (with a dark pixel shadow, --fx-shadow). */
+export const FX_PLUS_COLOR = '#5cff9d';
+export const FX_MINUS_COLOR = '#ff6b78';
+/** Where the effects start, world px from the character's centre (right of the head). */
+export const FX_SIDE_OFFSET_X = 9;
+/** Confetti pieces per burst and their colours. */
+export const FX_CONFETTI_PIECES = 14;
+export const FX_CONFETTI_COLORS = [
+  '#ffd94a',
+  '#ff7fa6',
+  '#6cb6ff',
+  '#4ade80',
+  '#d197ff',
+  '#ffb04d',
+];
 export const PC_SCREEN_COLORS: Readonly<Record<string, string>> = {
   k: '#10261a',
   g: '#4ade80',

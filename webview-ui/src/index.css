@@ -70,6 +70,8 @@
   --todo-fill: #3fd07a;
   --todo-track: rgba(255, 255, 255, 0.18);
   --fail-drop: #6cc4ff;
+  --fx-shadow: #10121c;
+  --fx-smoke: #8d93a8;
   /* My agents' context-use chip in their name tags (fill, its warning, track). */
   --ctx-fill: rgba(63, 208, 122, 0.45);
   --ctx-warn: rgba(255, 181, 71, 0.7);
@@ -162,6 +164,8 @@
   --todo-fill: #4fe08a;
   --todo-track: rgba(255, 255, 255, 0.22);
   --fail-drop: #2f8fe0;
+  --fx-shadow: #10121c;
+  --fx-smoke: #6c7288;
   --ctx-fill: rgba(31, 138, 76, 0.3);
   --ctx-warn: rgba(194, 122, 0, 0.45);
   --ctx-track: rgba(0, 0, 0, 0.08);
@@ -447,6 +451,80 @@
   .transcript-status-busy {
     animation: none;
     background-color: color-mix(in srgb, var(--status-color) 12%, transparent);
+  }
+}
+
+/* One-shot effects over agents (LanOverlay, lan/effects.ts): pixel squares, no blur. */
+.fx-plus {
+  position: absolute;
+  transform: translate(-50%, 0);
+  white-space: nowrap;
+  font: bold 13px var(--font-ui);
+  text-shadow:
+    1px 1px 0 var(--fx-shadow),
+    -1px 1px 0 var(--fx-shadow);
+  animation: fx-rise 1.6s ease-out forwards;
+}
+@keyframes fx-rise {
+  0% {
+    transform: translate(-50%, 4px);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -30px);
+    opacity: 0;
+  }
+}
+.fx-piece {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  animation: fx-burst 1.8s cubic-bezier(0.2, 0.7, 0.4, 1) forwards;
+}
+@keyframes fx-burst {
+  0% {
+    transform: translate(0, 0) rotate(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(calc(var(--dx) * 0.75), var(--up)) rotate(calc(var(--rot) * 0.5));
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), 14px) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+.fx-puff {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--fx-smoke);
+  opacity: 0;
+  animation: fx-smoke 1.2s ease-out forwards;
+}
+@keyframes fx-smoke {
+  0% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(var(--dx), -24px) scale(1.7);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-plus,
+  .fx-piece,
+  .fx-puff {
+    animation: none;
+    display: none;
   }
 }
 

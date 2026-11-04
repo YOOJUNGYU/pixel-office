@@ -13,6 +13,11 @@ import {
   FURNITURE_ANIM_INTERVAL_SEC,
   GREETER_ID,
   GREETER_TILE_MARGIN,
+  PC_FAIL_FLASH_SEC,
+  PC_GLOW_ALPHAS,
+  PC_GLOW_COLORS,
+  PC_GLOW_FRAME_SEC,
+  PC_GLOW_RADIUS,
   PC_SCREEN_FRAME_SEC,
   PET_HIT_HALF_WIDTH,
   PET_HIT_HALF_WIDTH_SIDE,
@@ -45,6 +50,7 @@ import { CharacterState, Direction, TILE_SIZE } from '../types.js';
 import { createCharacter, stepTile, updateCharacter } from './characters.js';
 import { requestRender } from './gameLoop.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
+import { glowSprite } from './pcGlow.js';
 import { screenSprite } from './pcScreens.js';
 import { anchorTile, closestFreeSeat } from './seatPlacement.js';
 import { ledMask, ledSprite } from './serverLeds.js';
@@ -55,6 +61,12 @@ function seatFacingOffset(direction: Direction): { dCol: number; dRow: number } 
   if (direction === Direction.LEFT) return { dCol: -1, dRow: 0 };
   if (direction === Direction.DOWN) return { dCol: 0, dRow: 1 };
   return { dCol: 0, dRow: -1 };
+}
+
+/** A working agent's faced PC: what its screen shows, and a red flash until (timer s). */
+interface Desk {
+  screen: Character['screen'];
+  failUntil: number;
 }
 
 export class OfficeState {
@@ -1298,33 +1310,79 @@ export class OfficeState {
     return out;
   }
 
-  /** Front PCs that are on, with their agent's screen (code / terminal / document) painted in. */
-  private withScreens(
-    instances: FurnitureInstance[],
-    screenTiles: Map<string, NonNullable<Character['screen']>>,
-  ): FurnitureInstance[] {
-    if (!screenTiles.size) return instances;
+  /** A fresh failure: the agent's PC flashes red for PC_FAIL_FLASH_SEC. */
+  flashFail(id: number): void {
+    const ch = this.characters.get(id);
+    if (!ch) return;
+    ch.failFlashUntil = this.furnitureAnimTimer + PC_FAIL_FLASH_SEC;
+    this.rebuildFurnitureInstances();
+    requestRender('failFlash');
+  }
+
+  /** Working PCs: front PCs that are on show their agent's screen (code / terminal /
+   *  document), and every faced PC (front, or 서버실's side PCs) glows just behind it. */
+  private withPcs(instances: FurnitureInstance[], desks: Map<string, Desk>): FurnitureInstance[] {
+    if (!desks.size) return instances;
     const onSprites = new Set<SpriteData>();
     for (const t of getAnimationFrames(getOnStateType('PC_FRONT_OFF')) ?? []) {
       const sprite = getCatalogEntry(t)?.sprite;
       if (sprite) onSprites.add(sprite);
     }
-    const frame = Math.floor(this.furnitureAnimTimer / PC_SCREEN_FRAME_SEC);
-    return instances.map((f) => {
-      if (!onSprites.has(f.sprite)) return f;
+    const sides = new Set<SpriteData>();
+    for (const t of ['PC_SIDE', 'PC_SIDE:left']) {
+      const sprite = getCatalogEntry(t)?.sprite;
+      if (sprite) sides.add(sprite);
+    }
+    const t = this.furnitureAnimTimer;
+    const screenFrame = Math.floor(t / PC_SCREEN_FRAME_SEC);
+    const glowFrame = Math.floor(t / PC_GLOW_FRAME_SEC);
+    const out: FurnitureInstance[] = [];
+    for (const f of instances) {
+      const front = onSprites.has(f.sprite);
+      if (!front && !sides.has(f.sprite)) {
+        out.push(f);
+        continue;
+      }
       const col = Math.floor(f.x / TILE_SIZE);
       const row = Math.floor(f.y / TILE_SIZE);
-      const kind = screenTiles.get(`${col},${row}`) ?? screenTiles.get(`${col},${row + 1}`);
-      return kind ? { ...f, sprite: screenSprite(f.sprite, kind, frame) } : f;
-    });
+      const desk = desks.get(`${col},${row}`) ?? desks.get(`${col},${row + 1}`);
+      if (!desk) {
+        out.push(f);
+        continue;
+      }
+      this.furnitureAnimated = true; // the glow pulses
+      const failing = desk.failUntil > t;
+      // A failure: on/off red; else the screen's colour, breathing in alpha steps.
+      const alpha = failing
+        ? glowFrame % 2 === 0
+          ? PC_GLOW_ALPHAS[PC_GLOW_ALPHAS.length >> 1] + 0.3
+          : 0
+        : PC_GLOW_ALPHAS[glowFrame % PC_GLOW_ALPHAS.length];
+      const color = PC_GLOW_COLORS[failing ? 'fail' : (desk.screen ?? 'plain')];
+      if (alpha > 0)
+        out.push({
+          sprite: glowSprite(f.sprite, color, alpha),
+          x: f.x - PC_GLOW_RADIUS,
+          y: f.y - PC_GLOW_RADIUS,
+          zY: f.zY - 0.5, // just behind the PC, over its desk
+          mirrored: f.mirrored,
+          raw: true,
+        });
+      out.push(
+        front && desk.screen
+          ? { ...f, sprite: screenSprite(f.sprite, desk.screen, screenFrame) }
+          : f,
+      );
+    }
+    return out;
   }
 
   /** Rebuild furniture instances with auto-state applied (active agents turn electronics ON) */
   private rebuildFurnitureInstances(): void {
     // Collect tiles where active agents face desks
     const autoOnTiles = new Set<string>();
-    /** Faced tiles → the screen their agent's act shows (later agents win a shared tile). */
-    const screenTiles = new Map<string, NonNullable<Character['screen']>>();
+    /** Faced tiles → their agent's screen and failure flash (a shared tile keeps the last). */
+    const desks = new Map<string, Desk>();
     for (const ch of this.characters.values()) {
       if (!ch.isActive || !ch.seatId) continue;
       const seat = this.seats.get(ch.seatId);
@@ -1354,10 +1412,8 @@ export class OfficeState {
           autoOnTiles.add(`${baseCol + 1},${baseRow}`);
         }
       }
-      if (ch.screen) {
-        // ponytail: tiles shared by two agents keep the last one's screen
-        for (const k of [...autoOnTiles].slice(before)) screenTiles.set(k, ch.screen);
-      }
+      const desk: Desk = { screen: ch.screen ?? null, failUntil: ch.failFlashUntil ?? 0 };
+      for (const k of [...autoOnTiles].slice(before)) desks.set(k, desk);
     }
 
     this.furnitureAnimated = false;
@@ -1394,7 +1450,7 @@ export class OfficeState {
     });
 
     this.furniture = this.withServerLeds(
-      this.withScreens(layoutToFurnitureInstances(modifiedFurniture), screenTiles),
+      this.withPcs(layoutToFurnitureInstances(modifiedFurniture), desks),
     );
   }
 

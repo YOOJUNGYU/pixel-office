@@ -1,13 +1,14 @@
 import type { AvatarDir, OfficeAgent, Room } from '../../../core/src/lan.js';
 import { parseAvatar, ROOM_LABELS } from '../../../core/src/lan.js';
 import type { OfficePersonMessage, TagColors } from '../../../core/src/messages.js';
-import { LAN_KIND_BADGES, LAN_ROOM_TOOL } from '../constants.js';
+import { FX_DURATION_MS, FX_MAX, LAN_KIND_BADGES, LAN_ROOM_TOOL } from '../constants.js';
 import { actText, t } from '../i18n.js';
 import { requestRender } from '../office/engine/gameLoop.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { screenKind } from '../office/engine/pcScreens.js';
 import { Direction } from '../office/types.js';
 import { isDemoKey } from '../tour/demoAgents.js';
+import { type EffectTrigger, effectTriggers, type LiveEffect } from './effects.js';
 import { avatarLabel } from './nicknames.js';
 
 const DIRS: Record<AvatarDir, Direction> = {
@@ -231,9 +232,41 @@ export class LanAgents {
     // One agent per key: a session reported twice (the same transcript under two roots) would
     // give the overlays duplicate React keys, which leave orphaned bubbles/tags on screen.
     const keys = new Set<string>();
+    const prev = new Map(this.real.map((a) => [a.key, a] as const));
     this.real = agents.filter((a) => !isDemoKey(a.key) && !keys.has(a.key) && !!keys.add(a.key));
     this.reconcile();
+    // Effects come only from what changed between two real snapshots (the first is the baseline).
+    if (this.primed) this.startEffects(effectTriggers(prev, this.real));
     this.primed = true;
+  }
+
+  private effects: LiveEffect[] = [];
+  private nextEffect = 1;
+
+  /** Effects still playing (anchored to a character that still exists). */
+  liveEffects(now = performance.now()): LiveEffect[] {
+    this.effects = this.effects.filter((e) => now - e.born < FX_DURATION_MS[e.kind]);
+    return this.effects.filter((e) => this.os.characters.has(e.anchor));
+  }
+
+  private startEffects(triggers: EffectTrigger[]): void {
+    if (!triggers.length) return;
+    const born = performance.now();
+    for (const t of triggers) {
+      const a = this.real.find((x) => x.key === t.key);
+      const own = this.ids.get(t.key);
+      const ch = own !== undefined ? this.os.characters.get(own) : undefined;
+      // Folded into its PC's avatar (lounge): the avatar shows it.
+      const avatar = a ? this.avatarIds.get(a.peer.id) : undefined;
+      const anchor = ch && ch.mergeInto === undefined ? own : avatar;
+      if (anchor === undefined) continue;
+      if (t.kind === 'smoke' && ch) this.os.flashFail(ch.id);
+      this.effects.push({ ...t, id: this.nextEffect++, anchor, born });
+    }
+    this.effects = this.effects.slice(-FX_MAX);
+    requestRender('effects');
+    // Once they end, one more frame drops their DOM.
+    setTimeout(() => requestRender('effectsEnd'), Math.max(...Object.values(FX_DURATION_MS)) + 50);
   }
 
   /** Client-only tour demo agents (never sent anywhere); [] removes them. */

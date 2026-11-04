@@ -13,6 +13,11 @@ import {
   CHAT_TAIL_PX,
   CONTEXT_WARN_PCT,
   FAIL_DROP_OFFSET_X,
+  FX_CONFETTI_COLORS,
+  FX_CONFETTI_PIECES,
+  FX_MINUS_COLOR,
+  FX_PLUS_COLOR,
+  FX_SIDE_OFFSET_X,
   LAN_ACTIVITY_BADGE_GAP_PX,
   LAN_ACTIVITY_LINE_PX,
   LAN_ACTIVITY_MAX_WIDTH_PX,
@@ -555,6 +560,77 @@ export function LanOverlay({
           </div>
         ),
       ),
+    );
+  }
+
+  // One-shot effects (only from real snapshot changes, see lan/effects.ts): rising +N,
+  // a confetti burst, a smoke puff. CSS animations; scaled with the map like the bubbles.
+  for (const e of lan.liveEffects()) {
+    const ch = officeState.characters.get(e.anchor);
+    if (!ch) continue;
+    const typing = ch.state === CharacterState.TYPE;
+    const head = project.toScreenY(
+      ch.y +
+        (typing ? CHARACTER_SITTING_OFFSET_PX : 0) +
+        (ch.pet ? PET_HEAD_DROP_PX : 0) -
+        LAN_BUBBLE_HEAD_OFFSET,
+    );
+    const side =
+      e.kind === 'confetti' ? 0 : e.kind === 'plus' ? FX_SIDE_OFFSET_X : -FX_SIDE_OFFSET_X;
+    nodes.push(
+      <div
+        key={`fx:${String(e.id)}`}
+        data-effect={e.kind}
+        data-effect-key={e.key}
+        className="absolute pointer-events-none"
+        style={{
+          left: project.toScreenX(ch.x + side),
+          top: head,
+          transform: `scale(${k})`,
+          transformOrigin: '0 0',
+          zIndex: LAN_PERMISSION_Z_INDEX,
+        }}
+      >
+        {e.kind === 'plus' && (
+          <span className="fx-plus">
+            {(e.text ?? '').split(' ').map((part) => (
+              <span
+                key={part}
+                style={{ color: part.startsWith('+') ? FX_PLUS_COLOR : FX_MINUS_COLOR }}
+              >
+                {part}{' '}
+              </span>
+            ))}
+          </span>
+        )}
+        {e.kind === 'smoke' &&
+          [0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="fx-puff"
+              style={{
+                animationDelay: `${String(i * 180)}ms`,
+                ['--dx' as string]: `${String((i - 1) * 6)}px`,
+              }}
+            />
+          ))}
+        {e.kind === 'confetti' &&
+          Array.from({ length: FX_CONFETTI_PIECES }, (_, i) => {
+            const angle = (i / FX_CONFETTI_PIECES) * 2 * Math.PI + (e.id % 7) * 0.3;
+            return (
+              <span
+                key={i}
+                className="fx-piece"
+                style={{
+                  background: FX_CONFETTI_COLORS[i % FX_CONFETTI_COLORS.length],
+                  ['--dx' as string]: `${String(Math.round(Math.cos(angle) * 34))}px`,
+                  ['--up' as string]: `${String(Math.round(-18 - Math.abs(Math.sin(angle)) * 22))}px`,
+                  ['--rot' as string]: `${String((i * 97) % 360)}deg`,
+                }}
+              />
+            );
+          })}
+      </div>,
     );
   }
 

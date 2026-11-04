@@ -474,7 +474,7 @@ export function renderScene(
     const spriteW = spriteH > 0 ? f.sprite[0].length : 0;
     if (fx > viewW || fy > viewH || fx + spriteW * zoom < 0 || fy + spriteH * zoom < 0) continue;
     const cached = getCachedSprite(
-      i < wallCount ? f.sprite : themeSprite(f.sprite, 'furniture', theme),
+      i < wallCount || f.raw ? f.sprite : themeSprite(f.sprite, 'furniture', theme),
       zoom,
     );
     if (f.mirrored) {
