@@ -51,7 +51,7 @@ Once an activity lasts 3 seconds, the agent walks to its room and sits on a free
 
 - **Name tags**: one line — a **MAIN** / **SUB** / **SHELL** badge, `#number`, the nickname (else the PC account). **Hide tags & bubbles** at the top left hides agents' tags and bubbles together (shown by default). People's own characters always show their tag, in the colours each person picks in their profile (yours with a yellow frame).
 - **Bubble**: every working agent shows a Claude / Codex badge and what it is doing over its head; hover for the full text. A **red !** overhead = waiting for you (over the person's character when the agent has merged into it in the lounge).
-- A working agent's bubble shows an icon for what it does, task progress (3/7) and how long the current step has run (orange when long); a failed tool shows a drop beside its head for a moment. Zoomed out, the bubble is the icon alone. The hover bubble, room cards and the session window also show the lines the session changed (`+120 −30`). An agent's PC screen follows what it does too (edit = green code, run = a black terminal, reading/searching = a white page). While a command runs in the server room, its PCs' LEDs blink.
+- A working agent's bubble shows an icon for what it does, task progress (3/7) and how long the current step has run (orange when long); a failed tool shows a drop beside its head for a moment. Zoomed out, the bubble is the icon alone. The hover bubble, room cards and the session window also show the lines the session changed (`+120 −30`). Edit/read icons take the file's language colour (ts blue, py yellow, …). An agent's PC screen follows what it does too (edit = green code, run = a black terminal, reading/searching = a white page). While a command runs in the server room, its PCs' LEDs blink.
 - **Subagents and shells** hold their parent's hand in the same room, and work on their own in another.
 - **Map**: drag to pan, wheel to zoom (or + / − at the top left).
 
@@ -74,7 +74,7 @@ The people panel on the right has three areas, **Public office / Team / Personal
 ### Session details (your agents only)
 
 - **Click one of your agent characters** to open that session's whole conversation (prompts, replies, tool calls, results) in a new window. Agents folded into the lounge: click your own character and pick one. A shell shows its command's output. Only on this PC; nothing of it leaves the PC.
-- It always opens in its own new window (one per agent; clicking again brings it to the front). The status line shows how full the session's context is (e.g. `294k / 1M · 29%`, orange from 80%). The header's slider zooms the text, **×** or **Esc** closes it.
+- It always opens in its own new window (one per agent; clicking again brings it to the front). The strip under the status line shows the last 30 minutes, one cell per minute (green edit, orange command, blue read/search, purple thinking, red failure). The status line shows how full the session's context is (e.g. `294k / 1M · 29%`, orange from 80%). The header's slider zooms the text, **×** or **Esc** closes it.
 
 ### People panel and PC notifications
 

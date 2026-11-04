@@ -1,7 +1,8 @@
 // Pure helpers for the status signals shown with an agent: elapsed time and task progress.
 import type { OfficeAgent } from '../../../core/src/lan.js';
-import { ELAPSED_WARN_MS, ELAPSED_WARN_PERMISSION_MS } from '../constants.js';
+import { ELAPSED_WARN_MS, ELAPSED_WARN_PERMISSION_MS, LANG_ICON_COLORS } from '../constants.js';
 import { t } from '../i18n.js';
+import { languageOf } from './highlight.js';
 
 /** "3분" / "1시간 12분" for the session's own act age; '' under a minute or unknown. */
 export function elapsedText(ageSec: number | undefined): string {
@@ -24,6 +25,13 @@ export const todoText = (a: Pick<OfficeAgent, 'todo'>): string =>
 /** Progress fill in %, for the chip / bar background. */
 export const todoPercent = (a: Pick<OfficeAgent, 'todo'>): number =>
   a.todo ? Math.round((a.todo.done / a.todo.total) * 100) : 0;
+
+/** The language colour of the file an edit/read works on; undefined = the plain icon. */
+export function langColor(a: Pick<OfficeAgent, 'act' | 'target' | 'hidden'>): string | undefined {
+  if (a.hidden || (a.act !== 'edit' && a.act !== 'read')) return undefined;
+  const family = languageOf(a.target);
+  return family ? LANG_ICON_COLORS[family] : undefined;
+}
 
 /** Text no longer readable at this bubble scale: show the act icon alone. */
 export const iconOnly = (scale: number, threshold: number): boolean => scale < threshold;

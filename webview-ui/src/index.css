@@ -88,6 +88,15 @@
   --transcript-status-thinking: #b39dff;
   --transcript-status-working: #3fd07a;
   --transcript-status-waiting: #ffb547;
+  /* Session window activity strip (one cell per minute). */
+  --strip-fail: #ff5c6a;
+  --strip-edit: #3fd07a;
+  --strip-run: #ffb547;
+  --strip-read: #5aa9ff;
+  --strip-tool: #8a8fb3;
+  --strip-think: #b39dff;
+  --strip-user: #e8e8f0;
+  --strip-none: rgba(255, 255, 255, 0.06);
   /* Syntax colours in transcript code blocks (lan/highlight.ts token kinds). */
   --syntax-kw: #c792ea;
   --syntax-str: #a5d68a;
@@ -165,6 +174,14 @@
   --transcript-status-thinking: #6a3fd6;
   --transcript-status-working: #176b3a;
   --transcript-status-waiting: #8a5200;
+  --strip-fail: #d12e3c;
+  --strip-edit: #1f8a4c;
+  --strip-run: #c27a00;
+  --strip-read: #2f6fd0;
+  --strip-tool: #7a7f9a;
+  --strip-think: #6a3fd6;
+  --strip-user: #3a3d52;
+  --strip-none: rgba(0, 0, 0, 0.06);
   --syntax-kw: #7c3aad;
   --syntax-str: #2f7d32;
   --syntax-num: #b3541e;

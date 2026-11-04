@@ -58,3 +58,13 @@ test('todo text and fill; icon-only below the threshold', () => {
   assert.equal(iconOnly(0.5, 0.6), true);
   assert.equal(iconOnly(0.6, 0.6), false);
 });
+
+test('langColor: edit/read of a known file type only', async () => {
+  const { langColor } = await import('../src/lan/statusSignals.js');
+  const { LANG_ICON_COLORS } = await import('../src/constants.js');
+  assert.equal(langColor({ act: 'edit', target: 'LanOverlay.tsx' }), LANG_ICON_COLORS.js);
+  assert.equal(langColor({ act: 'read', target: 'main.py' }), LANG_ICON_COLORS.py);
+  assert.equal(langColor({ act: 'edit', target: 'notes' }), undefined);
+  assert.equal(langColor({ act: 'run', target: 'a.py' }), undefined);
+  assert.equal(langColor({ act: 'edit', target: 'a.py', hidden: true }), undefined);
+});

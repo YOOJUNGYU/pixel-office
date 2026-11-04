@@ -59,7 +59,14 @@ import {
   tagText,
 } from './lanAgents.js';
 import { SignalText } from './SignalText.js';
-import { elapsedText, elapsedWarn, iconOnly, todoPercent, todoText } from './statusSignals.js';
+import {
+  elapsedText,
+  elapsedWarn,
+  iconOnly,
+  langColor,
+  todoPercent,
+  todoText,
+} from './statusSignals.js';
 import { stackTags, type TagBox } from './tagStack.js';
 import { tagVisible } from './tagVisibility.js';
 import { textWidth } from './textWidth.js';
@@ -449,7 +456,7 @@ export function LanOverlay({
               ...(elapsedWarn(l.a) && { borderColor: 'var(--elapsed-warn-fg)' }),
             }}
           >
-            <ActIcon icon={l.icon} size={ACT_ICON_SCREEN_PX} />
+            <ActIcon icon={l.icon} size={ACT_ICON_SCREEN_PX} color={langColor(l.a)} />
             {l.a.todo && (
               <span
                 className="block w-full shrink-0"
@@ -486,7 +493,9 @@ export function LanOverlay({
             >
               {providerName(l.a)}
             </span>
-            {l.inline && <ActIcon icon={l.inline} size={ACT_ICON_INLINE_PX} />}
+            {l.inline && (
+              <ActIcon icon={l.inline} size={ACT_ICON_INLINE_PX} color={langColor(l.a)} />
+            )}
             {l.rows && l.rows.length > 1 ? (
               <span
                 className="min-w-0 flex flex-col"

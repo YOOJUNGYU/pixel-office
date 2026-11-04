@@ -377,6 +377,24 @@ export const ELAPSED_WARN_PERMISSION_MS = 2 * 60_000;
 export const ELAPSED_WARN_MS = 10 * 60_000;
 /** The failure drop sits this many world px right of a character's centre (its sprite edge). */
 export const FAIL_DROP_OFFSET_X = 8;
+/** An edit/read icon takes its file's language colour (lan/highlight.ts families), bright
+ *  enough for the slate bubble in both themes. */
+export const LANG_ICON_COLORS: Record<
+  'js' | 'py' | 'sh' | 'json' | 'css' | 'c' | 'go' | 'rust' | 'sql' | 'yaml' | 'xml',
+  string
+> = {
+  js: '#6cb6ff',
+  py: '#ffd94a',
+  sh: '#9be26a',
+  json: '#e0d36a',
+  css: '#d197ff',
+  c: '#ff7fa6',
+  go: '#5fd7f0',
+  rust: '#f0b48a',
+  sql: '#ffb04d',
+  yaml: '#ff8a8a',
+  xml: '#ff8f5e',
+};
 
 export const LAN_BUBBLE_MAX_WIDTH_PX = 300;
 /** Hover bubble sits this many world px above a character's feet (sprite height). */
@@ -543,6 +561,11 @@ export const TRANSCRIPT_ZOOM_STEP = 10;
 export const TRANSCRIPT_ZOOM_DEFAULT = 100;
 /** The session window's context use turns to the warning colour from this full (%). */
 export const CONTEXT_WARN_PCT = 80;
+/** The session window's activity strip: this many minutes, one cell each; its height (px). */
+export const ACTIVITY_STRIP_MINUTES = 30;
+export const ACTIVITY_STRIP_HEIGHT_PX = 6;
+/** It re-reads the clock this often (a new minute slides the cells). */
+export const ACTIVITY_STRIP_TICK_MS = 15_000;
 /** localStorage key: this viewer's transcript content zoom, %. */
 export const TRANSCRIPT_ZOOM_KEY = 'pixel-office.transcript.zoom';
 /** A tool input/result longer than this many lines is folded behind [더 보기]. */

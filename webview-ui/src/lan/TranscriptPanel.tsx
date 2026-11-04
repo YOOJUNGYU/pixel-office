@@ -1,9 +1,12 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import type { OfficeAgent } from '../../../core/src/lan.js';
 import type { TranscriptEntry } from '../../../core/src/messages.js';
 import {
+  ACTIVITY_STRIP_HEIGHT_PX,
+  ACTIVITY_STRIP_MINUTES,
+  ACTIVITY_STRIP_TICK_MS,
   CONTEXT_WARN_PCT,
   LAN_KIND_BADGES,
   LAN_PROVIDER_BADGE_FG,
@@ -16,6 +19,7 @@ import {
   TRANSCRIPT_ZOOM_STEP,
 } from '../constants.js';
 import { t, useLang } from '../i18n.js';
+import { stripCells } from './activityStrip.js';
 import { badgeColors } from './badgeColors.js';
 import type { Family } from './highlight.js';
 import { highlight, languageOf } from './highlight.js';
@@ -168,6 +172,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({
         </button>
       </div>
       <StatusBar status={status} activity={activity} agent={agent} context={state.context} />
+      {info && info.kind !== 'shell' && <ActivityStrip entries={entries} />}
       <div className="relative flex-1 min-h-0">
         <div
           ref={scroller}
@@ -285,6 +290,37 @@ function StatusBar({
           )}
         </span>
       )}
+    </div>
+  );
+}
+
+/** The last ACTIVITY_STRIP_MINUTES of this transcript, one cell per minute (hover = what). */
+function ActivityStrip({ entries }: { entries: readonly TranscriptEntry[] }) {
+  // The clock for the cells: ticks on its own, so an idle session's strip keeps sliding.
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), ACTIVITY_STRIP_TICK_MS);
+    return () => clearInterval(timer);
+  }, []);
+  const cells = stripCells(entries, now, ACTIVITY_STRIP_MINUTES);
+  const first = Math.floor(now / 60_000) - ACTIVITY_STRIP_MINUTES + 1;
+  const clock = (m: number) =>
+    new Date(m * 60_000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return (
+    <div
+      data-activity-strip
+      className="flex gap-1 px-10 py-3 border-b-2 border-border"
+      title={t('strip.title', { n: String(ACTIVITY_STRIP_MINUTES) })}
+    >
+      {cells.map((c, i) => (
+        <span
+          key={i}
+          data-strip={c ?? 'none'}
+          className="flex-1"
+          title={`${clock(first + i)} · ${t(`strip.${c ?? 'none'}`)}`}
+          style={{ height: ACTIVITY_STRIP_HEIGHT_PX, background: `var(--strip-${c ?? 'none'})` }}
+        />
+      ))}
     </div>
   );
 }
