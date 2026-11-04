@@ -106,6 +106,7 @@ components:
         - $ref: '#/components/schemas/TranscriptLoaded'
         - $ref: '#/components/schemas/TranscriptEarlier'
         - $ref: '#/components/schemas/TranscriptAppend'
+        - $ref: '#/components/schemas/TranscriptContext'
         - $ref: '#/components/schemas/TranscriptError'
       discriminator: type
 
@@ -556,6 +557,28 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TranscriptEntry'
+
+    TranscriptContext:
+      description: >-
+        How full the open transcript's context window is, from its last model
+        call (Claude usage, Codex token_count); sent after transcriptLoaded and
+        whenever it changes. This PC only, never sent to peers.
+      type: object
+      additionalProperties: false
+      required: [type, id, used, window]
+      properties:
+        type:
+          const: transcriptContext
+        id:
+          type: string
+        used:
+          type: integer
+          minimum: 0
+          description: Tokens in the context now.
+        window:
+          type: integer
+          minimum: 1
+          description: The model's context window (Claude 200k, or 1M once more than 200k is in use).
 
     TranscriptError:
       description: >-

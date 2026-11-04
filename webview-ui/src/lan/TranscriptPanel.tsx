@@ -4,6 +4,7 @@ import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { OfficeAgent } from '../../../core/src/lan.js';
 import type { TranscriptEntry } from '../../../core/src/messages.js';
 import {
+  CONTEXT_WARN_PCT,
   LAN_KIND_BADGES,
   LAN_PROVIDER_BADGE_FG,
   LAN_PROVIDER_COLORS,
@@ -20,7 +21,7 @@ import type { Family } from './highlight.js';
 import { highlight, languageOf } from './highlight.js';
 import { SignalText } from './SignalText.js';
 import type { TranscriptState, TranscriptStatus } from './transcript.js';
-import { clampZoom, foldText, isAtBottom } from './transcript.js';
+import { clampZoom, contextText, foldText, isAtBottom } from './transcript.js';
 import {
   headingText,
   prettyResult,
@@ -166,7 +167,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({
           ×
         </button>
       </div>
-      <StatusBar status={status} activity={activity} agent={agent} />
+      <StatusBar status={status} activity={activity} agent={agent} context={state.context} />
       <div className="relative flex-1 min-h-0">
         <div
           ref={scroller}
@@ -237,11 +238,14 @@ function StatusBar({
   status,
   activity,
   agent,
+  context,
 }: {
   status: TranscriptStatus;
   activity: string;
   agent?: OfficeAgent;
+  context?: { used: number; window: number };
 }) {
+  const ctx = context && contextText(context);
   const busy = status === 'thinking' || status === 'working' || status === 'waiting';
   return (
     <div
@@ -262,9 +266,23 @@ function StatusBar({
           {activity}
         </span>
       )}
-      {agent && status !== 'ended' && (
-        <span className="ml-auto text-sm">
-          <SignalText a={agent} />
+      {((agent && status !== 'ended') || ctx) && (
+        <span className="ml-auto shrink-0 flex items-center gap-8 text-sm">
+          {agent && status !== 'ended' && <SignalText a={agent} />}
+          {ctx && (
+            <span
+              data-context={ctx.pct}
+              className="shrink-0 text-text-muted"
+              title={t('transcript.context')}
+              style={
+                ctx.pct >= CONTEXT_WARN_PCT
+                  ? { color: 'var(--transcript-status-waiting)', fontWeight: 'bold' }
+                  : undefined
+              }
+            >
+              {t('transcript.context')} {ctx.text}
+            </span>
+          )}
         </span>
       )}
     </div>

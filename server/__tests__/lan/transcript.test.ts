@@ -291,8 +291,9 @@ describe('TranscriptService', () => {
     const sent: Array<Record<string, unknown>> = [];
     const send = (m: Record<string, unknown>) => sent.push(m);
     const file = (id: string) => srcs.get(id)!.file;
-    return { svc, sent, send, file, client: {} };
+    return { svc, sent, send, file, client: {}, srcs };
   }
+  const svcSource = (t: { srcs: Map<string, TranscriptSource> }, id: string) => t.srcs.get(id);
   const ofType = (sent: Array<Record<string, unknown>>, type: string) =>
     sent.filter((m) => m.type === type) as Array<
       Record<string, unknown> & { entries: TranscriptEntry[] }
@@ -306,6 +307,21 @@ describe('TranscriptService', () => {
     // Exactly the info fields: nothing else from the source (no file path).
     expect(info).toEqual({ kind: 'main', provider: 'claude', num: 1, title: 'T-a', folder: 'f' });
     expect((t.sent[0].entries as TranscriptEntry[]).length).toBe(2);
+  });
+
+  it('context use: sent after loading and again only when it changes', async () => {
+    const t = setup({ a: user('one') });
+    let ctx: { used: number; window: number } | undefined = { used: 1000, window: 200_000 };
+    const src = { ...(svcSource(t, 'a') as TranscriptSource), context: () => ctx };
+    t.svc = svc = new TranscriptService({ transcriptOf: () => src }, POLL);
+    await t.svc.open(t.client, 'a', t.send);
+    expect(ofType(t.sent, 'transcriptContext')).toEqual([
+      { type: 'transcriptContext', id: 'a', used: 1000, window: 200_000 },
+    ]);
+    await sleep(POLL * 3);
+    expect(ofType(t.sent, 'transcriptContext')).toHaveLength(1);
+    ctx = { used: 5000, window: 200_000 };
+    await vi.waitFor(() => expect(ofType(t.sent, 'transcriptContext')).toHaveLength(2));
   });
 
   it('unknown id → notFound, nothing read', async () => {

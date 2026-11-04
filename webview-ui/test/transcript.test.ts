@@ -112,3 +112,28 @@ test('transcriptStatus: ended, waiting, idle, thinking, working', () => {
   assert.equal(transcriptStatus({ act: 'tool', target: 'mcp__x', permission: false }), 'working');
   assert.equal(transcriptStatus({ act: 'run', target: 'npm test', permission: false }), 'working');
 });
+
+test('transcriptContext sets the context and a reload keeps it; contextText', async () => {
+  const { contextText } = await import('../src/lan/transcript.js');
+  let s = reduceTranscript(openState('a'), {
+    type: 'transcriptContext',
+    id: 'a',
+    used: 165_000,
+    window: 1_000_000,
+  });
+  assert.deepEqual(s?.context, { used: 165_000, window: 1_000_000 });
+  s = reduceTranscript(s, {
+    type: 'transcriptLoaded',
+    id: 'a',
+    info,
+    entries: [],
+    start: 0,
+    more: false,
+  });
+  assert.deepEqual(s?.context, { used: 165_000, window: 1_000_000 });
+  assert.deepEqual(contextText({ used: 165_000, window: 1_000_000 }), {
+    text: '165k / 1M · 17%',
+    pct: 17,
+  });
+  assert.equal(contextText({ used: 258_400, window: 258_400 }).text, '258k / 258k · 100%');
+});

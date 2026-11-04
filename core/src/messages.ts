@@ -34,6 +34,7 @@ export type ServerMessage =
   | TranscriptLoaded
   | TranscriptEarlier
   | TranscriptAppend
+  | TranscriptContext
   | TranscriptError;
 
 export type ClientMessage =
@@ -405,6 +406,13 @@ export interface TranscriptAppend {
   type: 'transcriptAppend';
   id: string;
   entries: TranscriptEntry[];
+}
+
+export interface TranscriptContext {
+  type: 'transcriptContext';
+  id: string;
+  used: number;
+  window: number;
 }
 
 export interface TranscriptError {

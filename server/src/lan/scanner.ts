@@ -72,6 +72,8 @@ export interface TranscriptSource {
   num: number;
   title: string;
   folder: string;
+  /** The session's context use now (absent for a shell's own output). */
+  context?: () => { used: number; window: number } | undefined;
 }
 
 const dirents = (d: string) => readdir(d, { withFileTypes: true }).catch(() => []);
@@ -336,6 +338,7 @@ export class Scanner {
           num: s.num,
           title: i?.title ?? '',
           folder: i?.folder ?? '',
+          context: () => s.local.context,
         };
       }
       const parent = s.parentId ? this.info(s.parentId) : undefined;
@@ -347,6 +350,7 @@ export class Scanner {
         num,
         title: s.local.prompt || parent?.title || '',
         folder: s.local.cwd ? folderOf(s.local.cwd) : (parent?.folder ?? ''),
+        context: () => s.local.context,
       };
     }
     return undefined;

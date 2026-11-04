@@ -368,3 +368,27 @@ describe('status signals (age, todo, fail)', () => {
     expect(t.failUntil).toBe(0);
   });
 });
+
+describe('context use (local only)', () => {
+  const usage = (u: Record<string, number>) =>
+    JSON.stringify({ type: 'assistant', message: { content: [], usage: u } });
+  it('sums fresh + cache tokens; past 200k it is the 1M window, and stays so', () => {
+    const s = mk();
+    applyClaudeLine(
+      s,
+      usage({
+        input_tokens: 2,
+        cache_creation_input_tokens: 900,
+        cache_read_input_tokens: 50_000,
+        output_tokens: 10,
+      }),
+      0,
+    );
+    expect(s.local.context).toEqual({ used: 50_902, window: 200_000 });
+    applyClaudeLine(s, usage({ input_tokens: 1, cache_read_input_tokens: 330_000 }), 0);
+    expect(s.local.context).toEqual({ used: 330_001, window: 1_000_000 });
+    applyClaudeLine(s, usage({ input_tokens: 1, cache_read_input_tokens: 20_000 }), 0); // after /compact
+    expect(s.local.context).toEqual({ used: 20_001, window: 1_000_000 });
+    expect(JSON.stringify(toViews(s, true))).not.toMatch(/20001|1000000/);
+  });
+});

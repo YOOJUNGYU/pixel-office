@@ -339,3 +339,24 @@ describe('status signals (todo, fail, age)', () => {
     expect(toViews(s, false, now)[0].ageSec).toBe(600);
   });
 });
+
+describe('context use (local only)', () => {
+  it('token_count: the last call against the model window', () => {
+    const s = mk();
+    applyCodexLine(
+      s,
+      event({
+        type: 'token_count',
+        info: {
+          total_token_usage: { total_tokens: 5_000_000 },
+          last_token_usage: { input_tokens: 175_025, total_tokens: 175_556 },
+          model_context_window: 258_400,
+        },
+      }),
+      0,
+    );
+    expect(s.local.context).toEqual({ used: 175_556, window: 258_400 });
+    applyCodexLine(s, event({ type: 'token_count', info: null }), 0);
+    expect(s.local.context).toEqual({ used: 175_556, window: 258_400 });
+  });
+});

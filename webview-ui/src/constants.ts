@@ -526,6 +526,8 @@ export const TRANSCRIPT_ZOOM_MIN = 50;
 export const TRANSCRIPT_ZOOM_MAX = 200;
 export const TRANSCRIPT_ZOOM_STEP = 10;
 export const TRANSCRIPT_ZOOM_DEFAULT = 100;
+/** The session window's context use turns to the warning colour from this full (%). */
+export const CONTEXT_WARN_PCT = 80;
 /** localStorage key: this viewer's transcript content zoom, %. */
 export const TRANSCRIPT_ZOOM_KEY = 'pixel-office.transcript.zoom';
 /** A tool input/result longer than this many lines is folded behind [더 보기]. */

@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 
 import type { Act, Room } from '../../../core/src/lan.js';
-import { FAIL_SHOW_MS } from '../constants.js';
+import { CLAUDE_CONTEXT_WINDOW, CLAUDE_CONTEXT_WINDOW_LARGE, FAIL_SHOW_MS } from '../constants.js';
 import type { SessionState } from './session.js';
 import {
   isPrompt,
@@ -169,12 +169,28 @@ function onUser(s: SessionState, content: unknown, now: number, meta: boolean): 
   if (!meta && isPrompt(text)) setThinking(s, now);
 }
 
+const tokens = (v: unknown): number => (typeof v === 'number' && v >= 0 ? Math.floor(v) : 0);
+
+/** The context now = everything the last call read (fresh + cache written + cache read). */
+function noteUsage(s: SessionState, u: Record<string, unknown> | undefined): void {
+  if (!u) return;
+  const used =
+    tokens(u.input_tokens) +
+    tokens(u.cache_creation_input_tokens) +
+    tokens(u.cache_read_input_tokens);
+  if (!used) return;
+  // ponytail: the window is guessed (not in the transcript); a 1M model below 200k shows as 200k
+  const big =
+    used > CLAUDE_CONTEXT_WINDOW || s.local.context?.window === CLAUDE_CONTEXT_WINDOW_LARGE;
+  s.local.context = { used, window: big ? CLAUDE_CONTEXT_WINDOW_LARGE : CLAUDE_CONTEXT_WINDOW };
+}
+
 /** Apply one line of a Claude Code session JSONL to the session state. */
 export function applyClaudeLine(s: SessionState, line: string, now: number): void {
   let rec: {
     type?: string;
     subtype?: string;
-    message?: { content?: unknown };
+    message?: { content?: unknown; usage?: Record<string, unknown> };
     permissionMode?: unknown;
     isMeta?: unknown;
     cwd?: unknown;
@@ -202,6 +218,7 @@ export function applyClaudeLine(s: SessionState, line: string, now: number): voi
     s.local.aiTitle = rec.aiTitle.trim();
   }
   const content = rec.message?.content;
+  if (rec.type === 'assistant') noteUsage(s, rec.message?.usage);
   if (rec.type === 'assistant' && Array.isArray(content)) onAssistant(s, content, now);
   else if (rec.type === 'user') onUser(s, content, now, rec.isMeta === true);
   else if (rec.type === 'system' && rec.subtype === 'turn_duration') setIdle(s, now);

@@ -51,6 +51,9 @@ export const CHILD_ENDED_HIDE_MS = 10_000;
 export const TALK_MS = 5_000;
 /** A failed tool result shows on the agent (AgentView.fail) this long. */
 export const FAIL_SHOW_MS = 8_000;
+/** Claude transcripts don't say the context window: 200k, or the 1M one once more is in use. */
+export const CLAUDE_CONTEXT_WINDOW = 200_000;
+export const CLAUDE_CONTEXT_WINDOW_LARGE = 1_000_000;
 /** A transcript line stamped further ahead than this (a skewed clock) counts as read now. */
 export const LINE_CLOCK_SLACK_MS = 60_000;
 /** A SendMessage whose recipient's transcript isn't tracked yet waits this long for it (discover cycle). */

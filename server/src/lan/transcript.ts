@@ -4,6 +4,7 @@ import { StringDecoder } from 'node:string_decoder';
 import type { Provider } from '../../../core/src/lan.js';
 import type {
   TranscriptAppend,
+  TranscriptContext,
   TranscriptEarlier,
   TranscriptError,
   TranscriptErrorReason,
@@ -294,6 +295,9 @@ interface Sub {
   decoder: StringDecoder;
   timer: ReturnType<typeof setInterval>;
   busy: boolean;
+  /** The session's context use, and the last one sent ("used/window"). */
+  context?: () => { used: number; window: number } | undefined;
+  sentContext: string;
 }
 
 const error = (id: string, reason: TranscriptErrorReason) =>
@@ -393,9 +397,12 @@ export class TranscriptService {
       decoder: new StringDecoder('utf8'),
       timer: setInterval(() => void this.poll(client, sub), this.pollMs),
       busy: false,
+      context: src.context,
+      sentContext: '',
     };
     this.subs.set(client, sub);
     send(this.loaded(sub, page));
+    this.sendContext(sub);
   }
 
   private async beforeKey(client: object, id: string, before: number, send: Send): Promise<void> {
@@ -444,8 +451,24 @@ export class TranscriptService {
     } satisfies TranscriptLoaded;
   }
 
+  /** The context use, when it changed since the last one sent to this subscriber. */
+  private sendContext(sub: Sub): void {
+    const c = sub.context?.();
+    if (!c) return;
+    const key = `${String(c.used)}/${String(c.window)}`;
+    if (key === sub.sentContext) return;
+    sub.sentContext = key;
+    sub.send({
+      type: 'transcriptContext',
+      id: sub.id,
+      used: c.used,
+      window: c.window,
+    } satisfies TranscriptContext);
+  }
+
   private async poll(client: object, sub: Sub): Promise<void> {
     if (sub.busy) return;
+    this.sendContext(sub);
     sub.busy = true;
     try {
       let size: number;

@@ -243,6 +243,7 @@ describe('Scanner', () => {
         num: 1,
         title: 'hello prompt',
         folder: 'my-repo',
+        context: expect.any(Function),
       });
     });
 

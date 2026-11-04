@@ -65,6 +65,8 @@ export interface LocalInfo {
   /** first real user prompt seen (clipped) */
   prompt: string;
   cwd: string;
+  /** Context window use of the last model call (session window only, never sent). */
+  context?: { used: number; window: number };
 }
 
 export function newSession(

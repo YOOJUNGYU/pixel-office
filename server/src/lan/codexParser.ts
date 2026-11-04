@@ -170,6 +170,15 @@ function newTurn(s: SessionState): void {
 }
 
 function onEvent(s: SessionState, p: Obj, now: number): void {
+  if (p.type === 'token_count') {
+    // local only (session window): the last call's tokens against the model's window
+    const info = obj(p.info);
+    const used = obj(info.last_token_usage).total_tokens;
+    const window = info.model_context_window;
+    if (typeof used === 'number' && typeof window === 'number' && used >= 0 && window > 0)
+      s.local.context = { used: Math.floor(used), window: Math.floor(window) };
+    return;
+  }
   if (p.type === 'task_complete' || p.type === 'turn_aborted') setIdle(s, now);
   else if (p.type === 'task_started') {
     newTurn(s);

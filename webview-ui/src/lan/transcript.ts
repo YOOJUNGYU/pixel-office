@@ -15,6 +15,8 @@ export interface TranscriptState {
   more: boolean;
   loading: boolean;
   error?: 'notFound' | 'unreadable' | 'ended';
+  /** How full its context window is (transcriptContext); kept across reloads of the page. */
+  context?: { used: number; window: number };
 }
 
 export function openState(id: string): TranscriptState {
@@ -37,6 +39,7 @@ export function reduceTranscript(
         start: msg.start as number,
         more: msg.more as boolean,
         loading: false,
+        ...(s.context && { context: s.context }),
       };
     case 'transcriptEarlier':
       return {
@@ -48,6 +51,8 @@ export function reduceTranscript(
       };
     case 'transcriptAppend':
       return { ...s, entries: [...s.entries, ...entries] };
+    case 'transcriptContext':
+      return { ...s, context: { used: msg.used as number, window: msg.window as number } };
     case 'transcriptError':
       return { ...s, loading: false, error: msg.reason as TranscriptState['error'] };
     default:
@@ -79,6 +84,18 @@ export function listSide(
 export function clampZoom(zoom: number): number {
   if (!Number.isFinite(zoom)) return TRANSCRIPT_ZOOM_DEFAULT;
   return Math.round(Math.min(TRANSCRIPT_ZOOM_MAX, Math.max(TRANSCRIPT_ZOOM_MIN, zoom)));
+}
+
+/** "165k / 1M · 17%" for a context window's use, and how full it is (%). */
+export function contextText(c: { used: number; window: number }): { text: string; pct: number } {
+  const short = (n: number) =>
+    n >= 1_000_000
+      ? `${String(Math.round(n / 100_000) / 10)}M`
+      : n >= 1000
+        ? `${String(Math.round(n / 1000))}k`
+        : String(n);
+  const pct = Math.min(100, Math.round((c.used / c.window) * 100));
+  return { text: `${short(c.used)} / ${short(c.window)} · ${String(pct)}%`, pct };
 }
 
 /** What the agent behind an open transcript is doing now (no agent = it ended). */
