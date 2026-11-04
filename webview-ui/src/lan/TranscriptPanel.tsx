@@ -172,7 +172,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({
         </button>
       </div>
       <StatusBar status={status} activity={activity} agent={agent} context={state.context} />
-      {info && info.kind !== 'shell' && <ActivityStrip entries={entries} />}
+      {info && info.kind !== 'shell' && <ActivityStrip entries={entries} more={state.more} />}
       <div className="relative flex-1 min-h-0">
         <div
           ref={scroller}
@@ -295,14 +295,14 @@ function StatusBar({
 }
 
 /** The last ACTIVITY_STRIP_MINUTES of this transcript, one cell per minute (hover = what). */
-function ActivityStrip({ entries }: { entries: readonly TranscriptEntry[] }) {
+function ActivityStrip({ entries, more }: { entries: readonly TranscriptEntry[]; more: boolean }) {
   // The clock for the cells: ticks on its own, so an idle session's strip keeps sliding.
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), ACTIVITY_STRIP_TICK_MS);
     return () => clearInterval(timer);
   }, []);
-  const cells = stripCells(entries, now, ACTIVITY_STRIP_MINUTES);
+  const cells = stripCells(entries, now, ACTIVITY_STRIP_MINUTES, more);
   const first = Math.floor(now / 60_000) - ACTIVITY_STRIP_MINUTES + 1;
   const clock = (m: number) =>
     new Date(m * 60_000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -318,7 +318,13 @@ function ActivityStrip({ entries }: { entries: readonly TranscriptEntry[] }) {
           data-strip={c ?? 'none'}
           className="flex-1"
           title={`${clock(first + i)} · ${t(`strip.${c ?? 'none'}`)}`}
-          style={{ height: ACTIVITY_STRIP_HEIGHT_PX, background: `var(--strip-${c ?? 'none'})` }}
+          style={{
+            height: ACTIVITY_STRIP_HEIGHT_PX,
+            background:
+              c === 'unknown'
+                ? 'repeating-linear-gradient(90deg, var(--strip-none) 0 2px, transparent 2px 4px)'
+                : `var(--strip-${c ?? 'none'})`,
+          }}
         />
       ))}
     </div>

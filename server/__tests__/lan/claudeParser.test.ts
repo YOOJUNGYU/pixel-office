@@ -364,6 +364,9 @@ describe('status signals (age, todo, fail)', () => {
     applyClaudeLine(t, user([result("The user doesn't want to proceed with this tool use.")]), 0);
     applyClaudeLine(t, user([result('Permission to use Bash with command x has been denied.')]), 0);
     applyClaudeLine(t, user([result('PreToolUse:Bash hook error: blocked')]), 0);
+    // a grep that finds nothing (exit 1) is no failure either
+    applyClaudeLine(t, assistant(toolUse('Bash', { command: 'grep -rn nope src' }, 'g1')), 0);
+    applyClaudeLine(t, user([{ ...result('Exit code 1'), tool_use_id: 'g1' }]), 0);
     applyClaudeLine(t, user([result('ok', false)]), 0);
     expect(t.failUntil).toBe(0);
   });

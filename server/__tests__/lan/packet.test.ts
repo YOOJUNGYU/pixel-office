@@ -200,3 +200,26 @@ describe('parsePeerInfo', () => {
     expect(parsePeerInfo({ ...base, palette: 9 })).toBeNull();
   });
 });
+
+describe('isFailure (failure drop and activity strip)', () => {
+  it('refusals, hook blocks and probes that find nothing are not failures', async () => {
+    const { isFailure, exitCodeOf, firstProgram } = await import('../../../core/src/lan.js');
+    expect(isFailure("The user doesn't want to proceed with this tool use.")).toBe(false);
+    expect(isFailure('Permission to use Bash with command x has been denied.')).toBe(false);
+    expect(isFailure('PreToolUse:Bash hook error: blocked')).toBe(false);
+    expect(isFailure('This session is isolated in the worktree /w. Refusing to run it — …')).toBe(
+      false,
+    );
+    expect(isFailure('Exit code 1', 'cd /repo && grep -rn foo src')).toBe(false);
+    expect(isFailure('Exit code 1', 'command -v pdftotext')).toBe(false);
+    expect(isFailure('Exit code 1', 'git diff --quiet')).toBe(false);
+    expect(isFailure('{"exit_code":1,"output":""}', 'rg needle')).toBe(false);
+    // real failures
+    expect(isFailure('Exit code 1', 'npm test')).toBe(true);
+    expect(isFailure('Exit code 2', 'grep -E "(" x')).toBe(true); // grep's own error
+    expect(isFailure('File does not exist.')).toBe(true);
+    expect(isFailure('{"exit_code":0}')).toBe(false);
+    expect(exitCodeOf('Exit code 144')).toBe(144);
+    expect(firstProgram('FOO=1 cd /a && /usr/bin/rg x')).toBe('rg');
+  });
+});

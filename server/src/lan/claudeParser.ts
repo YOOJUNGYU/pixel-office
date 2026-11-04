@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 
 import type { Act, Room } from '../../../core/src/lan.js';
+import { isFailure } from '../../../core/src/lan.js';
 import { CLAUDE_CONTEXT_WINDOW, CLAUDE_CONTEXT_WINDOW_LARGE, FAIL_SHOW_MS } from '../constants.js';
 import type { SessionState } from './session.js';
 import {
@@ -43,8 +44,6 @@ const BG_RE = /Command running in background with ID: ([\w-]+)/;
 const TASK_ID_RE = /<task-id>([^<]+)<\/task-id>/;
 const OUTPUT_RE = /Output is being written to: (.+?\.output)(?=[.\s]|$)/;
 const DONE_RE = /<status>(completed|failed|killed)<\/status>/;
-/** is_error results that are not the tool failing: the user said no, or a hook blocked it. */
-const NOT_A_FAILURE = /^(?:The user doesn't want to proceed|Permission to use |\S+ hook error:)/;
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 const clip = (v: string, n: number): string => v.replace(/\s+/g, ' ').trim().slice(0, n);
@@ -140,9 +139,10 @@ function onUser(s: SessionState, content: unknown, now: number, meta: boolean): 
     s.permission = false;
     for (const r of results) {
       const text = textOf(r.content);
-      if (r.is_error === true && !NOT_A_FAILURE.test(text)) s.failUntil = now + FAIL_SHOW_MS;
       const id = BG_RE.exec(text)?.[1];
       const call = turnOf(s).tools.get(str(r.tool_use_id));
+      const command = call?.name === 'Bash' ? str(call.input.command) : '';
+      if (r.is_error === true && isFailure(text, command)) s.failUntil = now + FAIL_SHOW_MS;
       if (call && r.is_error !== true) addDiff(s, editDiff(call.name, call.input));
       if (id && call?.input.run_in_background === true) {
         s.shells.set(id, {

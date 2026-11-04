@@ -170,6 +170,62 @@ export interface AgentDiff {
   del: number;
 }
 export const DIFF_MAX = 10_000_000;
+/** Results flagged as errors that are not the tool failing: the user said no, a hook or the
+ *  sandbox refused it. */
+const NOT_A_FAILURE =
+  /^(?:The user doesn't want to proceed|Permission to use |\S+ hook error:)|Refusing to run it/;
+/** Probes that exit 1 for "not found / different", not for breaking. */
+const PROBES = new Set([
+  'grep',
+  'egrep',
+  'fgrep',
+  'zgrep',
+  'rg',
+  'ag',
+  'diff',
+  'cmp',
+  'test',
+  '[',
+  'command',
+  'which',
+  'type',
+  'pgrep',
+]);
+
+/** The exit code in a shell result: Claude's "Exit code N" lead, Codex's `"exit_code":N`. */
+export function exitCodeOf(text: string): number | undefined {
+  const m = /^Exit code (\d+)/.exec(text) ?? /"exit_code"\s*:\s*(-?\d+)/.exec(text);
+  return m ? Number(m[1]) : undefined;
+}
+
+/** First program of a shell command, past `cd …&&` and `VAR=x` prefixes (basename). */
+export function firstProgram(cmd: string): string {
+  let rest = cmd.trim();
+  // `VAR=x` assignments and `cd dir &&` / `cd dir;` steps, in any order
+  for (let prev = ''; prev !== rest;) {
+    prev = rest;
+    rest = rest.replace(/^\w+=\S*\s+/, '').replace(/^cd\s+[^;&|]+(?:&&|;)\s*/, '');
+  }
+  const tok = rest.split(/\s+/)[0] ?? '';
+  return (
+    tok
+      .replace(/^["'(]+/, '')
+      .split(/[\\/]/)
+      .pop() ?? ''
+  );
+}
+
+/** Whether an error-flagged result (Claude is_error, or a non-zero exit) is a real failure. */
+export function isFailure(text: string, command = ''): boolean {
+  if (NOT_A_FAILURE.test(text)) return false;
+  const code = exitCodeOf(text);
+  if (code === 0) return false;
+  const prog = firstProgram(command);
+  if (code === 1 && (PROBES.has(prog) || /^git\s+(?:diff|grep)\b/.test(command.trim())))
+    return false;
+  return true;
+}
+
 export interface AgentTodo {
   done: number;
   total: number;

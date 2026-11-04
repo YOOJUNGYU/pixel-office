@@ -1,4 +1,5 @@
 import type { Act, Room } from '../../../core/src/lan.js';
+import { exitCodeOf, isFailure } from '../../../core/src/lan.js';
 import { FAIL_SHOW_MS } from '../constants.js';
 import type { SessionState } from './session.js';
 import {
@@ -32,7 +33,6 @@ const PATCH_RE = /\*\*\* (?:Update|Add|Delete) File: (.+?)(?:\\n|\n|$)/;
 const SID_RE = /"session_id"\s*:\s*(\d+)/;
 const STDIN_SID_RE = /\bsession_id"?\s*:\s*(\d+)/;
 const EXIT_RE = /"exit_code"/;
-const EXIT_CODE_RE = /"exit_code"\s*:\s*(-?\d+)/;
 /** update_plan items' statuses, in JSON arguments or a custom exec's JS object literal. */
 const STATUS_RE = /\bstatus"?\s*:\s*"(\w+)"/g;
 const planStatuses = (args: string): string[] => [...args.matchAll(STATUS_RE)].map((m) => m[1]);
@@ -140,8 +140,9 @@ function onItem(s: SessionState, p: Obj, now: number): void {
         : [textOf(p.output)];
       for (const t of outs) {
         const sid = SID_RE.exec(t)?.[1];
-        const code = EXIT_CODE_RE.exec(t)?.[1];
-        if (code !== undefined && Number(code) !== 0) s.failUntil = now + FAIL_SHOW_MS;
+        const code = exitCodeOf(t);
+        if (code !== undefined && code !== 0 && isFailure(t, call?.target ?? ''))
+          s.failUntil = now + FAIL_SHOW_MS;
         if (EXIT_RE.test(t)) {
           const id = sid ?? call?.stdinId;
           if (id) s.shells.delete(id);

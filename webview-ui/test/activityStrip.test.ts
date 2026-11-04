@@ -35,3 +35,24 @@ test('one cell per minute ending now; the most telling one wins; old and undated
   );
   assert.deepEqual(cells, [null, 'run', null, 'fail', null]);
 });
+
+test('probes are no failures; unloaded minutes are unknown', () => {
+  const now = 1000 * 60_000 + 30_000;
+  const tool = (min: number, cmd: string, id: string) =>
+    at(min, {
+      kind: 'tool',
+      tool: 'Bash',
+      callId: id,
+      text: JSON.stringify({ command: cmd }, null, 2),
+    });
+  const res = (min: number, id: string) =>
+    at(min, { kind: 'result', error: true, callId: id, text: 'Exit code 1' });
+  const cells = stripCells(
+    [tool(998, 'grep -rn x src', 'a'), res(998, 'a'), tool(999, 'npm test', 'b'), res(999, 'b')],
+    now,
+    5,
+    true,
+  );
+  assert.deepEqual(cells, ['unknown', 'unknown', 'run', 'fail', null]);
+  assert.deepEqual(stripCells([], now, 2, false), [null, null]);
+});
