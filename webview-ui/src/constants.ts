@@ -231,6 +231,11 @@ export const PC_GLOW_COLORS = {
   fail: '#ff3b4e',
 } as const;
 export const PC_FAIL_FLASH_SEC = 1.5;
+/** The PC itself lights up too: its pixels at least this light (0..1) are mixed toward the
+ *  glow colour (lifted toward white by PC_TINT_LIFT), by one step of PC_TINT_AMOUNTS per frame. */
+export const PC_TINT_MIN_LUMA = 0.55;
+export const PC_TINT_LIFT = 0.35;
+export const PC_TINT_AMOUNTS = [0.3, 0.45, 0.6, 0.72, 0.6, 0.45] as const;
 /** One-shot effects over agents (lan/effects.ts): how long each plays, and at most this many
  *  at once (a burst of snapshots never floods the screen). */
 export const FX_DURATION_MS = { plus: 1600, confetti: 1800, smoke: 1600 } as const;

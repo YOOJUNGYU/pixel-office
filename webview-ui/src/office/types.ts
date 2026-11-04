@@ -68,6 +68,8 @@ export interface FurnitureInstance {
   mirrored?: boolean;
   /** Drawn as is: no light-theme colour transform (the PC glow keeps its colour and alpha). */
   raw?: true;
+  /** The catalog sprite this one was derived from (a post-process repainted it, e.g. LEDs). */
+  base?: SpriteData;
 }
 
 export interface ToolActivity {

@@ -23,3 +23,14 @@ test('the halo is the silhouette grown by the radius, fading outward, cached', (
   assert.equal(at(-2, 1), '');
   assert.equal(glowSprite(base, '#ff0000', 0.5), g);
 });
+
+test('tint lights the light pixels toward the colour, leaves dark ones, caches', async () => {
+  const { tintSprite } = await import('../src/office/engine/pcGlow.js');
+  const base = [['#eeeeee', '#333333', '']];
+  const t = tintSprite(base, '#00ff00', 0.6);
+  assert.notEqual(t[0][0], '#eeeeee');
+  assert.ok(parseInt(t[0][0].slice(3, 5), 16) > parseInt(t[0][0].slice(1, 3), 16)); // greener
+  assert.equal(t[0][1], '#333333'); // outline stays
+  assert.equal(t[0][2], '');
+  assert.equal(tintSprite(base, '#00ff00', 0.6), t);
+});
