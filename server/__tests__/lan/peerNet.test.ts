@@ -706,6 +706,7 @@ describe('PeerNet directory: watchers', () => {
   });
 
   it('watchers are bounded like hellos', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const [b] = await mkNodes(['B']);
     const x = createIdentity('X');
     const rinfo = { address: '127.0.0.1', port: 9 };
@@ -713,6 +714,9 @@ describe('PeerNet directory: watchers', () => {
       inner(b).receive(JSON.stringify({ v: 2, t: 'watch', id: `W${i}`, pk: x.publicKey }), rinfo);
     expect(inner(b).watchers.size).toBe(MAX_HELLO_PEERS);
     expect(inner(b).hellos.size).toBe(0);
+    // a full list is logged once, not per dropped id
+    expect(warn.mock.calls.filter((c) => String(c[0]).includes('가득 찼습니다')).length).toBe(1);
+    warn.mockRestore();
   });
 });
 

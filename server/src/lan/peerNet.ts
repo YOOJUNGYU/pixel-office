@@ -622,7 +622,14 @@ export class PeerNet {
       return;
     }
     const prev = map.get(id);
-    if (!prev && map.size >= MAX_HELLO_PEERS) return;
+    if (!prev && map.size >= MAX_HELLO_PEERS) {
+      const kind = map === this.watchers ? 'watch' : 'hello';
+      this.warnOnce(
+        `full:${kind}`,
+        `[Pixel Office] PC ${kind} 목록이 가득 찼습니다 (${MAX_HELLO_PEERS.toString()}명): 새 PC 는 보이지 않습니다.`,
+      );
+      return;
+    }
     if (pinned === undefined) this.opts.pins.set(id, pk);
     const t = this.now();
     const reply = !prev || t - prev.replied >= HELLO_REPLY_MS;
