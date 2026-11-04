@@ -70,6 +70,10 @@
   --todo-fill: #3fd07a;
   --todo-track: rgba(255, 255, 255, 0.18);
   --fail-drop: #6cc4ff;
+  /* My agents' context-use chip in their name tags (fill, its warning, track). */
+  --ctx-fill: rgba(63, 208, 122, 0.45);
+  --ctx-warn: rgba(255, 181, 71, 0.7);
+  --ctx-track: rgba(255, 255, 255, 0.12);
   --chat-bubble-bg: #ffffff;
   --chat-bubble-fg: #1e1e2e;
   --chat-bubble-border: #1e1e2e;
@@ -158,6 +162,9 @@
   --todo-fill: #4fe08a;
   --todo-track: rgba(255, 255, 255, 0.22);
   --fail-drop: #2f8fe0;
+  --ctx-fill: rgba(31, 138, 76, 0.3);
+  --ctx-warn: rgba(194, 122, 0, 0.45);
+  --ctx-track: rgba(0, 0, 0, 0.08);
   --chat-bubble-bg: #ffffff;
   --chat-bubble-fg: #181628;
   --chat-bubble-border: #4a4a6a;

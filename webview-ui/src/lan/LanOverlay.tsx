@@ -11,6 +11,7 @@ import {
   CHARACTER_SITTING_OFFSET_PX,
   CHAT_BORDER_PX,
   CHAT_TAIL_PX,
+  CONTEXT_WARN_PCT,
   FAIL_DROP_OFFSET_X,
   LAN_ACTIVITY_BADGE_GAP_PX,
   LAN_ACTIVITY_LINE_PX,
@@ -60,6 +61,8 @@ import {
 } from './lanAgents.js';
 import { SignalText } from './SignalText.js';
 import {
+  ctxPercent,
+  ctxText,
   elapsedText,
   elapsedWarn,
   iconOnly,
@@ -94,12 +97,39 @@ function TodoChip({ a }: { a: OfficeAgent }) {
 }
 
 /** The failure drop beside a head: fixed size, so it shows at any zoom. */
-const failDrop = (key: string, left: number, top: number) => (
+/** My agent's context use in its name tag: "29%", filled up to it (warning colour from
+ *  CONTEXT_WARN_PCT). Only this PC's agents carry `ctx`. */
+function CtxChip({ a }: { a: OfficeAgent }) {
+  const pct = ctxPercent(a) ?? 0;
+  const fill = pct >= CONTEXT_WARN_PCT ? 'var(--ctx-warn)' : 'var(--ctx-fill)';
+  return (
+    <span
+      data-ctx={pct}
+      className="shrink-0 text-2xs font-bold leading-none"
+      title={t('transcript.context')}
+      style={{
+        padding: `1px ${STATUS_CHIP_PAD_X_PX}px`,
+        background: `linear-gradient(to right, ${fill} ${pct}%, var(--ctx-track) ${pct}%)`,
+      }}
+    >
+      {ctxText(a)}
+    </span>
+  );
+}
+
+/** The failure drop beside a head; grows and shrinks with the map like the bubbles (`k`). */
+const failDrop = (key: string, left: number, top: number, k: number) => (
   <div
     key={key}
     data-fail={key}
     className="absolute pointer-events-none"
-    style={{ left, top: top - ACT_ICON_SCREEN_PX, zIndex: LAN_TAG_Z_INDEX }}
+    style={{
+      left,
+      top: top - ACT_ICON_SCREEN_PX * k,
+      transform: `scale(${k})`,
+      transformOrigin: '0 0',
+      zIndex: LAN_TAG_Z_INDEX,
+    }}
   >
     <ActIcon icon="fail" size={ACT_ICON_SCREEN_PX} color="var(--fail-drop)" />
   </div>
@@ -214,7 +244,8 @@ export function LanOverlay({
         (2 * LAN_TAG_PAD_X_PX +
           LAN_TAG_BADGE_CHROME_PX +
           textWidth(tagBadge(a), LAN_TAG_BADGE_FONT) +
-          textWidth(text, LAN_TAG_FONT)) *
+          textWidth(text, LAN_TAG_FONT) +
+          chipW(ctxText(a))) *
         k,
     });
   }
@@ -323,6 +354,7 @@ export function LanOverlay({
             {tagBadge(a)}
           </span>
           {text}
+          {a.ctx && <CtxChip a={a} />}
         </div>,
       );
     if (a.permission) alert(`${a.key}!`, ch);
@@ -361,7 +393,9 @@ export function LanOverlay({
           LAN_BUBBLE_HEAD_OFFSET,
       );
       if (a.fail && !a.permission)
-        nodes.push(failDrop(`fail:${a.key}`, project.toScreenX(ch.x + FAIL_DROP_OFFSET_X), head));
+        nodes.push(
+          failDrop(`fail:${a.key}`, project.toScreenX(ch.x + FAIL_DROP_OFFSET_X), head, k),
+        );
       // The ❗ already says "waiting": no act icon on it.
       const icon = a.permission ? null : actIcon(a);
       const elapsed = elapsedText(a.ageSec);
@@ -376,13 +410,14 @@ export function LanOverlay({
           text,
           icon,
           elapsed,
-          s: 1,
+          // Scaled with the map like every bubble: stays in proportion to the character.
+          s: k,
           x: project.toScreenX(ch.x),
           head,
           w0: side,
-          w: side,
-          h: side + (a.todo ? TODO_BAR_HEIGHT_PX + STATUS_PART_GAP_PX : 0),
-          bottom: head - CHAT_TAIL_PX,
+          w: 0,
+          h: (side + (a.todo ? TODO_BAR_HEIGHT_PX + STATUS_PART_GAP_PX : 0)) * k,
+          bottom: head - CHAT_TAIL_PX * k,
         });
         continue;
       }
@@ -448,8 +483,10 @@ export function LanOverlay({
             style={{
               left: l.x - l.w / 2,
               top: bottoms[i] - l.h,
-              width: l.w,
-              height: l.h,
+              width: l.w0,
+              height: l.h / l.s,
+              transform: `scale(${l.s})`,
+              transformOrigin: '0 0',
               padding: `${LAN_ACTIVITY_PAD_X_PX}px`,
               gap: STATUS_PART_GAP_PX,
               zIndex: LAN_TAG_Z_INDEX,

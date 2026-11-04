@@ -284,6 +284,8 @@ export function toViews(s: SessionState, brief = false, now = 0): AgentView[] {
   if (s.todo) self.todo = { ...s.todo };
   if (now < s.failUntil) self.fail = true;
   if (s.diff.add || s.diff.del) self.diff = { ...s.diff };
+  // Local only: this PC's own snapshot (brief = what peers get never carries it).
+  if (!brief && s.local.context) self.ctx = { ...s.local.context };
   const shells = [...s.shells].map(([shellId, sh]): AgentView => ({
     id: `${s.id}/sh/${shellId}`,
     provider: s.provider,

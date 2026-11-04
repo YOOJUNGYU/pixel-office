@@ -191,6 +191,7 @@ export interface OfficeAgentMessage {
   todo?: AgentTodo;
   fail?: boolean;
   diff?: AgentDiff;
+  ctx?: AgentContext;
   peer: PeerInfoMessage;
 }
 
@@ -223,6 +224,11 @@ export interface AgentTodo {
 export interface AgentDiff {
   add: number;
   del: number;
+}
+
+export interface AgentContext {
+  used: number;
+  window: number;
 }
 
 export interface PeerInfoMessage {

@@ -971,8 +971,23 @@ components:
           description: A tool result just failed (sent for a few seconds only).
         diff:
           $ref: '#/components/schemas/AgentDiff'
+        ctx:
+          $ref: '#/components/schemas/AgentContext'
         peer:
           $ref: '#/components/schemas/PeerInfoMessage'
+
+    AgentContext:
+      description: Context window use of this PC's own agent (the local snapshot only; never sent to peers).
+      type: object
+      additionalProperties: false
+      required: [used, window]
+      properties:
+        used:
+          type: integer
+          minimum: 0
+        window:
+          type: integer
+          minimum: 1
 
     AgentDiff:
       description: Lines added / removed by the session's edits so far (counts only, from what was read of its transcript).

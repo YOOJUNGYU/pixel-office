@@ -164,6 +164,8 @@ export interface AgentView {
   fail?: true;
   /** Lines added / removed by this session's edits so far (counts only). */
   diff?: AgentDiff;
+  /** THIS PC's browser only (never on the wire, not parsed from peers): context window use. */
+  ctx?: { used: number; window: number };
 }
 export interface AgentDiff {
   add: number;

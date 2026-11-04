@@ -68,3 +68,10 @@ test('langColor: edit/read of a known file type only', async () => {
   assert.equal(langColor({ act: 'run', target: 'a.py' }), undefined);
   assert.equal(langColor({ act: 'edit', target: 'a.py', hidden: true }), undefined);
 });
+
+test('ctx chip text: my agents only carry ctx', async () => {
+  const { ctxText, ctxPercent } = await import('../src/lan/statusSignals.js');
+  assert.equal(ctxText({ ctx: { used: 294_000, window: 1_000_000 } }), '29%');
+  assert.equal(ctxPercent({ ctx: { used: 300_000, window: 200_000 } }), 100);
+  assert.equal(ctxText({}), '');
+});

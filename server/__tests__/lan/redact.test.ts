@@ -88,6 +88,7 @@ describe('status signals and hiding', () => {
     todo: { done: 1, total: 3 },
     fail: true,
     diff: { add: 3, del: 1 },
+    ctx: { used: 10, window: 100 },
   } as unknown as AgentView;
   it('hideView drops ageSec, todo and fail', () => {
     const h = hideView(v);
@@ -95,9 +96,11 @@ describe('status signals and hiding', () => {
     expect(h).not.toHaveProperty('todo');
     expect(h).not.toHaveProperty('fail');
     expect(h).not.toHaveProperty('diff');
+    expect(h).not.toHaveProperty('ctx');
     expect(h).toMatchObject({ act: 'idle', hidden: true, target: '' });
   });
-  it('redactView keeps them (counts and a flag only)', () => {
+  it('redactView keeps them (counts and a flag only) but never the local ctx', () => {
+    expect(redactView(v)).not.toHaveProperty('ctx');
     expect(redactView(v)).toMatchObject({ ageSec: 90, todo: { done: 1, total: 3 }, fail: true });
   });
 });

@@ -361,7 +361,8 @@ export const LAN_ALERT_GLYPH = ['###', '###', '###', '###', '.#.', '...', '###',
 // ── Status signals over agents (act icon, elapsed time, task progress, failure) ──
 /** Below this bubble scale (text no longer readable) an agent's bubble is its act icon alone. */
 export const ACT_ICON_ONLY_BELOW_SCALE = 0.6;
-/** The icon-only bubble's icon and the failure drop: fixed on screen (CSS px, 2× the 8×8 art). */
+/** The icon-only bubble's icon and the failure drop at bubble scale 1 (CSS px, 2× the 8×8
+ *  art); both scale with the map like the bubbles. */
 export const ACT_ICON_SCREEN_PX = 16;
 /** The icon inside a full bubble (unscaled bubble px; the bubble scales with the map). */
 export const ACT_ICON_INLINE_PX = 11;

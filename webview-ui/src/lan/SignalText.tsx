@@ -1,18 +1,19 @@
 import type { OfficeAgent } from '../../../core/src/lan.js';
 import { LAN_ALERT_COLOR } from '../constants.js';
 import { t } from '../i18n.js';
-import { elapsedText, elapsedWarn, todoText } from './statusSignals.js';
+import { ctxText, elapsedText, elapsedWarn, todoText } from './statusSignals.js';
 
 /** Task count, changed lines, elapsed time and a fresh failure as plain text, for panels (room card, the
  *  session window's status line). Panel colours, not the bubble's: readable in both themes. */
 export function SignalText({
   a,
 }: {
-  a: Pick<OfficeAgent, 'ageSec' | 'permission' | 'todo' | 'fail' | 'diff'>;
+  a: Pick<OfficeAgent, 'ageSec' | 'permission' | 'todo' | 'fail' | 'diff' | 'ctx'>;
 }) {
   const elapsed = elapsedText(a.ageSec);
   const todo = todoText(a);
-  if (!elapsed && !todo && !a.fail && !a.diff) return null;
+  const ctx = ctxText(a);
+  if (!elapsed && !todo && !a.fail && !a.diff && !ctx) return null;
   return (
     <span className="shrink-0 flex items-center gap-4 text-text-muted">
       {todo && <span data-todo={todo}>{t('signal.todo', { n: todo })}</span>}
@@ -29,6 +30,11 @@ export function SignalText({
           style={elapsedWarn(a) ? { color: 'var(--transcript-status-waiting)' } : undefined}
         >
           {elapsed}
+        </span>
+      )}
+      {ctx && (
+        <span data-ctx-text={ctx}>
+          {t('transcript.context')} {ctx}
         </span>
       )}
       {a.fail && (

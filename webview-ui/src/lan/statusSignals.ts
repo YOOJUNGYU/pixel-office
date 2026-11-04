@@ -33,5 +33,15 @@ export function langColor(a: Pick<OfficeAgent, 'act' | 'target' | 'hidden'>): st
   return family ? LANG_ICON_COLORS[family] : undefined;
 }
 
+/** My agent's context window use, % (only this PC's agents carry `ctx`). */
+export const ctxPercent = (a: Pick<OfficeAgent, 'ctx'>): number | undefined =>
+  a.ctx ? Math.min(100, Math.round((a.ctx.used / a.ctx.window) * 100)) : undefined;
+
+/** "29%" for the name-tag chip, or '' without one. */
+export const ctxText = (a: Pick<OfficeAgent, 'ctx'>): string => {
+  const p = ctxPercent(a);
+  return p === undefined ? '' : `${String(p)}%`;
+};
+
 /** Text no longer readable at this bubble scale: show the act icon alone. */
 export const iconOnly = (scale: number, threshold: number): boolean => scale < threshold;
