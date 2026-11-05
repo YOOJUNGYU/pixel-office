@@ -4,6 +4,7 @@ import {
   mkdtempSync,
   readFileSync,
   readlinkSync,
+  renameSync,
   rmSync,
   utimesSync,
   writeFileSync,
@@ -455,6 +456,74 @@ describe('discoverRoots', () => {
   });
 });
 
+describe('session lifecycle', () => {
+  const line = (o: unknown) => JSON.stringify(o) + '\n';
+  const bg = (tool: string, id: string) =>
+    assistant([
+      {
+        type: 'tool_use',
+        id: tool,
+        name: 'Bash',
+        input: { command: 'e2e', run_in_background: true },
+      },
+    ]) +
+    line({
+      type: 'user',
+      message: {
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: tool,
+            content: `Command running in background with ID: ${id}`,
+          },
+        ],
+      },
+    });
+  const note = (id: string) =>
+    `<task-notification> <task-id>${id}</task-id> <status>failed</status> </task-notification>`;
+
+  it('a shell that ends mid-turn (queued notification, no user message) leaves', async () => {
+    const f = join(proj, 's.jsonl');
+    writeFileSync(f, bg('t1', 'bga') + bg('t2', 'bgb'));
+    await scanner.discover();
+    expect(scanner.views().map((v) => v.id)).toEqual(['s', 's/sh/bga', 's/sh/bgb']);
+    appendFileSync(
+      f,
+      line({ type: 'queue-operation', operation: 'enqueue', content: note('bga') }),
+    );
+    appendFileSync(
+      f,
+      line({ type: 'attachment', attachment: { type: 'queued_command', prompt: note('bgb') } }),
+    );
+    await advance(1_000);
+    expect(scanner.views().map((v) => v.id)).toEqual(['s']);
+  });
+
+  it('batched notifications in one user message end every shell', async () => {
+    const f = join(proj, 's.jsonl');
+    writeFileSync(f, bg('t1', 'bga') + bg('t2', 'bgb'));
+    await scanner.discover();
+    appendFileSync(f, line({ type: 'user', message: { content: note('bga') + note('bgb') } }));
+    await advance(1_000);
+    expect(scanner.views().map((v) => v.id)).toEqual(['s']);
+  });
+
+  it('a transcript moved to another project dir (worktree) keeps one agent, same number, shells', async () => {
+    const f = join(proj, 's.jsonl');
+    writeFileSync(f, bg('t1', 'bga'));
+    await scanner.discover();
+    const moved = join(dir, 'claude', 'proj-b');
+    mkdirSync(moved);
+    renameSync(f, join(moved, 's.jsonl'));
+    appendFileSync(join(moved, 's.jsonl'), edit('x.ts'));
+    await scanner.discover();
+    await advance(1_000);
+    const views = scanner.views();
+    expect(views.map((v) => v.id)).toEqual(['s', 's/sh/bga']);
+    expect(views[0]).toMatchObject({ num: 1, act: 'edit' });
+  });
+});
+
 describe('closed sessions (Claude sessions/<pid>.json registry)', () => {
   const reg = (pid: number, sessionId: string, procStart?: string) => {
     mkdirSync(join(dir, 'sessions'), { recursive: true });
@@ -510,6 +579,38 @@ describe('closed sessions (Claude sessions/<pid>.json registry)', () => {
     state = 'alive'; // resumed by a new process
     await scanner.discover();
     expect(scanner.views().map((v) => v.id)).toEqual(['s1']);
+  });
+
+  it('a finished session whose registry entry is gone (clean exit) leaves; a busy one stays', async () => {
+    writeFileSync(
+      join(proj, 'done.jsonl'),
+      edit('a.ts') + JSON.stringify({ type: 'system', subtype: 'turn_duration' }) + '\n',
+    );
+    writeFileSync(join(proj, 'busy.jsonl'), edit('b.ts'));
+    reg(100, 'done');
+    await scanner.discover();
+    await advance(1_000);
+    expect(
+      scanner
+        .views()
+        .map((v) => v.id)
+        .sort(),
+    ).toEqual(['busy', 'done']);
+    rmSync(join(dir, 'sessions', '100.json'));
+    await scanner.discover();
+    await advance(1_000);
+    expect(scanner.views().map((v) => v.id)).toEqual(['busy']);
+  });
+
+  it('no registry at all (older Claude): a finished session stays until the TTL', async () => {
+    writeFileSync(
+      join(proj, 'done.jsonl'),
+      edit('a.ts') + JSON.stringify({ type: 'system', subtype: 'turn_duration' }) + '\n',
+    );
+    await scanner.discover();
+    await scanner.discover();
+    await advance(1_000);
+    expect(scanner.views().map((v) => v.id)).toEqual(['done']);
   });
 
   it('a failed check never closes anything (falls back to the TTL)', async () => {

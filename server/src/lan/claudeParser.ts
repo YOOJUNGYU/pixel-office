@@ -130,6 +130,14 @@ function onAssistant(s: SessionState, content: Block[], now: number): void {
   if (!sawTool && content.some((b) => b?.type === 'text')) s.textOnlyAt = now;
 }
 
+/** Background tasks that finished (`<task-notification>`s, several may come batched) leave. */
+function endShells(s: SessionState, text: string): void {
+  for (const part of text.split('<task-notification>')) {
+    const id = TASK_ID_RE.exec(part)?.[1];
+    if (id && DONE_RE.test(part)) s.shells.delete(id);
+  }
+}
+
 function onUser(s: SessionState, content: unknown, now: number, meta: boolean): void {
   const results = Array.isArray(content)
     ? (content as Block[]).filter((b) => b?.type === 'tool_result')
@@ -158,8 +166,7 @@ function onUser(s: SessionState, content: unknown, now: number, meta: boolean): 
   }
   const text = textOf(content);
   if (!meta) notePrompt(s, text);
-  const taskId = TASK_ID_RE.exec(text)?.[1];
-  if (taskId && DONE_RE.test(text)) s.shells.delete(taskId);
+  endShells(s, text);
   // Esc: no turn_duration follows
   if (text.trimStart().startsWith('[Request interrupted')) return setIdle(s, now);
   // new turn
@@ -216,6 +223,8 @@ export function applyClaudeLine(s: SessionState, line: string, now: number): voi
     customTitle?: unknown;
     aiTitle?: unknown;
     timestamp?: unknown;
+    content?: unknown;
+    attachment?: { prompt?: unknown };
   };
   try {
     rec = JSON.parse(line);
@@ -235,6 +244,11 @@ export function applyClaudeLine(s: SessionState, line: string, now: number): voi
     s.local.customTitle = rec.customTitle.trim();
   } else if (rec.type === 'ai-title' && typeof rec.aiTitle === 'string') {
     s.local.aiTitle = rec.aiTitle.trim();
+  }
+  // A task that ends mid-turn is queued: its notification is only in a `queue-operation`
+  // (`content`) and a `queued_command` attachment (`prompt`), never a user message.
+  for (const text of [rec.content, rec.attachment?.prompt]) {
+    if (typeof text === 'string') endShells(s, text);
   }
   const content = rec.message?.content;
   if (rec.type === 'assistant') noteUsage(s, rec.message?.usage);

@@ -158,11 +158,15 @@ export class Scanner {
       [...this.files].map(([file, t]) => [file, t.s] as [string, SessionState]),
     );
     const byDomain = new Map<string, RegEntry[]>();
+    /** projects root → session ids with a registry entry (roots whose registry was read). */
+    const registered = new Map<string, Set<string>>();
     for (const root of this.roots.claude) {
       const domain = domainOf(root);
       if (domain !== 'local' && !trackedWsl.has(domain)) continue;
       const wanted = trackedWsl.get(domain);
-      const entries = (await readRegistry(root)).filter((e) => !wanted || wanted.has(e.sessionId));
+      const all = await readRegistry(root);
+      if (all) registered.set(root, new Set(all.map((e) => e.sessionId)));
+      const entries = (all ?? []).filter((e) => !wanted || wanted.has(e.sessionId));
       byDomain.set(domain, [...(byDomain.get(domain) ?? []), ...entries]);
     }
     const alive = new Set<string>();
@@ -176,6 +180,14 @@ export class Scanner {
         else if (st === 'dead') dead.add(e.sessionId);
         else alive.add(e.sessionId); // unknown: never close on a failed check
       }
+    }
+    // A clean exit removes the entry: a finished session without one is closed. Not a busy
+    // one (an older Claude, or a `-p` run, may never write one) — the TTL decides there.
+    for (const [file, { s }] of this.files) {
+      if (s.provider !== 'claude' || s.kind !== 'main' || s.act !== 'idle') continue;
+      const root = this.roots.claude.find((r) => file.startsWith(r));
+      const ids = root === undefined ? undefined : registered.get(root);
+      if (ids && !ids.has(s.id)) dead.add(s.id);
     }
     // WSL sessions not checked this cycle keep their last verdict.
     const kept = [...this.closed].filter((id) => !dead.has(id) && !alive.has(id));
@@ -453,6 +465,23 @@ export class Scanner {
       // A WSL verdict may be stale (only shown sessions are checked there): the file
       // changed, so show it and let the next cycle check it (resumed session).
       this.closed.delete(parentId ?? id);
+    }
+    // Claude relocates a session's transcript to another project dir (entering/leaving a
+    // worktree): the tracker follows the file instead of freezing on the old path.
+    if (c.provider === 'claude') {
+      for (const [old, t] of this.files) {
+        if (old === c.file || t.s.id !== id) continue;
+        if (
+          await stat(old).then(
+            () => false,
+            () => true,
+          )
+        ) {
+          this.files.delete(old);
+          this.files.set(c.file, t);
+          return;
+        }
+      }
     }
     if (c.provider === 'codex') {
       const meta = codexSessionMeta(await firstLine(c.file));

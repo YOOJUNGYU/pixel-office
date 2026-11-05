@@ -1,6 +1,7 @@
 // Is a Claude session still open? Claude writes `sessions/<pid>.json` per running
-// process but never removes it, so the pid (and its start time) is checked — only
-// when the pid lives in the checker's own pid namespace (`pidDomain`).
+// process and removes it on a clean exit; a crashed/killed one leaves it behind, so the
+// pid (and its start time) is checked — only when the pid lives in the checker's own
+// pid namespace (`pidDomain`).
 import { execFile } from 'node:child_process';
 import { readdir, readFile, readlink } from 'node:fs/promises';
 import * as path from 'node:path';
@@ -49,10 +50,11 @@ export function sameDomain(pidDomain: string | undefined, self: SelfDomain | nul
   return !m[1] || !self.machine || normId(m[1]) === normId(self.machine);
 }
 
-/** Registry entries next to a Claude `projects` root (unreadable or odd files are skipped). */
-export async function readRegistry(projectsRoot: string): Promise<RegEntry[]> {
+/** Registry entries next to a Claude `projects` root (odd files are skipped); null = no readable registry. */
+export async function readRegistry(projectsRoot: string): Promise<RegEntry[] | null> {
   const dir = path.join(path.dirname(projectsRoot), CLAUDE_SESSIONS_DIR_NAME);
-  const names = await readdir(dir).catch(() => [] as string[]);
+  const names = await readdir(dir).catch(() => null);
+  if (!names) return null;
   const out: RegEntry[] = [];
   for (const name of names) {
     if (!/^\d{1,10}\.json$/.test(name)) continue;
