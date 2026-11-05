@@ -6,6 +6,7 @@ import { CLAUDE_CONTEXT_WINDOW, CLAUDE_CONTEXT_WINDOW_LARGE, FAIL_SHOW_MS } from
 import type { SessionState } from './session.js';
 import {
   addDiff,
+  classifyShell,
   isPrompt,
   lineDiff,
   lineTime,
@@ -74,14 +75,16 @@ function describe(name: string, i: Input): [Room, Act, string, boolean, string?]
     case 'WebFetch':
       return ['library', 'fetch', str(i.url), false];
     case 'Bash':
-    case 'PowerShell':
+    case 'PowerShell': {
+      const room = name === 'Bash' ? classifyShell(str(i.command)) : 'server';
       return [
-        'server',
-        'run',
+        room,
+        room === 'library' ? 'read' : 'run',
         str(i.description) || str(i.command).slice(0, 80),
         false,
         str(i.description) || programName(str(i.command)),
       ];
+    }
     case 'Task':
     case 'Agent':
       return ['lounge', 'delegate', str(i.description), true];

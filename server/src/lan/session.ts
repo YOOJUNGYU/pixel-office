@@ -124,6 +124,47 @@ function setCandidate(s: SessionState, room: Room, now: number): void {
   }
 }
 
+const LIBRARY_CMD =
+  /^(?:(?:rg|grep|egrep|cat|head|tail|ls|find|fd|wc|nl|tree|less|sort|uniq|cut|pwd|echo|stat|file|du|which)\b|sed\s+-n\b|git\s+(?:log|show|diff|status|grep|blame)\b)/;
+/** Redirects that write nothing: `2>/dev/null`, `2>&1`. */
+const HARMLESS_REDIRECT = /\d*>>?\s*\/dev\/null|\d*>&\d/g;
+
+/** Splits a shell command at unquoted `|`, `||`, `&&`, `;` and newlines. */
+function shellSegments(cmd: string): string[] {
+  const out: string[] = [];
+  let cur = '';
+  let quote = '';
+  for (let k = 0; k < cmd.length; k++) {
+    const c = cmd[k];
+    if (quote) {
+      if (c === '\\' && quote === '"') cur += c + (cmd[++k] ?? '');
+      else cur += c;
+      if (c === quote) quote = '';
+    } else if (c === '"' || c === "'") {
+      quote = c;
+      cur += c;
+    } else if (c === '|' || c === ';' || c === '\n' || (c === '&' && cmd[k + 1] === '&')) {
+      if (c === '&' || (c === '|' && cmd[k + 1] === '|')) k++;
+      out.push(cur.trim());
+      cur = '';
+    } else cur += c;
+  }
+  out.push(cur.trim());
+  return out.filter(Boolean);
+}
+
+/**
+ * 자료실 for a command that only reads (every segment a reader, `cd` skipped, no write
+ * redirect), else 서버실.
+ */
+export function classifyShell(cmd: string): Room {
+  const segs = shellSegments(cmd).filter((s) => !/^cd\b/.test(s));
+  const reads = segs.every(
+    (s) => LIBRARY_CMD.test(s) && !s.replace(HARMLESS_REDIRECT, '').includes('>'),
+  );
+  return segs.length && reads ? 'library' : 'server';
+}
+
 /** Program name of a shell command: first token after `KEY=value` assignments, basename. */
 export function programName(cmd: string): string {
   const tok = cmd

@@ -4,13 +4,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { Act } from '../../../core/src/lan.js';
-import {
-  applyCodexLine,
-  classifyShell,
-  codexSessionMeta,
-  parseCodexIndex,
-} from '../../src/lan/codexParser.js';
-import { newSession, noteAct, tick, toViews } from '../../src/lan/session.js';
+import { applyCodexLine, codexSessionMeta, parseCodexIndex } from '../../src/lan/codexParser.js';
+import { classifyShell, newSession, noteAct, tick, toViews } from '../../src/lan/session.js';
 
 const fixture = (name: string) =>
   readFileSync(join(__dirname, 'fixtures', name), 'utf8')
@@ -234,9 +229,22 @@ describe('classifyShell', () => {
       'git diff',
       'nl a | head',
       'tree',
+      'cd a && rg x',
+      'cd /r && grep -n "a|b" x.ts | head -40',
+      'ls; sed -n 1,9p a 2>/dev/null',
+      'cat a 2>&1 | wc -l',
     ])
       expect(classifyShell(c)).toBe('library');
-    for (const c of ['pnpm build', 'sed -i s/a/b/ f', 'git commit -m x', 'cd a && rg x', ''])
+    for (const c of [
+      'pnpm build',
+      'sed -i s/a/b/ f',
+      'git commit -m x',
+      '',
+      'cd a',
+      'cat a > b',
+      'rg x | node',
+      'ls && npm test',
+    ])
       expect(classifyShell(c)).toBe('server');
   });
 });

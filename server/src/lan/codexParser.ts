@@ -4,6 +4,7 @@ import { FAIL_SHOW_MS } from '../constants.js';
 import type { SessionState } from './session.js';
 import {
   addDiff,
+  classifyShell,
   lineTime,
   notePrompt,
   patchDiff,
@@ -36,8 +37,6 @@ const EXIT_RE = /"exit_code"/;
 /** update_plan items' statuses, in JSON arguments or a custom exec's JS object literal. */
 const STATUS_RE = /\bstatus"?\s*:\s*"(\w+)"/g;
 const planStatuses = (args: string): string[] => [...args.matchAll(STATUS_RE)].map((m) => m[1]);
-const LIBRARY_CMD =
-  /^(?:(?:rg|grep|cat|head|tail|ls|find|fd|wc|nl|tree|less)\b|sed\s+-n\b|git\s+(?:log|show|diff|status|grep|blame)\b)/;
 const SHELLS = /(^|[\\/])(?:ba|z)?sh(?:\.exe)?$/;
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
@@ -48,10 +47,6 @@ const unescape = (v: string): string =>
   v.replace(/\\(.)/g, (_, c: string) => (c === 'n' ? '\n' : c));
 const textOf = (c: unknown): string =>
   typeof c === 'string' ? c : Array.isArray(c) ? c.map((b) => str(obj(b).text)).join('\n') : '';
-
-export function classifyShell(cmd: string): Room {
-  return LIBRARY_CMD.test(cmd.split('|')[0].trim()) ? 'library' : 'server';
-}
 
 /** [room, act, target, brief (default target)] */
 type Activity = [Room, Act, string, string?];
