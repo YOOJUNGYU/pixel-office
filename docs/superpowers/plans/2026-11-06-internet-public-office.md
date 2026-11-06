@@ -315,8 +315,8 @@
 
 **Files:**
 
-- Modify: `server/src/lan/peerNet.ts`
-- Test: `server/__tests__/lan/peerNetRelay.test.ts` (새)
+- Modify: `server/src/lan/peerNet.ts`, `server/src/lan/redact.ts` (`quietView`), `core/src/lan.ts` (`AgentView.quiet?: true`, `parseView` 읽기)
+- Test: `server/__tests__/lan/peerNetRelay.test.ts` (새), `server/__tests__/lan/redact.test.ts` (quietView 추가)
 
 **Interfaces:**
 
@@ -346,6 +346,8 @@
   - 대상별 sealed pub (기존 `pubTo` 의 seal 부분을 `sealPub(id, h, texts): PubWire[]` 로 추출, UDP 와 공유) 을 모아 `RELAY_MAX_FRAME_BYTES` 이하로 자른 프레임들로 `relay.send`. 첫 send 가 false 면 중단 (상태 유지 → 다음 틱 재시도).
   - 보냈으면 `lastRelayKey = key`, `lastRelaySend = t`, `needsFull.clear()` (보낸 대상만 제거).
 - 팀/개인용일 때는 중계 송신 없음 (`want(false)` 가 닫는다).
+- **중계로 보내는 presence 는 작업 상세를 뺀다** (사용자 결정 2026-11-06, 범위는 중계만 — controller ruling): `quietView(v: AgentView): AgentView` (`redact.ts`) = `ageSec`·`todo`·`diff`·`fail`·`ctx` 삭제, `target: ''`, `reason: ''`, `quiet: true`; **`act`·`room`·`provider`·`kind`·`tree`·`permission` 은 그대로** (방 이동·앉아서 일하기·PC 화면·! 는 유지). 이미 `hidden` 인 view 는 그대로 둔다 (`hideView` 가 더 강함). UDP 경로·자기 snapshot 은 불변. 변화 감지 `key` 는 quiet 적용 후 packet 으로 계산 (target 변화로는 송신하지 않음).
+- `core/src/lan.ts`: `AgentView` 에 `quiet?: true`; `parseView` 가 `raw.quiet === true` 만 읽는다.
 
 - [ ] **Step 1: 실패 테스트** — `peerNetRelay.test.ts`. 가짜 relay 객체 2 개를 메모리로 서로 잇는 헬퍼 `pair()` (A.send → B.relayDown({t:'w'}) 동기 전달, connected()=true) + `targets: () => []` (UDP 없음), 가짜 `now`:
   - `sees each other over relay only`: 양쪽에 roster 주입 → `sendNow()` 각 1 회 → `a.peers(PUBLIC_VIEW)` 에 B.
@@ -353,6 +355,9 @@
   - `leave removes at once`: `relayDown({t:'leave', id:B})` → `peers()` 에서 B 사라짐.
   - `coalesces to one frame per second`: 0.2 s 간격으로 아바타 바꾸며 `sendNow()` 5 회 → send 1 건; `now += 1_000` 후 1 건 더 (마지막 값 담김).
   - `ageSec only change sends nothing`: views 의 ageSec 만 +1 → send 0 건.
+  - `target only change sends nothing`: act 같고 target 만 바뀜 → send 0 건; act 가 바뀌면 1 건.
+  - `relay presence is quiet`: B 가 받은 A 의 view 에 `quiet === true`, `target === ''`, `act` 는 A 의 act 그대로, `todo`/`diff`/`fail`/`ageSec` 없음. 같은 망(UDP) 으로 받은 경우엔 quiet 없음·target 그대로.
+  - redact.test: `quietView` 가 act/room/permission 유지, 상세 삭제, `hidden` view 는 변경 없음.
   - `new joiner gets full state`: 변화 없음 상태에서 C join → 다음 `sendNow()` 가 C 앞 pub 만 담은 프레임 1 건.
   - `udp lapse resends full over relay`: B 를 UDP hello 로도 들은 상태(udpAt=now) → 송신은 UDP 만 (relay send 0); `now += PEER_TTL_MS + 1` → 다음 틱 relay send 에 B 앞 pub 포함.
   - `splits frames over the byte cap`: 받는 사람 30 명, presence 를 큰 views 로 → 모든 send 인자 직렬화 ≤ `RELAY_MAX_FRAME_BYTES`, 합치면 30 명 전원 포함.
@@ -403,7 +408,8 @@
 
 - Modify: `webview-ui/src/hooks/useExtensionMessages.ts`, `webview-ui/src/lan/PeoplePanel.tsx`, `webview-ui/src/components/SettingsModal.tsx`, `webview-ui/src/i18n.ts`, `webview-ui/src/constants.ts`
 - Create: `webview-ui/src/lan/relayStatus.ts` (순수: 상태 → i18n 키·칩 종류, `retryInMs` → "HH:MM" 표시)
-- Test: `webview-ui/test/relayStatus.test.ts`
+- Modify: `webview-ui/src/lan/lanAgents.ts` / 말풍선 렌더 경로 (quiet → 말풍선 없음)
+- Test: `webview-ui/test/relayStatus.test.ts`, quiet 말풍선 테스트 (기존 lanAgents/statusSignals 테스트 파일 관례 따름)
 
 **Interfaces:**
 
@@ -414,9 +420,10 @@
 
 - 칩: 공개 오피스를 보고 있을 때 접속자 패널 "공개 오피스" 제목 오른쪽. `connected` = 🌐 + `relay.connected` ("인터넷 연결됨"), `connecting` = muted, `full`/`budget`/`kicked`/`error` = warn + 한 줄 사유 (`relay.full` "인터넷 연결 대기: 만원", `relay.budget` "인터넷 연결 중단: 오늘 한도 소진 (~HH:MM)", `relay.kicked` "관리자에 의해 퇴장 (~HH:MM 까지)", `relay.error` "인터넷 연결 안 됨 — 같은 망만 보임"). 영어 대응 키 같이.
 - [강퇴]: `settings.relayAdmin === true` && 공개 오피스 보는 중 && 행이 나 아님 → 행 끝 작은 버튼 → `confirm(t('relay.kickConfirm', {name}))` → `relayKick`. `relayKickResult` → 기존 토스트 경로로 성공/실패 (`relay.kickOk`, `relay.kickFail.<reason>`).
+- **quiet agent** (`OfficeAgent.quiet`, 중계로 받은 다른 PC 에이전트): 머리 위 말풍선·호버 말풍선·실패 물방울·효과(+N, 연기, 폭죽) 없음. 캐릭터 이동·착석·타이핑·PC 화면·서버실 LED·대기 ! 는 그대로. 방 팝업 카드의 활동 문구 = `act.quiet` ("작업 중" / "Working"; act idle 이면 기존 대기 문구).
 - Settings: "관리자 토큰" password input + [저장] (빈 값 저장 = 삭제), 설정 여부 표시 (`settings.relayAdminSet`). 픽셀 스타일 규칙 (radius 0, 2px border).
 
-- [ ] **Step 1: 실패 테스트** — `relayStatus.test.ts`: `off` → null; `connected` → `{key:'relay.connected', tone:'ok'}`; `budget` + `retryInMs: 3_600_000`, now = 로컬 10:00 → `until === '11:00'`; `kicked` 동일; `full` → warn, until 없음.
+- [ ] **Step 1: 실패 테스트** — quiet: `act:'edit', quiet:true` 에이전트 → 말풍선 텍스트/아이콘 없음(`actIcon` null 이 아니라 말풍선 자체 미생성), `effectTriggers` 가 아무것도 안 냄, `screenKind` 는 code 그대로. `relayStatus.test.ts`: `off` → null; `connected` → `{key:'relay.connected', tone:'ok'}`; `budget` + `retryInMs: 3_600_000`, now = 로컬 10:00 → `until === '11:00'`; `kicked` 동일; `full` → warn, until 없음.
 - [ ] **Step 2: 실패 확인** — `npm run test:webview` FAIL
 - [ ] **Step 3: 구현** — 위 결정. 색은 `constants.ts`/CSS 변수만 (eslint `no-inline-colors`).
 - [ ] **Step 4: 통과 확인** — `npm run test:webview`, `npm run lint`, `npm run build` PASS. 수동: `PIXEL_OFFICE_RELAY_URL=ws://127.0.0.1:8787/ws node dist/cli.js` + `wrangler dev` → 칩 "인터넷 연결됨"; wrangler 끄면 "인터넷 연결 안 됨".
