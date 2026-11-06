@@ -358,7 +358,7 @@ const ko = {
     '대기실은 사람 캐릭터의 공간입니다. 할 일이나 확인을 기다리는 에이전트는 대기실로 돌아와 그 PC 의 사람 캐릭터에 합쳐지고, 확인이 필요하면 사람 머리 위에 빨간 ! 가 뜹니다.\n방 이동은 3초 정도 상태가 이어져야 일어나서, 잠깐씩 바뀌는 작업에 캐릭터가 왔다 갔다 하지 않습니다.',
   'tour.tag.title': '이름표',
   'tour.tag.body':
-    '이름표는 한 줄: 맨 앞 MAIN = 메인 에이전트, SUB / SHELL = 서브에이전트와 셸(부모의 번호로 보임), 다음 #번호, 그다음 닉네임(없으면 PC 계정).\n머리 위 말풍선에는 Claude(주황) / Codex(초록) 배지와 지금 하는 일이 보입니다.',
+    '이름표는 한 줄: 맨 앞 MAIN = 메인 에이전트, SUB / SHELL = 서브에이전트와 셸(부모의 번호로 보임), 다음 #번호, 그다음 닉네임(없으면 PC 계정).\n머리 위 말풍선에는 Claude(주황) / Codex(초록) 배지, 세션 제목(내 에이전트만), 지금 하는 일이 보입니다.',
   'tour.bubble.title': '말풍선',
   'tour.bubble.body':
     '캐릭터에 마우스를 올리면 어느 방에서 무엇을 하는지, 그리고 이유가 보입니다.\n머리 위 빨간 ! 는 사용자의 확인(권한 승인이나 답변)을 기다린다는 뜻입니다.',
@@ -372,10 +372,10 @@ const ko = {
     '한 손가락으로 끌어 지도를 옮기고, 두 손가락으로 벌리거나 오므려 확대·축소합니다.\n지금 직접 해 보세요 — 다음으로 넘어가면 원래 화면으로 돌아옵니다.',
   'tour.switcher.title': '오피스 전환',
   'tour.switcher.body':
-    '🌐 공개 오피스에는 같은 망의 모든 PC가 보입니다. 🔒 팀 오피스는 코드를 가진 팀원끼리만 보입니다.\n팀 오피스에 참여한 PC는 공개 오피스에서 빠집니다. 🏠 개인용은 다른 PC 와 연결하지 않고 혼자 쓰는 작은 오피스입니다.',
+    '🌐 공개 오피스에는 앱을 설치한 모든 PC가 보입니다(같은 망은 바로, 다른 망은 인터넷 중계로). 🔒 팀 오피스는 코드를 가진 팀원끼리만, 같은 망에서만 보입니다.\n팀 오피스에 참여한 PC는 공개 오피스에서 빠집니다. 🏠 개인용은 다른 PC 와 연결하지 않고 혼자 쓰는 작은 오피스입니다.',
   'tour.people.title': '접속 중인 사람',
   'tour.people.body':
-    '지금 이 오피스에 접속한 사람이 모두 보입니다. 에이전트가 없는 사람도요.\n❗ 는 확인을 기다리는 에이전트가 있다는 뜻입니다. 이름을 누르면 그 사람의 에이전트로 화면이 따라갑니다.',
+    '지금 이 오피스에 접속한 사람이 모두 보입니다. 에이전트가 없는 사람도요.\n❗ 는 확인을 기다리는 에이전트가 있다는 뜻입니다. 이름을 누르면 그 사람의 에이전트로 화면이 따라갑니다.\n공개 오피스에서는 연결 경로(LAN / 인터넷)가, 나와 버전이 다르면 이름 뒤에 그 버전이 붙습니다.',
   'tour.chat.title': '내 캐릭터와 채팅',
   'tour.chat.body':
     '에이전트와 별개로 사람마다 캐릭터가 하나 있습니다. 방향키(↑↓←→)로 내 캐릭터를 어느 방이든 움직이세요(대기실 의자에는 앉을 수 있음).\n아래 가운데 채팅창에 쓰고 Enter → 내 캐릭터 위에 말풍선(새로 쓰면 바뀌고 × 로 지움). 아무것도 선택되지 않았을 때 Space+Enter = 채팅창, Esc = 방향키로 복귀.',
@@ -389,7 +389,7 @@ const ko = {
     '화면 언어와 다크/라이트 테마는 브라우저마다 따로 고릅니다. 다른 PC의 에이전트 활동도 내가 고른 언어로 보입니다.\n왼쪽 위 해/달 버튼으로 다크와 라이트를 바로 바꿀 수도 있습니다.',
   'tour.profile.title': '내 프로필',
   'tour.profile.body':
-    '캐릭터(사람 6종 또는 펫 Claudio · Gitcat)와 색, 닉네임, 내 캐릭터 이름표 색을 정합니다. 내 캐릭터와 이 PC 의 에이전트가 이 모습으로 나옵니다. 이름은 PC 계정 이름이 먼저이고 바꿀 수 없습니다.\n"내 작업 내용 숨기기" 를 켜면 다른 사람에게는 내 에이전트의 위치만 보이고 작업 내용은 숨겨집니다.',
+    '캐릭터(사람 6종 또는 펫 Claudio · Gitcat)와 색, 닉네임, 내 캐릭터 이름표 색을 정합니다. 내 캐릭터와 이 PC 의 에이전트가 이 모습으로 나옵니다. 이름은 PC 계정 이름이 먼저이고 바꿀 수 없습니다.',
   'tour.offices.title': '팀 오피스',
   'tour.offices.body':
     '팀 이름을 정해 만들면 초대 코드(PO2-…)가 나옵니다. 팀원은 그 코드로 참여합니다.\n팀 오피스의 내용은 팀원끼리만 암호화되어 오가고, 언제든 나갈 수 있습니다.',
@@ -778,7 +778,7 @@ const en: Record<Key, string> = {
     "The lounge is for people's characters. An idle agent, or one waiting for you, comes back here and merges into its PC's character; a red ! over the person means it needs you.\nA move only happens after the new activity lasts about 3 seconds, so characters do not bounce around on quick tasks.",
   'tour.tag.title': 'Name tags',
   'tour.tag.body':
-    "One line: first MAIN = main agent, SUB / SHELL = subagents and shells (with their parent's number), then #number, then the nickname (else the PC account).\nThe bubble above the head shows a Claude (orange) / Codex (green) badge and the current activity.",
+    "One line: first MAIN = main agent, SUB / SHELL = subagents and shells (with their parent's number), then #number, then the nickname (else the PC account).\nThe bubble above the head shows a Claude (orange) / Codex (green) badge, the session title (your own agents only) and the current activity.",
   'tour.bubble.title': 'Hover bubble',
   'tour.bubble.body':
     'Hover a character to see its room, what it is doing and why.\nA red ! over its head means it is waiting for you (a permission or an answer).',
@@ -792,10 +792,10 @@ const en: Record<Key, string> = {
     'Drag with one finger to pan, pinch with two to zoom.\nTry it now — the view goes back when you continue.',
   'tour.switcher.title': 'Office switcher',
   'tour.switcher.body':
-    '🌐 The public office shows every PC on the network. 🔒 A team office is shared only by teammates who have its code.\nA PC in a team office leaves the public office. 🏠 Personal is a small office just for you, not connected to other PCs.',
+    '🌐 The public office shows every PC with the app (the same network directly, others through the internet relay). 🔒 A team office is shared only by teammates who have its code, on the same network.\nA PC in a team office leaves the public office. 🏠 Personal is a small office just for you, not connected to other PCs.',
   'tour.people.title': "Who's online",
   'tour.people.body':
-    "Everyone connected to this office is listed here, even people with no agents.\n❗ means one of their agents is waiting for them. Click a name and the view follows that person's agent.",
+    "Everyone connected to this office is listed here, even people with no agents.\n❗ means one of their agents is waiting for them. Click a name and the view follows that person's agent.\nIn the public office each row shows its connection (LAN / Internet), and a version different from yours follows the name.",
   'tour.chat.title': 'Your character and chat',
   'tour.chat.body':
     'Besides agents, everyone has one character. Walk yours into any room with the arrow keys (↑↓←→); it can sit on lounge chairs.\nType in the chat bar at the bottom centre and press Enter → a bubble over your character (a new one replaces it, × deletes it). With nothing focused, Space+Enter = chat bar; Esc = back to the arrow keys.',
@@ -809,7 +809,7 @@ const en: Record<Key, string> = {
     'Each browser picks its own language and dark/light theme. Activity of agents on other PCs is shown in your language too.\nThe sun/moon button at the top left switches dark and light in one click.',
   'tour.profile.title': 'My profile',
   'tour.profile.body':
-    'Character (six people or the pets Claudio · Gitcat), colour, nickname and your name tag colours — for your own character and this PC\'s agents. Your PC account name always comes first and cannot be changed.\n"Hide my work" shows others only where your agents are, not what they are doing.',
+    "Character (six people or the pets Claudio · Gitcat), colour, nickname and your name tag colours — for your own character and this PC's agents. Your PC account name always comes first and cannot be changed.",
   'tour.offices.title': 'Team offices',
   'tour.offices.body':
     'Create a team to get an invite code (PO2-…); teammates join with it.\nA team office is encrypted between its members, and you can leave any time.',
