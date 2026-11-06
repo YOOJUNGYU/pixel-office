@@ -32,7 +32,7 @@ const isLoopbackWs = (u: URL): boolean =>
 
 /** Env override (tests) first; only wss://, plus ws:// to this machine. Anything else = ''. */
 export function relayUrl(env: NodeJS.ProcessEnv): string {
-  const raw = env[RELAY_URL_ENV] || RELAY_URL;
+  const raw = env[RELAY_URL_ENV] ?? RELAY_URL; // set but empty = off
   if (!raw) return '';
   try {
     const u = new URL(raw);

@@ -77,6 +77,7 @@ describe('relayUrl', () => {
     expect(e('wss://x.workers.dev/ws')).toBe('wss://x.workers.dev/ws');
     expect(e('nonsense')).toBe('');
     expect(e()).toBe(RELAY_URL);
+    expect(relayUrl({ PIXEL_OFFICE_RELAY_URL: '' })).toBe(''); // set but empty = off
   });
 });
 

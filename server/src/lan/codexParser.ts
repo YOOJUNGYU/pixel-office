@@ -41,7 +41,11 @@ const SHELLS = /(^|[\\/])(?:ba|z)?sh(?:\.exe)?$/;
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 const obj = (v: unknown): Obj => (v && typeof v === 'object' ? (v as Obj) : {});
-const clip = (v: string, n: number): string => v.replace(/\s+/g, ' ').trim().slice(0, n);
+/** Whitespace collapsed, at most `n` chars; a cut ends in … so the viewer knows. */
+const clip = (v: string, n: number): string => {
+  const t = v.replace(/\s+/g, ' ').trim();
+  return t.length > n ? `${t.slice(0, n - 1)}…` : t;
+};
 const basename = (p: string): string => p.split(/[\\/]/).pop() ?? '';
 const unescape = (v: string): string =>
   v.replace(/\\(.)/g, (_, c: string) => (c === 'n' ? '\n' : c));

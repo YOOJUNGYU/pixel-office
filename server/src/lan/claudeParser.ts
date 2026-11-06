@@ -47,7 +47,11 @@ const OUTPUT_RE = /Output is being written to: (.+?\.output)(?=[.\s]|$)/;
 const DONE_RE = /<status>(completed|failed|killed)<\/status>/;
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
-const clip = (v: string, n: number): string => v.replace(/\s+/g, ' ').trim().slice(0, n);
+/** Whitespace collapsed, at most `n` chars; a cut ends in … so the viewer knows. */
+const clip = (v: string, n: number): string => {
+  const t = v.replace(/\s+/g, ' ').trim();
+  return t.length > n ? `${t.slice(0, n - 1)}…` : t;
+};
 const basename = (p: unknown): string => str(p).split(/[\\/]/).pop() ?? '';
 const textOf = (c: unknown): string =>
   typeof c === 'string'
