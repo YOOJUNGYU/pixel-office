@@ -105,7 +105,7 @@ The people panel on the right has three areas, **Public office / Team / Personal
 
 - PCs exchange **status only** (read-only). Nobody can reach your terminal, agents or settings, and the UI opens only in this PC's browser.
 - Everything between PCs is **encrypted**: the public office uses a per-pair X25519 key agreement + AES-256-GCM, a team office AES-256-GCM with a key derived from its invite code. Codes never go on the network; a known PC whose key changes is ignored (impersonation).
-- The internet relay only **forwards** the encrypted content. It sees peer ids, public keys and recipients, and does not store IPs (it makes only a hashed tag for the same-network badge). Team-office and personal PCs never connect to it.
+- The internet relay only **forwards** the encrypted content. It sees peer ids, public keys and recipients, and does not store IPs (it makes only a hashed tag for the same-network badge). Cloudflare, which hosts the relay, does see each PC's connecting IP address. Your avatar's position and walking are visible to everyone in the public office. Team-office and personal PCs never connect to it.
 - **Always**: file paths, user names, IPs/host names, URL paths, token-like strings and AI reply text never leave the PC; commands are sent as program names only. Your PC account name is the name tag, so it is always shown.
 - **Hide my work** (off by default): others see only which room each of your agents is in, which AI it is, its kind (MAIN/SUB/SHELL) and whether it waits (!), not what it is doing.
 - Claude Code and Codex settings are never touched; only their transcript files are read.
@@ -123,7 +123,7 @@ The people panel on the right has three areas, **Public office / Team / Personal
 ```
 
 - The reporter reads sessions changed in the last 30 minutes under `~/.claude/projects` and `~/.codex/sessions` (on Windows also those of running WSL distros). A closed Claude session leaves within seconds (after 30 minutes when its process can't be checked); a finished Codex session after 10 minutes.
-- On the same network a PC silent for 5 seconds disappears (via the relay it stays until the relay reports it left). The personal layout never leaves the PC; only the public/team shared layout goes to people in that office.
+- On the same network a PC silent for 5 seconds disappears (via the relay it stays until the relay reports it left; the relay drops a PC that went silent after 90 seconds). The personal layout never leaves the PC; only the public/team shared layout goes to people in that office.
 - Data lives only in `~/.pixel-office/` (files with keys and codes are 0600).
 
 | Port      | Purpose                                                         |
@@ -137,7 +137,7 @@ The people panel on the right has three areas, **Public office / Team / Personal
 - Broadcasts stay inside one subnet. Across floors or VLANs, add the other PC's IP under **Settings → My profile → Advanced: when a PC isn't found automatically**.
 - The public office can't keep out anyone who installs the app (or who just knows the address). Use a team office (same network only) to choose who joins. The admin can remove someone, but a ban is per peer id, so deleting `profile.json` avoids it.
 - If a corporate proxy or firewall blocks outbound `wss` (443), the internet link fails and the chip shows `No internet connection`. Same-network PCs still show. Ask IT for an exception rather than working around it.
-- Free-tier limits: 20 people at once, and the relay stops for the day when usage reaches 90 % of the limit (same network unaffected; resets at 00:00 UTC).
+- Free-tier limits: 20 people at once, and the relay stops for the day when usage reaches 90 % of the limit (same network unaffected; resets at 00:00 UTC (09:00 KST)).
 - A malicious relay operator could swap the public key of a first-time pair and read that pair (operator = the app's admin). There is no key fingerprint screen yet.
 - Codex doesn't record approval requests, so ❗ appears for Codex only when it asks you a question.
 - The redaction may miss a password typed directly into a command or search.
