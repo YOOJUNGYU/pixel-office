@@ -2,7 +2,7 @@
 
 > 한국어: [설치-안내.md](설치-안내.md)
 
-Pixel Office shows the coding agents (Claude Code, Codex) of every PC on the same LAN as characters in one pixel office. **Install it once on each PC**: it starts automatically at login and finds the other PCs on the network by itself. Nothing else (such as Node) needs to be installed.
+Pixel Office shows the coding agents (Claude Code, Codex) of every PC with the app as characters in one pixel office. The public office you start in brings together PCs on your network and, through the internet relay, on any other network (home, office, café). **Install it once on each PC**: it starts automatically at login and finds the other PCs by itself. Nothing else (such as Node) needs to be installed.
 
 ## 1. Download
 

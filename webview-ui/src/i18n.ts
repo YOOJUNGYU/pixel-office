@@ -339,11 +339,11 @@ const ko = {
   'tour.demo.editReason': '로그인 버그 고치는 중',
   'tour.demo.readReason': 'API 문서 확인',
   'tour.demo.waitReason': '배포 명령을 실행해도 될까요?',
-  'tour.welcome.title': 'Pixel Office LAN 에 오신 걸 환영합니다',
+  'tour.welcome.title': 'Pixel Office 에 오신 걸 환영합니다',
   'tour.welcome.body':
-    '같은 망의 PC들에서 돌고 있는 Claude Code · Codex 에이전트가 이 픽셀 사무실의 캐릭터로 나타납니다.',
+    '같은 망과 인터넷 너머의 PC들에서 돌고 있는 Claude Code · Codex 에이전트가 이 픽셀 사무실의 캐릭터로 나타납니다.',
   'tour.welcome.bodyDemo':
-    '같은 망의 PC들에서 돌고 있는 Claude Code · Codex 에이전트가 이 픽셀 사무실의 캐릭터로 나타납니다.\n지금 보이는 캐릭터 중 일부는 안내용 예시이며, 안내가 끝나면 사라집니다.',
+    '같은 망과 인터넷 너머의 PC들에서 돌고 있는 Claude Code · Codex 에이전트가 이 픽셀 사무실의 캐릭터로 나타납니다.\n지금 보이는 캐릭터 중 일부는 안내용 예시이며, 안내가 끝나면 사라집니다.',
   'tour.roomCoding.title': '코딩실',
   'tour.roomCoding.body':
     '에이전트는 하는 일에 따라 방을 옮겨 다닙니다. 파일을 고치거나 쓰는 동안은 코딩실 책상에 앉아 있습니다.\n방 왼쪽 위 명패의 "에이전트 N" 은 그 방에 있는 에이전트 수(서브에이전트·셸 포함)입니다.',
@@ -758,11 +758,11 @@ const en: Record<Key, string> = {
   'tour.demo.editReason': 'Fixing the login bug',
   'tour.demo.readReason': 'Checking the API docs',
   'tour.demo.waitReason': 'OK to run the deploy command?',
-  'tour.welcome.title': 'Welcome to Pixel Office LAN',
+  'tour.welcome.title': 'Welcome to Pixel Office',
   'tour.welcome.body':
-    'Claude Code and Codex agents running on the PCs of your network show up as characters in this pixel office.',
+    'Claude Code and Codex agents running on PCs on your network and across the internet show up as characters in this pixel office.',
   'tour.welcome.bodyDemo':
-    'Claude Code and Codex agents running on the PCs of your network show up as characters in this pixel office.\nSome characters you see now are examples for this tour; they leave when it ends.',
+    'Claude Code and Codex agents running on PCs on your network and across the internet show up as characters in this pixel office.\nSome characters you see now are examples for this tour; they leave when it ends.',
   'tour.roomCoding.title': 'Coding room',
   'tour.roomCoding.body':
     'Agents move between rooms by what they are doing. While editing or writing files they sit at a desk in the coding room.\n"Agents N" on the plate at the top left of each room counts the agents there (subagents and shells included).',

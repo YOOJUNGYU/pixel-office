@@ -1,11 +1,11 @@
-<h1 align="center">Pixel Office LAN</h1>
+<h1 align="center">Pixel Office</h1>
 
 <p align="center">
   <a href="README.md">한국어</a> · <b>English</b>
 </p>
 
 <p align="center">
-  Everyone's AI coding agents on the same LAN,<br>
+  Everyone's AI coding agents — on your network or across the internet —<br>
   together in <b>one pixel-art office</b>.
 </p>
 
@@ -18,9 +18,9 @@
 
 ![The whole office](docs/images/office-en.png)
 
-See at a glance who is doing what, with which agent (Claude Code / Codex). Install it and it finds the other PCs on the network **with no server**; everyone's agents meet in one office.
+See at a glance who is doing what, with which agent (Claude Code / Codex). Install it and you meet every other PC in the **public office**, on any network (same network directly, others through the internet relay); switch to a team office (teammates on the same network) or a personal office any time. Everyone's agents meet in one office.
 
-> A fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents) (MIT). The original shows the Claude Code agents of your own PC; this fork adds LAN sharing, Codex and installers, and drops agent launching, the terminal and the VS Code extension. It only watches: agents keep running in the CLI or desktop app you already use.
+> A fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents) (MIT). The original shows the Claude Code agents of your own PC; this fork adds LAN and internet sharing, Codex and installers, and drops agent launching, the terminal and the VS Code extension. It only watches: agents keep running in the CLI or desktop app you already use.
 
 ## Install
 

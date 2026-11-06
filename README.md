@@ -1,11 +1,11 @@
-<h1 align="center">Pixel Office LAN</h1>
+<h1 align="center">Pixel Office</h1>
 
 <p align="center">
   <b>한국어</b> · <a href="README.en.md">English</a>
 </p>
 
 <p align="center">
-  같은 사내망(LAN)에서 일하는 모든 사람의 AI 코딩 에이전트를<br>
+  앱을 설치한 모든 사람의 AI 코딩 에이전트를 — 같은 망이든 인터넷 너머든 —<br>
   <b>하나의 픽셀 사무실</b>에서 함께 보는 앱입니다.
 </p>
 
@@ -18,9 +18,9 @@
 
 ![사무실 전체 화면](docs/images/office-ko.png)
 
-누가 · 어떤 에이전트(Claude Code / Codex)로 · 무엇을 하고 있는지 한눈에 보입니다. 설치만 하면 같은 망의 다른 PC를 **서버 없이** 찾아 모두의 에이전트가 한 사무실에 모입니다.
+누가 · 어떤 에이전트(Claude Code / Codex)로 · 무엇을 하고 있는지 한눈에 보입니다. 설치만 하면 **공개 오피스**에서 어느 망의 PC든 만나고(같은 망은 직접, 다른 망은 인터넷 중계), 원하면 같은 망 팀원끼리만 쓰는 팀 오피스나 혼자 쓰는 개인용으로 바꿀 수 있습니다. 모두의 에이전트가 한 사무실에 모입니다.
 
-> [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents)(MIT)의 포크입니다. 원작은 내 PC의 Claude Code 에이전트만 보여 주고, 이 포크는 LAN 공유 · Codex 지원 · 설치 파일을 더하는 대신 에이전트 실행 · 터미널 · VS Code 확장을 뺐습니다. 보기만 하는 앱이고, 에이전트는 쓰던 CLI·데스크톱 앱에서 그대로 실행합니다.
+> [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents)(MIT)의 포크입니다. 원작은 내 PC의 Claude Code 에이전트만 보여 주고, 이 포크는 LAN·인터넷 공유 · Codex 지원 · 설치 파일을 더하는 대신 에이전트 실행 · 터미널 · VS Code 확장을 뺐습니다. 보기만 하는 앱이고, 에이전트는 쓰던 CLI·데스크톱 앱에서 그대로 실행합니다.
 
 ## 설치
 
