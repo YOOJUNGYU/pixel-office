@@ -1,0 +1,15 @@
+{
+  "name": "pixel-office-relay",
+  "private": true,
+  "description": "Internet relay for the Pixel Office public office (Cloudflare Worker + Durable Object)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check-types": "tsc --noEmit -p ."
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261022.1",
+    "typescript": "5.9.3",
+    "wrangler": "4.151.3"
+  }
+}

@@ -55,3 +55,8 @@ tasks/
 # Installer staging / output (scripts/package)
 /build/
 /release/
+
+# Relay (Cloudflare Worker) local state and secrets
+relay/node_modules
+relay/.wrangler
+relay/.dev.vars
