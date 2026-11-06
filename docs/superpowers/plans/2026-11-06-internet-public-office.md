@@ -233,6 +233,45 @@
 
 ---
 
+### Task 3b: 같은 망 표시 — 중계가 망 태그를 붙인다
+
+(사용자 요청 2026-11-06: 접속자 목록에서 같은 망끼리 같은 번호.)
+
+**Files:**
+
+- Modify: `core/src/relay.ts`, `relay/src/hub.ts`, `relay/src/index.ts`
+- Test: `server/__tests__/lan/relayFrames.test.ts`, `relay/test/hub.test.ts`
+
+**Interfaces:**
+
+- Produces:
+  ```ts
+  // core/src/relay.ts
+  export const NET_TAG_CHARS = 8; // hex
+  export function isNetTag(s: unknown): s is string; // ^[0-9a-f]{8}$
+  // RelayDown 변경 (net 은 선택 — 없으면 모름):
+  //   roster: { t:'roster'; you?: string; peers: { id; pk; net?: string }[] }
+  //   join:   { t:'join'; id; pk; net?: string }
+  // relay/src/hub.ts
+  export interface Conn {
+    id;
+    pk;
+    frames;
+    net?: string;
+  }
+  export async function netTag(ip: string, salt: string): Promise<string>; // HMAC-SHA256(salt, ip) 앞 8 hex, crypto.subtle
+  ```
+- DO: 업그레이드 때 `request.headers.get('CF-Connecting-IP')` → `netTag(ip, salt)` → attachment `net`; roster 의 `you` = 자기 net, 각 peer 에 net; join 에도 net. `salt` = DO storage 의 무작위 32 B hex (최초 1 회 생성, 영구). IP 자체는 저장·전송하지 않는다. IP 헤더 없음(로컬 dev) → net 없음.
+- `parseDown` 은 `net`/`you` 가 `isNetTag` 일 때만 남기고 아니면 버린다 (프레임 전체를 버리지 않음).
+
+- [ ] **Step 1: 실패 테스트** — relayFrames: roster 에 `you`·`net` 왕복; `net: 'XYZ'` → 그 필드만 빠지고 roster 유지. hub: `netTag('1.2.3.4', 'aa')` 가 8 hex, 같은 입력 같은 값, 다른 salt 다른 값.
+- [ ] **Step 2: 실패 확인** → FAIL
+- [ ] **Step 3: 구현**
+- [ ] **Step 4: 통과 확인** — `npm run test:relay`, `npm run test:server`, `npm run check-types --prefix relay`; `wrangler dev` 스모크 (`smoke.mjs`) 그대로 OK.
+- [ ] **Step 5: Commit** — `feat(relay): network tag per connection`
+
+---
+
 ### Task 4: 중계 클라이언트 (`server/src/lan/relay.ts`)
 
 **Files:**
@@ -348,6 +387,7 @@
 - 팀/개인용일 때는 중계 송신 없음 (`want(false)` 가 닫는다).
 - **공개 오피스로 나가는 presence 는 작업 상세를 뺀다 — UDP·중계 둘 다** (사용자 결정 2026-11-06: "같은 망도 동일하게"; 내 에이전트는 내 화면에서 상세·말풍선 그대로). `quietView(v: AgentView): AgentView` (`redact.ts`) = `ageSec`·`todo`·`diff`·`fail`·`ctx` 삭제, `target: ''`, `reason: ''`, `quiet: true`; **`act`·`room`·`provider`·`kind`·`tree`·`permission` 은 그대로**. 이미 `hidden` 인 view 는 그대로 (`hideView` 가 더 강함). 적용 위치 = `LanService.packet(channel)` (`server/src/lan/office.ts:152`) 에서 `channel === PUBLIC_VIEW` 일 때 `redactView` 다음에 `quietView`. 팀 채널·자기 snapshot(`toViews` brief 아님) 은 불변. 변화 감지 `key` 는 이 packet 으로 계산하므로 target 변화로는 중계 송신이 일어나지 않는다.
 - `core/src/lan.ts`: `AgentView` 에 `quiet?: true`; `parseView` 가 `raw.quiet === true` 만 읽는다.
+- **망 태그 (Task 3b)**: `myNet?: string` (roster `you`), `nets: Map<id, string>` (roster/join `net`). `netOf(id): string | undefined` = UDP 로 들리는 peer(`udpLive`) → `myNet ?? 'lan'`, 그 외 → `nets.get(id)`. `directory()` 의 공개 영역 PeerInfo 와 `peers(PUBLIC_VIEW)` 결과에 `net` 을 붙일 수 있도록 공개 메서드 `netOf` 를 노출 (LanService 가 people/directory 에 붙인다 — Task 6). 테스트 `udp peer shares my net`, `relay peer uses roster net`.
 
 - [ ] **Step 1: 실패 테스트** — `peerNetRelay.test.ts`. 가짜 relay 객체 2 개를 메모리로 서로 잇는 헬퍼 `pair()` (A.send → B.relayDown({t:'w'}) 동기 전달, connected()=true) + `targets: () => []` (UDP 없음), 가짜 `now`:
   - `sees each other over relay only`: 양쪽에 roster 주입 → `sendNow()` 각 1 회 → `a.peers(PUBLIC_VIEW)` 에 B.
@@ -388,6 +428,7 @@
   - client→server `relayKick {peerId: string}` (pattern = peer id) → `relayKickResult`.
   - `settingsLoaded.relayAdmin: boolean` (토큰 설정 여부; 값은 절대 안 보냄).
 - `config.json standalone.relayAdminToken: string` (기본 '').
+- 망 표시: `officeSnapshot.people[]` 와 `peopleDirectory.public[]` 항목에 `net?: string` (8 hex 또는 `'lan'`, 나 자신 = `myNet ?? 'lan'`). asyncapi 에 추가 (pattern `^([0-9a-f]{8}|lan)$`). 팀·개인용 영역에는 넣지 않는다.
 - `ClientMessageContext.relay?: { status(): RelayStatus; kick(id: string): Promise<{ok, reason?}> }`.
 
 - [ ] **Step 1: 실패 테스트** — 핸들러 테스트:
@@ -420,6 +461,7 @@
 
 - 칩: 공개 오피스를 보고 있을 때 접속자 패널 "공개 오피스" 제목 오른쪽. `connected` = 🌐 + `relay.connected` ("인터넷 연결됨"), `connecting` = muted, `full`/`budget`/`kicked`/`error` = warn + 한 줄 사유 (`relay.full` "인터넷 연결 대기: 만원", `relay.budget` "인터넷 연결 중단: 오늘 한도 소진 (~HH:MM)", `relay.kicked` "관리자에 의해 퇴장 (~HH:MM 까지)", `relay.error` "인터넷 연결 안 됨 — 같은 망만 보임"). 영어 대응 키 같이.
 - [강퇴]: `settings.relayAdmin === true` && 공개 오피스 보는 중 && 행이 나 아님 → 행 끝 작은 버튼 → `confirm(t('relay.kickConfirm', {name}))` → `relayKick`. `relayKickResult` → 기존 토스트 경로로 성공/실패 (`relay.kickOk`, `relay.kickFail.<reason>`).
+- **같은 망 번호**: 공개 영역에서 `net` 이 서로 다른 값이 **2 개 이상**일 때만 각 행에 작은 배지 `망 1`/`LAN 1` (i18n `people.net`, `{n}`). 번호 = 내 net 이 1, 나머지는 사람 수 많은 순(같으면 net 문자열 순) 2, 3…; 색은 `constants.ts` 의 `NET_BADGE_COLORS` (번호별 순환). `net` 없는 사람 = 배지 없음. 순수 함수 `netNumbers(rows, selfNet): Map<net, number>` (`webview-ui/src/lan/netBadges.ts`) + 테스트 (값 1 개 → 빈 맵, 나=1, 동률 순서).
 - **quiet agent** (`OfficeAgent.quiet`, 중계로 받은 다른 PC 에이전트): 머리 위 말풍선·호버 말풍선·실패 물방울·효과(+N, 연기, 폭죽) 없음. 캐릭터 이동·착석·타이핑·PC 화면·서버실 LED·대기 ! 는 그대로. 방 팝업 카드의 활동 문구 = `act.quiet` ("작업 중" / "Working"; act idle 이면 기존 대기 문구).
 - Settings: "관리자 토큰" password input + [저장] (빈 값 저장 = 삭제), 설정 여부 표시 (`settings.relayAdminSet`). 픽셀 스타일 규칙 (radius 0, 2px border).
 

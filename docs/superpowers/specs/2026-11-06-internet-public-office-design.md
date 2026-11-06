@@ -122,6 +122,10 @@ DO 가 **받는** 메시지만 센다는 점을 이용한다. 원칙: 보내는 
 - **강퇴된 쪽**: 공개 오피스에 머문다. 중계만 끊기고 "관리자에 의해 인터넷 공개 오피스에서 퇴장 (~HH:MM 까지)" 안내.
 - **한계 (문서화)**: 차단은 peer id 기준 — `profile.json` 을 지우면 새 id 로 피할 수 있다. IP 차단은 하지 않는다 (회사 NAT 뒤 전원이 같은 IP).
 
+## 같은 망 표시 (사용자 요청 2026-11-06)
+
+접속자 패널 공개 영역에서 같은 망(같은 공인 IP) 사람끼리 같은 번호 배지 (`망 1`, `망 2`…; 내 망 = 1). 서로 다른 망이 2 개 이상일 때만 표시. 판정: 중계가 접속 IP 를 비밀 salt 로 HMAC 한 8 hex 태그를 roster/join 에 붙인다 (IP 는 저장·전송 안 함); UDP 로 들리는 사람 = 내 망. 한계: 회사가 여러 출구 IP 를 쓰면 같은 회사가 다른 번호로 갈릴 수 있다.
+
 ## 상태 표시
 
 - 새 서버 메시지 `relayState {state, until?}` — `state ∈ off|connecting|connected|full|budget|kicked|error`. 핸드셰이크에 포함 + 바뀔 때마다 전원 소켓에. `asyncapi.yaml` 에 추가 (additionalProperties false).
