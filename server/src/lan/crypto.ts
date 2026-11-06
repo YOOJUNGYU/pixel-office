@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 
 import { MAX_PACKET_BYTES } from '../../../core/src/lan.js';
+import { isPeerId } from '../../../core/src/relay.js';
 import {
   CROCKFORD_ALPHABET,
   GCM_NONCE_BYTES,
@@ -14,7 +15,6 @@ import {
   TEAM_KEY_SALT,
   TEAM_TAG_BYTES,
   TEAM_TAG_INFO,
-  WIRE_MAX_ID,
   X25519_PUBLIC_KEY_BYTES,
   X25519_SPKI_PREFIX,
 } from '../constants.js';
@@ -38,7 +38,6 @@ export type Wire =
   | { v: 2; t: 'card'; from: string; to: string; n: string; c: string }
   | { v: 2; t: 'team'; tag: string; n: string; c: string };
 
-const ID = new RegExp(`^[A-Za-z0-9_.-]{1,${WIRE_MAX_ID}}$`);
 const TAG = new RegExp(`^[A-Za-z0-9_-]{${Math.ceil((TEAM_TAG_BYTES * 4) / 3)}}$`);
 const INVITE_CHARS = Math.ceil((INVITE_SECRET_BYTES * 8) / 5);
 
@@ -53,7 +52,7 @@ function b64(s: unknown): Buffer | null {
 }
 
 /** Peer ids on the wire: 1-64 of [A-Za-z0-9_.-] (randomUUID qualifies). */
-export const isWireId = (s: unknown): s is string => typeof s === 'string' && ID.test(s);
+export const isWireId = isPeerId;
 
 /** base64 raw public key of a PKCS#8 X25519 private key; null if it is not one. */
 export function publicKeyOf(privateKeyPem: string): string | null {

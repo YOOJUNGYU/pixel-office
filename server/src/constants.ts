@@ -186,7 +186,6 @@ export const INVITE_SECRET_BYTES = 13;
 export const INVITE_PREFIX = 'PO2';
 export const INVITE_GROUP_LEN = 4;
 export const CROCKFORD_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-export const WIRE_MAX_ID = 64;
 
 // ── v2 peer protocol / offices (lan/peerNet.ts, lan/profile.ts) ──
 /** Every PeerNet datagram fits this on the wire: below 1472 (1500 MTU − IP/UDP) and

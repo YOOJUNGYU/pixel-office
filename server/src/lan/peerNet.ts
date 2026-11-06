@@ -13,6 +13,7 @@ import {
   PERSONAL_VIEW,
   PUBLIC_VIEW,
 } from '../../../core/src/lan.js';
+import { WIRE_MAX_ID } from '../../../core/src/relay.js';
 import {
   GCM_NONCE_BYTES,
   GCM_TAG_BYTES,
@@ -33,7 +34,6 @@ import {
   PRESENCE_MAX_JSON,
   PRESENCE_PART_BYTES,
   SEQ_MEMORY_MS,
-  WIRE_MAX_ID,
 } from '../constants.js';
 import type { Identity, Wire } from './crypto.js';
 import { cardAad, isWireId, open, pairKey, parseWire, pubAad, seal, teamAad } from './crypto.js';
