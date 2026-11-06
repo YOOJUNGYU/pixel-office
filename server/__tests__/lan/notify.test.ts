@@ -152,6 +152,24 @@ describe('AgentWatcher (my own agents)', () => {
     expect(w.apply([agent(idle)])).toHaveLength(1);
   });
 
+  it('done waits until every subagent/shell of the session is idle or gone', () => {
+    const w = new AgentWatcher();
+    const sub = agent({ id: 's1/sub/x', kind: 'subagent', num: 0, parentId: 's1', act: 'read' });
+    const shell = agent({ id: 's1/sh/y', kind: 'shell', num: 0, parentId: 's1', act: 'run' });
+    w.apply([agent(), sub, shell]);
+    expect(w.apply([agent(idle), sub, shell])).toEqual([]); // main done, children still busy
+    expect(w.apply([agent(idle), { ...sub, ...idle }, shell])).toEqual([]);
+    expect(w.apply([agent(idle), { ...sub, ...idle }])).toEqual([
+      { kind: 'done', label: 'Claude #1', context: '' },
+    ]); // the last shell left
+    expect(w.apply([agent(idle), { ...sub, ...idle }])).toEqual([]);
+    // another session's busy child does not hold this one back
+    const w2 = new AgentWatcher();
+    const other = { ...shell, id: 's2/sh/z', parentId: 's2' };
+    w2.apply([agent(), other]);
+    expect(w2.apply([agent(idle), other])).toHaveLength(1);
+  });
+
   it('a closed session (gone) and subagents/shells say nothing', () => {
     const w = new AgentWatcher();
     const sub = agent({ id: 's1/sub/x', kind: 'subagent', num: 0, parentId: 's1' });

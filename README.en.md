@@ -31,7 +31,7 @@ See at a glance who is doing what, with which agent (Claude Code / Codex). Pick 
 1. Download from [Releases](https://github.com/YOOJUNGYU/pixel-office/releases/latest): Windows `PixelOffice-<version>-Windows.exe`, Mac (Apple silicon · Intel) `PixelOffice-<version>-Mac.pkg`. Node is bundled; nothing else to install.
 2. The installers are not code-signed, so you get a warning.
    - **Windows**: "Windows protected your PC" → **More info** → **Run anyway** → User Account Control **Yes**
-   - **Mac**: if blocked, **System Settings → Privacy & Security → Open Anyway**; if the firewall is on, "Allow incoming connections"
+   - **Mac**: on "Not Opened" click **Done** (not Move to Trash) → **System Settings → Privacy & Security → Open Anyway** → open the pkg again. Or in Terminal: `sudo installer -pkg <the pkg> -target /`. If the firewall is on, "Allow incoming connections"
 3. When the office opens in your browser, pick a character and colour (nickname optional). A short tour follows.
 
 - It starts at login (**Settings → Start at login**). To quit: tray icon → **Quit Pixel Office**, or **Settings → Quit Pixel Office**.
@@ -89,7 +89,7 @@ The people panel on the right has three areas, **Public office / Team / Personal
 - **People panel** on the right: everyone in this office (with or without agents). Click a name to jump to their agents. Someone on a different app version gets ` · v1.0.41` after the name (` · old` for 1.0.44 and older).
 - **PC notifications** (Windows · Mac; they arrive with the window closed as long as the tray icon runs; each can be turned off in Settings):
   - **Join/leave**: someone enters or leaves the public office.
-  - **My agents**: my Claude · Codex is waiting for me or finished (with the session title and project folder, on this PC only).
+  - **My agents**: my Claude · Codex is waiting for me or finished (once its subagents and background shells are done too; with the session title and project folder, on this PC only).
   - **Chat**: someone in the office on screen posts a new bubble, once per bubble (`name: text`). Bubbles already up and those of someone who just came online are not announced.
 
 ### More

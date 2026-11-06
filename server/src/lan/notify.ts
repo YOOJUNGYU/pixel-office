@@ -139,10 +139,11 @@ const waiting = (v: AgentView): boolean => v.permission || v.act === 'ask';
 const idle = (v: AgentView): boolean => v.room === 'lounge' && v.act === 'idle';
 
 /**
- * This PC's main agents (subagents/shells ignored: their parent's turn is what matters).
- * An agent seen for the first time is the baseline (also everything at start); a
- * closed session just disappears. waiting: false→true once per wait; done: busy→idle
- * once per turn.
+ * This PC's main agents (subagents/shells are not announced themselves). An agent seen
+ * for the first time is the baseline (also everything at start); a closed session just
+ * disappears. waiting: false→true once per wait; done: busy→idle once per turn, where
+ * idle also needs every subagent/shell of that session idle or gone — so a turn that
+ * ends with background work still running is announced when the last of it finishes.
  */
 export class AgentWatcher {
   private last = new Map<string, { waiting: boolean; idle: boolean }>();
@@ -153,10 +154,12 @@ export class AgentWatcher {
   ): AgentEvent[] {
     const out: AgentEvent[] = [];
     const next = new Map<string, { waiting: boolean; idle: boolean }>();
+    // ponytail: a shell whose end never reaches the transcript keeps its session busy until the session's TTL
+    const busyKids = new Set(views.filter((c) => !idle(c)).map((c) => c.parentId));
     for (const v of views) {
       // a peer's agent (an office snapshot entry carries `peer`) is never ours to announce
       if (v.kind !== 'main' || 'peer' in v) continue;
-      const now = { waiting: waiting(v), idle: idle(v) };
+      const now = { waiting: waiting(v), idle: idle(v) && !busyKids.has(v.id) };
       const prev = this.last.get(v.id);
       next.set(v.id, now);
       if (!prev) continue;

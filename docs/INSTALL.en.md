@@ -28,7 +28,12 @@ There is one Mac file for every Mac, so no need to check your chip.
 ## 3. Mac
 
 1. Double-click the `.pkg`.
-2. If it is blocked as from an **unidentified developer**, click OK, go to **System Settings → Privacy & Security**, click **Open Anyway**, and run the installer again (admin password).
+2. The installer is not notarized by Apple, so the first try is blocked. When **"'PixelOffice-<version>-Mac.pkg' Not Opened"** (macOS 15 and later) or **"unidentified developer"** appears:
+   1. Click **Done** (or **OK**). Do not click **Move to Trash**.
+   2. Open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to "…Mac.pkg was blocked" (admin password). The button only shows for about an hour after the block; if it is missing, open the pkg once more and look again.
+   3. Open the pkg again, click **Open** and go through the installer (admin password).
+   - Or install from Terminal (skips this check): `sudo installer -pkg ~/Downloads/PixelOffice-<version>-Mac.pkg -target /`
+   - On a company-managed Mac where **Open Anyway** is missing or keeps failing, a management (MDM) policy blocks it. Don't work around it; ask IT.
 3. When asked **Do you want the application "node" to accept incoming network connections?**, click **Allow** — otherwise other PCs cannot see your agents.
 4. Open **Applications → Pixel Office** to open the office (`http://localhost:47801`).
 
