@@ -3,7 +3,11 @@ import * as os from 'os';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { type ClientMessageContext, handleClientMessage } from '../src/clientMessageHandler.js';
+import {
+  type ClientMessageContext,
+  handleClientMessage,
+  relayStateMessage,
+} from '../src/clientMessageHandler.js';
 import { readConfig } from '../src/configPersistence.js';
 import { FileStateAdapter } from '../src/fileStateAdapter.js';
 
@@ -103,6 +107,14 @@ describe('clientMessageHandler relay', () => {
       state: 'connected',
     });
     expect(sent.find((m) => m.type === 'settingsLoaded')).toMatchObject({ relayAdmin: false });
+  });
+
+  it('relayState rounds retryInMs (schema: integer)', () => {
+    expect(relayStateMessage({ state: 'budget', retryInMs: 1234.6 })).toEqual({
+      type: 'relayState',
+      state: 'budget',
+      retryInMs: 1235,
+    });
   });
 
   it('the handshake says off without a relay', () => {

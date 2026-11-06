@@ -2,6 +2,7 @@ import type { ClientMessage, OfficeErrorReason, RelayKickReason } from '../../co
 import { isPeerId } from '../../core/src/relay.js';
 import type { LoadedAssets, LoadedCharacterSprites, LoadedPetSprites } from './assetLoader.js';
 import { readConfig, writeConfig } from './configPersistence.js';
+import { RELAY_ADMIN_TOKEN_MAX } from './constants.js';
 import type { FileStateAdapter } from './fileStateAdapter.js';
 import type { AutostartState } from './lan/autostart.js';
 import type { LanService } from './lan/office.js';
@@ -80,8 +81,12 @@ export interface ClientMessageContext {
 }
 
 /** relayState for the page (handshake and every change). */
-export function relayStateMessage(s: RelayStatus) {
-  return { type: 'relayState', ...s } as const;
+export function relayStateMessage({ state, retryInMs }: RelayStatus) {
+  return {
+    type: 'relayState',
+    state,
+    ...(retryInMs !== undefined && { retryInMs: Math.round(retryInMs) }), // schema: integer
+  } as const;
 }
 
 // ── Setting keys ──
@@ -90,7 +95,6 @@ const KEY_NOTIFY_PRESENCE = 'pixel-agents.notifyPresence';
 const KEY_NOTIFY_AGENTS = 'pixel-agents.notifyAgents';
 const KEY_NOTIFY_CHAT = 'pixel-agents.notifyChat';
 const KEY_RELAY_ADMIN_TOKEN = 'pixel-agents.relayAdminToken';
-const RELAY_ADMIN_TOKEN_MAX = 256;
 
 /**
  * Handle an incoming ClientMessage from a WebSocket client. The server is the
