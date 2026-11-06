@@ -264,3 +264,15 @@ export const TRANSCRIPT_PAGE_BYTES = 512 * 1024;
 /** Transcripts one UI socket may follow at once (dialogs / popout windows); past it the oldest closes. */
 export const TRANSCRIPT_MAX_OPEN = 8;
 export const TRANSCRIPT_POLL_MS = 1000;
+
+/** Internet public-office relay (Cloudflare Worker). '' = off. */
+export const RELAY_URL = ''; // Task 8 fills in the real address
+export const RELAY_URL_ENV = 'PIXEL_OFFICE_RELAY_URL';
+export const RELAY_MIN_SEND_MS = 1_000;
+export const RELAY_RETRY_MIN_MS = 5_000;
+export const RELAY_RETRY_MAX_MS = 5 * 60_000;
+export const RELAY_RETRY_FULL_MS = 5 * 60_000;
+/** Spread of budget-reset reconnects (0..this) so every PC does not return at once. */
+export const RELAY_RETRY_JITTER_MS = 10 * 60_000;
+/** Text 'ping' (the relay answers 'pong' without waking). */
+export const RELAY_PING_MS = 30_000;
