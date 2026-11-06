@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  Everyone's AI coding agents — on your network or across the internet —<br>
-  together in <b>one pixel-art office</b>.
+  Your AI coding agents as characters in a <b>pixel-art office</b>.<br>
+  Alone, with your team, or with everyone.
 </p>
 
 <p align="center">
@@ -18,7 +18,11 @@
 
 ![The whole office](docs/images/office-en.png)
 
-See at a glance who is doing what, with which agent (Claude Code / Codex). Install it and you meet every other PC in the **public office**, on any network (same network directly, others through the internet relay); switch to a team office (teammates on the same network) or a personal office any time. Everyone's agents meet in one office.
+See at a glance who is doing what, with which agent (Claude Code / Codex). Pick one of three offices (switch any time with the buttons at the top):
+
+- 🌐 **Public office** (default): everyone with the app, on any network (same network directly, others through the internet relay).
+- 🔒 **Team office**: teammates with the invite code, same network only.
+- 🏠 **Personal**: your PC alone; agents and chat never leave it.
 
 > A fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents) (MIT). The original shows the Claude Code agents of your own PC; this fork adds LAN and internet sharing, Codex and installers, and drops agent launching, the terminal and the VS Code extension. It only watches: agents keep running in the CLI or desktop app you already use.
 

@@ -2,7 +2,7 @@
 
 > 한국어: [설치-안내.md](설치-안내.md)
 
-Pixel Office shows the coding agents (Claude Code, Codex) of every PC with the app as characters in one pixel office. The public office you start in brings together PCs on your network and, through the internet relay, on any other network (home, office, café). **Install it once on each PC**: it starts automatically at login and finds the other PCs by itself. Nothing else (such as Node) needs to be installed.
+Pixel Office shows the coding agents (Claude Code, Codex) of every PC with the app as characters in one pixel office. The public office you start in brings together PCs on your network and, through the internet relay, on any other network (home, office, café); you can switch any time to a team office (teammates on the same network) or a personal office just for you (4-1). **Install it once on each PC**: it starts automatically at login and finds the other PCs by itself. Nothing else (such as Node) needs to be installed.
 
 ## 1. Download
 
@@ -59,7 +59,7 @@ Open the office in this PC's browser and an **Install Pixel Office as an app** p
   - [Start] uses the `pixeloffice:` link the installer registers, so it **needs the new installer once** (in-app silent updates can't register it). The link always runs the same fixed launch command; nothing from the link is passed on.
 - To remove the app, uninstall Pixel Office from `edge://apps` (Edge) or `chrome://apps` (Chrome). Shortcuts then open a new Edge (or Chrome) window again.
 
-## 4-1. Public office and team offices
+## 4-1. Public, team and personal offices
 
 - You start in the 🌐 **public office** with everyone who installed the app. **On any network** (home, office, cafe) installing the app is enough to join the same public office. Same-network PCs show directly, others through a Cloudflare relay (nothing to install besides Pixel Office; it uses one outbound `wss` connection on 443). Nothing to set up; it connects automatically after the update. What PCs exchange is encrypted automatically (an X25519 key per PC, AES-256-GCM under a key per pair of PCs); the relay only forwards the encrypted content.
 - **Everyone in the public office** sees your account name, nickname, character, chat and your agents' room and kind of activity (what your agents work on, such as files and commands, is not sent: other people's agents always look quiet with no speech bubble, wherever they come from, while your own agents stay fully detailed on your screen). In a team office members' agents show their work in full. Your avatar's position and walking are visible to everyone in the public office too. The relay stores no IP addresses (only a hashed tag for the same-network badge), but Cloudflare, which hosts it, does see each PC's connecting IP address. Team offices and personal mode never go over the internet (a team office is same-network only).
