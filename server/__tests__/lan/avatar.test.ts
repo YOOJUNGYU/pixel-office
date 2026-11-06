@@ -67,7 +67,6 @@ describe('LanService avatar', () => {
     nickname: '',
     palette: 0,
     hueShift: 0,
-    hideWork: false,
     manualPeers: [],
     identity: (({ publicKey, privateKeyPem }) => ({ publicKey, privateKeyPem }))(
       createIdentity('me'),

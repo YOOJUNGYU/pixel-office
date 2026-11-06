@@ -246,6 +246,7 @@ export interface PeerInfoMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
+  ver?: string;
 }
 
 export type PetId = 'claudio' | 'gitcat';
@@ -264,6 +265,7 @@ export interface OfficePersonMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
+  ver?: string;
   net?: string;
   via?: ConnPath;
   self: boolean;
@@ -302,6 +304,7 @@ export interface DirectoryPersonMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
+  ver?: string;
   net?: string;
   via?: ConnPath;
   self: boolean;
@@ -327,7 +330,6 @@ export interface ProfileMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
-  hideWork: boolean;
   manualPeers: string[];
 }
 

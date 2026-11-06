@@ -43,8 +43,9 @@ import {
   saveProfile,
   validateOfficeName,
 } from './profile.js';
-import { hideView, quietView, redactView } from './redact.js';
+import { quietView, redactView } from './redact.js';
 import { SharedLayouts } from './sharedLayout.js';
+import { APP_VERSION } from './updater.js';
 
 const toAgents = (peer: PeerInfo, views: AgentView[]): OfficeAgent[] =>
   views.map((v) => ({
@@ -148,6 +149,7 @@ export class LanService {
       ...(pet && { pet }),
       ...(tagColors && { tagColors }),
       ...(nickname !== '' && { nickSince: nicknameSince }),
+      ver: APP_VERSION,
     };
   }
 
@@ -157,7 +159,7 @@ export class LanService {
   packet(channel: string = PUBLIC_VIEW): PeerPacket {
     let views: AgentView[] = [];
     try {
-      views = this.local.views(true).map(this.profile.hideWork ? hideView : redactView);
+      views = this.local.views(true).map(redactView);
       if (channel === PUBLIC_VIEW) views = views.map(quietView);
     } catch (err) {
       console.error('[Pixel Office] Building peer packet failed:', err);
@@ -312,6 +314,7 @@ export class LanService {
       hueShift: p.hueShift,
       ...(p.pet && { pet: p.pet }),
       ...(p.tagColors && { tagColors: p.tagColors }),
+      ...(p.ver && { ver: p.ver }),
       ...(net && { net }),
       ...(via && { via }),
       self,

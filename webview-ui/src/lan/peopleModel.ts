@@ -20,6 +20,11 @@ export interface PersonRow {
 export const focusHintKey = (r: PersonRow): 'people.noAgents' | 'people.retry' =>
   r.focusKey === null ? 'people.noAgents' : 'people.retry';
 
+/** Mark a person's version after the name only when it differs from mine (outdated PCs stand
+ *  out); missing = a peer ≤ 1.0.44. Without my own version nothing is marked. */
+export const versionDiffers = (ver: string | undefined, mine: string | undefined): boolean =>
+  mine !== undefined && ver !== mine;
+
 /** `rows` in the order of `frozen` peerIds (unknown rows last, in their own order). */
 export function inFrozenOrder(rows: PersonRow[], frozen: string[]): PersonRow[] {
   const at = (r: PersonRow) => {

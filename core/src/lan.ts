@@ -252,7 +252,12 @@ export interface PeerInfo {
   pet?: PetId;
   /** Avatar name tag colours; absent = the default tag. */
   tagColors?: TagColors;
+  /** App version (`1.0.45`); absent = a peer ≤ 1.0.44 or a malformed value. */
+  ver?: string;
 }
+
+/** A semver-like app version as sent in PeerInfo.ver. */
+export const VERSION_PATTERN = /^\d{1,4}\.\d{1,4}\.\d{1,4}(-[0-9A-Za-z.-]{1,20})?$/;
 
 /** A person's avatar name tag colours (`#RRGGBB`, upper case), chosen in the profile. */
 export interface TagColors {
@@ -531,6 +536,7 @@ export function parsePeerInfo(raw: unknown): PeerInfo | null {
   if (typeof since === 'number' && Number.isSafeInteger(since) && since >= 0) {
     peer.nickSince = since;
   }
+  if (typeof raw.ver === 'string' && VERSION_PATTERN.test(raw.ver)) peer.ver = raw.ver;
   return peer;
 }
 

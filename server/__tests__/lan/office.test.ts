@@ -18,6 +18,7 @@ import type { CreatedOffice } from '../../src/lan/office.js';
 import { buildOffice, LanService } from '../../src/lan/office.js';
 import type { Profile } from '../../src/lan/profile.js';
 import { loadProfile, osAccount } from '../../src/lan/profile.js';
+import { APP_VERSION } from '../../src/lan/updater.js';
 
 const saves = vi.hoisted(() => vi.fn());
 vi.mock('../../src/lan/profile.js', async (orig) => {
@@ -71,7 +72,6 @@ describe('LanService', () => {
     nickname: '',
     palette: 2,
     hueShift: 30,
-    hideWork: false,
     manualPeers: [],
     identity: (({ publicKey, privateKeyPem }) => ({ publicKey, privateKeyPem }))(
       createIdentity('me'),
@@ -91,6 +91,7 @@ describe('LanService', () => {
       nickname: '',
       palette: 2,
       hueShift: 30,
+      ver: APP_VERSION,
     });
     expect(p.views[0].target).toBe('a.ts');
   });
@@ -109,24 +110,6 @@ describe('LanService', () => {
     expect(asked).toEqual([true, undefined]);
   });
 
-  it('hideWork shares room, provider, kind and waiting only', () => {
-    const lan = new LanService(
-      { ...profile, hideWork: true },
-      { views: () => [view({ permission: true, act: 'edit', target: 'a.ts', reason: 'r' })] },
-    );
-    const [v] = lan.packet().views;
-    expect(v).toMatchObject({
-      act: 'idle',
-      target: '',
-      reason: '',
-      permission: true,
-      hidden: true,
-    });
-    expect(v).toMatchObject({ room: view().room, provider: view().provider, kind: view().kind });
-    expect(lan.office(PUBLIC_VIEW)[0]).toMatchObject({ act: 'edit', target: 'a.ts' }); // mine: as-is
-    expect(lan.office(PUBLIC_VIEW)[0].hidden).toBeUndefined();
-  });
-
   it('public presence is quiet (UDP and relay alike); team and my own snapshot keep detail', () => {
     const lan = new LanService(
       { ...profile },
@@ -142,11 +125,29 @@ describe('LanService', () => {
     expect(lan.office(PUBLIC_VIEW)[0]).not.toHaveProperty('quiet');
   });
 
-  it('a hidden PC stays hidden in the public office (not quiet)', () => {
-    const lan = new LanService({ ...profile, hideWork: true }, { views: () => [view()] });
-    const [v] = lan.packet(PUBLIC_VIEW).views;
-    expect(v).toMatchObject({ act: 'idle', hidden: true });
-    expect(v).not.toHaveProperty('quiet');
+  it('a profile.json with the removed hideWork still loads; the team packet keeps full detail', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'po-hidework-'));
+    try {
+      fs.writeFileSync(
+        path.join(dir, 'profile.json'),
+        JSON.stringify({
+          peerId: 'k',
+          nickname: '',
+          palette: 1,
+          hueShift: 0,
+          hideWork: true,
+          manualPeers: [],
+        }),
+      );
+      const loaded = loadProfile(dir);
+      const lan = new LanService(loaded, { views: () => [view({ act: 'edit', ageSec: 5 })] });
+      const [team] = lan.packet('team-tag').views;
+      expect(team).toMatchObject({ act: 'edit', target: 'a.ts', ageSec: 5 });
+      expect(team).not.toHaveProperty('hidden');
+      expect(lan.self().ver).toBe(APP_VERSION);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('packet() never throws: a failing scan sends no views', () => {

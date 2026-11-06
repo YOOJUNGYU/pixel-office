@@ -846,6 +846,8 @@ components:
           $ref: '#/components/schemas/PetId'
         tagColors:
           $ref: '#/components/schemas/TagColors'
+        ver:
+          $ref: '#/components/schemas/AppVersion'
         net:
           type: string
           pattern: '^([0-9a-f]{8}|lan)$'
@@ -883,6 +885,8 @@ components:
           $ref: '#/components/schemas/PetId'
         tagColors:
           $ref: '#/components/schemas/TagColors'
+        ver:
+          $ref: '#/components/schemas/AppVersion'
         net:
           type: string
           pattern: '^([0-9a-f]{8}|lan)$'
@@ -959,7 +963,7 @@ components:
       description: The editable profile (everything but the peer id).
       type: object
       additionalProperties: false
-      required: [nickname, palette, hueShift, hideWork, manualPeers]
+      required: [nickname, palette, hueShift, manualPeers]
       properties:
         nickname:
           type: string
@@ -976,8 +980,6 @@ components:
           $ref: '#/components/schemas/PetId'
         tagColors:
           $ref: '#/components/schemas/TagColors'
-        hideWork:
-          type: boolean
         manualPeers:
           type: array
           description: Extra peer IPv4 addresses or hostnames to send to.
@@ -1112,6 +1114,15 @@ components:
           $ref: '#/components/schemas/PetId'
         tagColors:
           $ref: '#/components/schemas/TagColors'
+        ver:
+          $ref: '#/components/schemas/AppVersion'
+
+    AppVersion:
+      type: string
+      pattern: '^\d{1,4}\.\d{1,4}\.\d{1,4}(-[0-9A-Za-z.-]{1,20})?$'
+      description: >-
+        The person's app version. Absent = a peer at 1.0.44 or older (or a
+        malformed value, dropped on receive).
 
     TagColors:
       type: object

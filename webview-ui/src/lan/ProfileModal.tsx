@@ -4,7 +4,6 @@ import type { PetId } from '../../../core/src/lan.js';
 import { isValidManualPeer, nicknameKey, PET_IDS } from '../../../core/src/lan.js';
 import type { ProfileErrorReason, ProfileMessage, TagColors } from '../../../core/src/messages.js';
 import { Button } from '../components/ui/Button.js';
-import { Checkbox } from '../components/ui/Checkbox.js';
 import { Modal } from '../components/ui/Modal.js';
 import {
   AVATAR_TAG_DEFAULT_BG,
@@ -105,7 +104,6 @@ export function ProfileModal({
   const [hueShift, setHueShift] = useState(profile.hueShift);
   const [pet, setPet] = useState<PetId | undefined>(profile.pet);
   const [tagColors, setTagColors] = useState<TagColors | undefined>(profile.tagColors);
-  const [hideWork, setHideWork] = useState(profile.hideWork);
   const [peersText, setPeersText] = useState(profile.manualPeers.join('\n'));
   // Advanced (manual peers) starts collapsed unless some are already set.
   const [peersOpen] = useState(profile.manualPeers.length > 0);
@@ -142,7 +140,6 @@ export function ProfileModal({
       hueShift,
       ...(pet && { pet }),
       ...(tagColors && { tagColors }),
-      hideWork,
       manualPeers,
     });
   };
@@ -304,21 +301,10 @@ export function ProfileModal({
           )}
         </div>
 
-        {/* First run asks only for name, character and colour; hideWork keeps
-            its default and the rest lives in Settings → My profile. */}
+        {/* First run asks only for name, character and colour; the rest
+            lives in Settings → My profile. */}
         {!firstRun && (
           <>
-            <Checkbox
-              label={t('profile.hideWork')}
-              checked={hideWork}
-              onChange={() => setHideWork((v) => !v)}
-            />
-            {/* w-0 min-w-full: the long hint wraps to the modal's width
-                instead of widening it. */}
-            <div className="w-0 min-w-full text-xs text-text-muted">
-              {t('profile.hideWorkHint')}
-            </div>
-
             <details open={peersOpen}>
               <summary className="cursor-pointer select-none">{t('profile.advanced')}</summary>
               <div className="flex flex-col gap-4 pt-4">

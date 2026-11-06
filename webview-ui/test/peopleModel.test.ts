@@ -10,7 +10,7 @@ import { test } from 'vitest';
 
 import type { OfficeAgent, PeerInfo } from '../../core/src/lan.js';
 import type { OfficePersonMessage } from '../../core/src/messages.js';
-import { focusHintKey, inFrozenOrder, peopleRows } from '../src/lan/peopleModel.js';
+import { focusHintKey, inFrozenOrder, peopleRows, versionDiffers } from '../src/lan/peopleModel.js';
 
 const person = (peerId: string, nickname: string, self = false): OfficePersonMessage => ({
   peerId,
@@ -171,3 +171,12 @@ test('frozen order keeps rows put; new rows go last, gone rows drop', () => {
 function rowOf(id: string, agents: OfficeAgent[]) {
   return peopleRows([person(id, id)], agents)[0];
 }
+
+test('versionDiffers: marked only when the version differs from mine', () => {
+  assert.equal(versionDiffers('1.0.45', '1.0.45'), false); // same (mine too)
+  assert.equal(versionDiffers('1.0.41', '1.0.45'), true); // outdated
+  assert.equal(versionDiffers('1.0.46', '1.0.45'), true); // newer
+  assert.equal(versionDiffers(undefined, '1.0.45'), true); // ≤ 1.0.44: no ver
+  assert.equal(versionDiffers('1.0.41', undefined), false); // my version unknown
+  assert.equal(versionDiffers(undefined, undefined), false);
+});

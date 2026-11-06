@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { AgentView } from '../../../core/src/lan.js';
-import { hideView, quietView, redactText, redactView } from '../../src/lan/redact.js';
+import { quietView, redactText, redactView } from '../../src/lan/redact.js';
 
 const cases: Array<[string, string]> = [
   ['/home/kim/proj/src/auth/login.ts 수정 중', 'login.ts 수정 중'],
@@ -77,7 +77,7 @@ describe('redactView', () => {
   });
 });
 
-describe('status signals and hiding', () => {
+describe('status signals and quiet views', () => {
   const v = {
     id: 's1',
     act: 'edit',
@@ -90,15 +90,6 @@ describe('status signals and hiding', () => {
     diff: { add: 3, del: 1 },
     ctx: { used: 10, window: 100 },
   } as unknown as AgentView;
-  it('hideView drops ageSec, todo and fail', () => {
-    const h = hideView(v);
-    expect(h).not.toHaveProperty('ageSec');
-    expect(h).not.toHaveProperty('todo');
-    expect(h).not.toHaveProperty('fail');
-    expect(h).not.toHaveProperty('diff');
-    expect(h).not.toHaveProperty('ctx');
-    expect(h).toMatchObject({ act: 'idle', hidden: true, target: '' });
-  });
   it('redactView keeps them (counts and a flag only) but never the local ctx', () => {
     expect(redactView(v)).not.toHaveProperty('ctx');
     expect(redactView(v)).toMatchObject({ ageSec: 90, todo: { done: 1, total: 3 }, fail: true });
@@ -123,9 +114,5 @@ describe('status signals and hiding', () => {
       reason: '',
       quiet: true,
     });
-  });
-  it('quietView leaves a hidden view as it is', () => {
-    const h = hideView(v);
-    expect(quietView(h)).toEqual(h);
   });
 });

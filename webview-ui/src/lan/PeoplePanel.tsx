@@ -20,7 +20,7 @@ import { type AreaSection, totalPeople, viewedExtras, viewedRows } from './direc
 import type { LanAgents } from './lanAgents.js';
 import { netNumbers } from './netBadges.js';
 import { peerLabel } from './nicknames.js';
-import { focusHintKey, inFrozenOrder, type PersonRow } from './peopleModel.js';
+import { focusHintKey, inFrozenOrder, type PersonRow, versionDiffers } from './peopleModel.js';
 import { CharacterPreview } from './ProfileModal.js';
 import { relayStatusView } from './relayStatus.js';
 
@@ -72,6 +72,21 @@ function Face({ person }: { person: DirectoryPersonMessage }) {
         scale={PEOPLE_FACE_SCALE}
         crop={person.pet ? PEOPLE_PET_FACE_CROP : PEOPLE_FACE_CROP}
       />
+    </span>
+  );
+}
+
+/** Hover text of a row: the person's app version. */
+const verTitle = (p: DirectoryPersonMessage): string =>
+  p.ver ? `v${p.ver}` : t('people.verOldTitle');
+
+/** After the name, only when the version differs from mine: ` · v1.0.41` / ` · 구버전`. */
+function VerMark({ person, mine }: { person: DirectoryPersonMessage; mine: string | undefined }) {
+  if (!versionDiffers(person.ver, mine)) return null;
+  return (
+    <span className="text-2xs text-text-muted">
+      {' · '}
+      {person.ver ? `v${person.ver}` : t('people.verOld')}
     </span>
   );
 }
@@ -146,17 +161,24 @@ function PlainRow({
   person,
   net,
   kick,
+  mine,
 }: {
   person: DirectoryPersonMessage;
   net?: number;
   kick?: boolean;
+  /** My own app version (VerMark). */
+  mine: string | undefined;
 }) {
   return (
-    <li className={`flex items-center gap-8 py-3 px-8 text-text${kick ? ' relative group' : ''}`}>
+    <li
+      title={verTitle(person)}
+      className={`flex items-center gap-8 py-3 px-8 text-text${kick ? ' relative group' : ''}`}
+    >
       <Face person={person} />
       <span className="flex-1 min-w-0 truncate">
         {peerLabel(person)}
         {person.self && ` ${t('people.you')}`}
+        <VerMark person={person} mine={mine} />
       </span>
       <ViaBadge via={person.via} />
       <NetBadge n={net} />
@@ -247,10 +269,14 @@ export function PeoplePanel({
   const nets = netNumbers(pubPeople, pubPeople.find((p) => p.self)?.net);
   const publicViewed = pub?.viewed === true;
   const netOf = (p: DirectoryPersonMessage) => (p.net === undefined ? undefined : nets.get(p.net));
+  const myVer = [...live.map((r) => r.person), ...sections.flatMap((s) => s.people)].find(
+    (p) => p.self,
+  )?.ver;
 
   const liveRows = rows.map((r) => (
     <li
       key={r.person.peerId}
+      title={verTitle(r.person)}
       className="relative group flex items-center gap-4 pr-8 hover:bg-btn-hover"
     >
       <button
@@ -268,6 +294,7 @@ export function PeoplePanel({
             {r.person.account}
             {r.person.nickname && <span className="text-text-muted"> ({r.person.nickname})</span>}
             {r.person.self && ` ${t('people.you')}`}
+            <VerMark person={r.person} mine={myVer} />
           </span>
           <span
             className={`text-xs truncate ${hint === r.person.peerId ? 'text-warning' : 'text-text-muted'}`}
@@ -303,6 +330,7 @@ export function PeoplePanel({
               person={p}
               net={s.area === 'public' ? netOf(p) : undefined}
               kick={s.area === 'public' && s.viewed && canKick && !p.self}
+              mine={myVer}
             />
           ))}
           {n === 0 && (

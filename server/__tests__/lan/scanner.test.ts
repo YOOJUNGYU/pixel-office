@@ -200,14 +200,13 @@ describe('Scanner', () => {
     await scanner.discover();
     expect(scanner.info('cx')?.title).toBe('CODEX thread');
 
-    for (const hideWork of [false, true]) {
+    for (const channel of [PUBLIC_VIEW, 'team-tag']) {
       const lan = new LanService(
         {
           peerId: 'me',
           nickname: '',
           palette: 0,
           hueShift: 0,
-          hideWork,
           manualPeers: [],
           identity: (({ publicKey, privateKeyPem }) => ({ publicKey, privateKeyPem }))(
             createIdentity('me'),
@@ -219,7 +218,7 @@ describe('Scanner', () => {
         },
         scanner,
       );
-      const sent = JSON.stringify(lan.packet(PUBLIC_VIEW));
+      const sent = JSON.stringify(lan.packet(channel));
       expect(sent).toContain('"provider":"codex"'); // the views are there
       expect(sent).not.toMatch(/SECRET|secret|AUTO title|CODEX|codex-repo|Old name/);
     }

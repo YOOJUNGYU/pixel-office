@@ -199,6 +199,26 @@ describe('parsePeerInfo', () => {
     expect(r).not.toHaveProperty('views');
     expect(parsePeerInfo({ ...base, palette: 9 })).toBeNull();
   });
+  it('ver: semver-like kept; missing or malformed dropped (the peer stays)', () => {
+    const base = { id: 'p', account: 'a', nickname: '', palette: 0, hueShift: 0 };
+    for (const ok of ['1.0.45', '10.20.300', '1.0.45-rc.1', '2.0.0-beta-2'])
+      expect(parsePeerInfo({ ...base, ver: ok })?.ver).toBe(ok);
+    expect(parsePeerInfo(base)).not.toHaveProperty('ver');
+    for (const bad of [
+      '1.0',
+      'v1.0.45',
+      '1.0.45 ',
+      '12345.0.0',
+      '1.0.0-' + 'x'.repeat(21),
+      '1.0.0-a b',
+      1,
+      null,
+    ]) {
+      const r = parsePeerInfo({ ...base, ver: bad });
+      expect(r).not.toBeNull();
+      expect(r).not.toHaveProperty('ver');
+    }
+  });
 });
 
 describe('isFailure (failure drop and activity strip)', () => {

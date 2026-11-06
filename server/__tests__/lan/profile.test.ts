@@ -19,7 +19,7 @@ import {
 const mode = (f: string) => fs.statSync(f).mode & 0o777;
 const posix = process.platform !== 'win32';
 
-const ok = { nickname: ' 김 ', palette: 1, hueShift: 10, hideWork: true, manualPeers: [] };
+const ok = { nickname: ' 김 ', palette: 1, hueShift: 10, manualPeers: [] };
 let dir: string;
 beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'profile-'));
@@ -29,7 +29,7 @@ afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 describe('loadProfile', () => {
   it('creates defaults, then keeps the same peerId (file mode 0600)', () => {
     const a = loadProfile(dir);
-    expect(a).toMatchObject({ nickname: '', hideWork: false, palette: 0, manualPeers: [] });
+    expect(a).toMatchObject({ nickname: '', palette: 0, manualPeers: [] });
     expect(loadProfile(dir).peerId).toBe(a.peerId);
     if (process.platform !== 'win32') {
       expect(fs.statSync(path.join(dir, 'profile.json')).mode & 0o777).toBe(0o600);
@@ -135,7 +135,7 @@ describe('loadProfile', () => {
     expect(publicKeyOf(p.identity.privateKeyPem)).toBe(p.identity.publicKey);
     expect(loadProfile(dir).peerId).toBe(p.peerId);
   });
-  it('a pre-1.0.9 file (hideDetails) keeps its profile, hideWork off', () => {
+  it('an old file (hideDetails ≤ 1.0.8, hideWork ≤ 1.0.44) keeps its profile; the key is dropped', () => {
     fs.writeFileSync(
       path.join(dir, 'profile.json'),
       JSON.stringify({
@@ -144,10 +144,14 @@ describe('loadProfile', () => {
         palette: 3,
         hueShift: 0,
         hideDetails: true,
+        hideWork: true,
         manualPeers: [],
       }),
     );
-    expect(loadProfile(dir)).toMatchObject({ nickname: '김', palette: 3, hideWork: false });
+    const p = loadProfile(dir);
+    expect(p).toMatchObject({ nickname: '김', palette: 3 });
+    expect(p).not.toHaveProperty('hideWork');
+    expect(fs.readFileSync(path.join(dir, 'profile.json'), 'utf8')).not.toContain('hideWork');
   });
   it('replaces a peerId that is not a wire id', () => {
     fs.writeFileSync(path.join(dir, 'profile.json'), JSON.stringify({ peerId: 'a|b' }));
@@ -198,7 +202,7 @@ describe('validateProfileUpdate', () => {
       remoteView: true,
     });
     expect(Object.keys(r ?? {}).sort()).toEqual(
-      ['hideWork', 'hueShift', 'manualPeers', 'nickname', 'palette'].sort(),
+      ['hueShift', 'manualPeers', 'nickname', 'palette'].sort(),
     );
   });
   it('pet: a bundled id is kept; an unknown one is ignored (the palette human), not an error', () => {
@@ -234,7 +238,6 @@ describe('validateProfileUpdate', () => {
     [{ ...ok, nickname: 'x'.repeat(21) }],
     [{ ...ok, palette: 7 }],
     [{ ...ok, hueShift: 361 }],
-    [{ ...ok, hideWork: 'y' }],
     [{ ...ok, manualPeers: ['bad host!'] }],
     [{ ...ok, manualPeers: ['300.1.1.1'] }],
     [{ ...ok, manualPeers: Array(21).fill('1.1.1.1') }],

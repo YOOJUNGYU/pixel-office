@@ -90,18 +90,9 @@ export function redactView(v: AgentView): AgentView {
   return { ...rest, target: redactText(v.target), reason: '' };
 }
 
-/** "Hide my work": only room, provider, kind, the tree and waiting (!) are shared. `act` must stay a
- *  known one (≤ 1.0.8 peers drop a packet with an unknown act): idle, flagged `hidden`. */
-export function hideView(v: AgentView): AgentView {
-  // The optional work signals (age, task counts, failure) never leave a hidden PC.
-  const { ageSec: _a, todo: _t, fail: _f, diff: _d, ctx: _c, ...rest } = v;
-  return { ...rest, act: 'idle', target: '', reason: '', hidden: true };
-}
-
 /** Public office (UDP and relay alike): the agent still moves between rooms, types and
- *  waits, but what it works on stays home. A hidden view is left as it is (stronger). */
+ *  waits, but what it works on stays home. */
 export function quietView(v: AgentView): AgentView {
-  if (v.hidden) return v;
   const { ageSec: _a, todo: _t, fail: _f, diff: _d, ctx: _c, ...rest } = v;
   return { ...rest, target: '', reason: '', quiet: true };
 }

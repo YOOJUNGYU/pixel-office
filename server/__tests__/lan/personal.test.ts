@@ -77,7 +77,6 @@ describe('personal mode', () => {
       nickname: '',
       palette: 0,
       hueShift: 0,
-      hideWork: true,
       manualPeers: [],
       identity: (({ publicKey, privateKeyPem }) => ({ publicKey, privateKeyPem }))(
         createIdentity('me'),
