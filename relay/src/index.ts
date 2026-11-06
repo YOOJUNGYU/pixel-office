@@ -5,6 +5,7 @@ import { DurableObject } from 'cloudflare:workers';
 import {
   closeReason,
   isPeerId,
+  isPublicKey,
   RELAY_CLOSE,
   RELAY_PATH,
   type RelayCloseKind,
@@ -21,6 +22,7 @@ import {
   kick,
   type Limits,
   msToReset,
+  netTag,
   newState,
   onFrame,
   pruneBans,
@@ -41,6 +43,12 @@ interface Env {
 /** Messages (budget units) between two writes of HubState to storage. */
 const RELAY_BUDGET_FLUSH = 50;
 const STATE_KEY = 'state';
+const SALT_KEY = 'salt';
+const SALT_BYTES = 32;
+/** Longest `hours` for /admin/kick: keeps `until` finite. */
+const MAX_KICK_HOURS = 8760;
+/** Ceiling for a MAX_FRAMES_PER_MIN override: the frames array lives in the 2 KB socket attachment. */
+const MAX_FRAMES_CEILING = 150;
 const ADMIN = '/admin/';
 const BANS = `${ADMIN}bans/`;
 
@@ -57,12 +65,14 @@ function limits(env: Env): Limits {
   return {
     maxPeers: pick(env.MAX_PEERS, d.maxPeers),
     dailyBudget: pick(env.DAILY_BUDGET, d.dailyBudget),
-    maxFramesPerMin: pick(env.MAX_FRAMES_PER_MIN, d.maxFramesPerMin),
+    maxFramesPerMin: Math.min(pick(env.MAX_FRAMES_PER_MIN, d.maxFramesPerMin), MAX_FRAMES_CEILING),
     abuseBanMin: pick(env.ABUSE_BAN_MIN, d.abuseBanMin),
     kickHours: pick(env.KICK_HOURS, d.kickHours),
   };
 }
 
+const toHex = (b: Uint8Array): string =>
+  [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
 const json = (body: unknown, status = 200): Response => Response.json(body, { status });
 const send = (ws: WebSocket, m: RelayDown): void => {
   try {
@@ -76,6 +86,7 @@ export class Hub extends DurableObject<Env> {
   private s: HubState = newState(Date.now());
   private readonly l: Limits;
   private unsaved = 0;
+  private salt = '';
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -84,13 +95,19 @@ export class Hub extends DurableObject<Env> {
     void ctx.blockConcurrencyWhile(async () => {
       const saved = await ctx.storage.get<HubState>(STATE_KEY);
       if (saved) this.s = saved;
+      let salt = await ctx.storage.get<string>(SALT_KEY);
+      if (!salt) {
+        salt = toHex(crypto.getRandomValues(new Uint8Array(SALT_BYTES)));
+        await ctx.storage.put(SALT_KEY, salt);
+      }
+      this.salt = salt;
       pruneBans(this.s, Date.now());
     });
   }
 
   private save(): void {
     this.unsaved = 0;
-    void this.ctx.storage.put(STATE_KEY, this.s);
+    this.ctx.storage.put(STATE_KEY, this.s).catch((e) => console.error('[relay] save failed', e));
   }
 
   /** Counts `n` messages; true when this charge used up the budget (everyone was closed). */
@@ -132,7 +149,7 @@ export class Hub extends DurableObject<Env> {
     const url = new URL(req.url);
     const now = Date.now();
     this.spend(REQUEST_WEIGHT, now);
-    return url.pathname === RELAY_PATH ? this.upgrade(url, now) : this.admin(req, url, now);
+    return url.pathname === RELAY_PATH ? this.upgrade(req, url, now) : this.admin(req, url, now);
   }
 
   /** Rejected upgrades are still accepted, then closed, so the client can read the code. */
@@ -143,7 +160,7 @@ export class Hub extends DurableObject<Env> {
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  private upgrade(url: URL, now: number): Response {
+  private async upgrade(req: Request, url: URL, now: number): Promise<Response> {
     pruneBans(this.s, now);
     const id = url.searchParams.get('id') ?? '';
     const pk = url.searchParams.get('pk') ?? '';
@@ -164,10 +181,16 @@ export class Hub extends DurableObject<Env> {
     }
     const [client, server] = Object.values(new WebSocketPair()) as [WebSocket, WebSocket];
     this.ctx.acceptWebSocket(server);
-    const me: Att = { id, pk, frames: [] };
+    const ip = req.headers.get('CF-Connecting-IP');
+    const net = ip ? await netTag(ip, this.salt) : undefined;
+    const me: Att = { id, pk, frames: [], ...(net && { net }) };
     server.serializeAttachment(me);
-    send(server, { t: 'roster', peers: live.map((x) => ({ id: x.c.id, pk: x.c.pk })) });
-    for (const o of live) send(o.ws, { t: 'join', id, pk });
+    send(server, {
+      t: 'roster',
+      ...(net && { you: net }),
+      peers: live.map((x) => ({ id: x.c.id, pk: x.c.pk, ...(x.c.net && { net: x.c.net }) })),
+    });
+    for (const o of live) send(o.ws, { t: 'join', id, pk, ...(net && { net }) });
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -183,8 +206,9 @@ export class Hub extends DurableObject<Env> {
       const hours = body?.hours ?? this.l.kickHours;
       if (!isPeerId(body?.id) || typeof hours !== 'number' || !Number.isFinite(hours) || hours <= 0)
         return json({ error: 'bad id or hours' }, 400);
+
       const id = body.id;
-      const until = kick(this.s, id, hours, now);
+      const until = kick(this.s, id, Math.min(hours, MAX_KICK_HOURS), now);
       this.save();
       for (const x of this.live()) if (x.c.id === id) this.drop(x, 'kicked', until - now);
       return json({ until });
@@ -270,6 +294,9 @@ export default {
     if (pathname === RELAY_PATH) {
       if (req.headers.get('Upgrade')?.toLowerCase() !== 'websocket')
         return new Response('expected websocket', { status: 426 });
+      const q = new URL(req.url).searchParams;
+      if (!isPeerId(q.get('id')) || !isPublicKey(q.get('pk')))
+        return new Response('bad id or pk', { status: 400 });
     } else if (pathname.startsWith(ADMIN)) {
       if (!authorized(req.headers.get('Authorization'), env.ADMIN_TOKEN ?? ''))
         return new Response('unauthorized', { status: 401 });

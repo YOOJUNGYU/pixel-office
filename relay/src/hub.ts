@@ -3,6 +3,7 @@
 import {
   isPeerId,
   isPublicKey,
+  NET_TAG_CHARS,
   parseUp,
   type PubWire,
   type RelayCloseKind,
@@ -42,6 +43,24 @@ export interface Conn {
   pk: string;
   /** receive times within the last minute */
   frames: number[];
+  /** same-network tag (8 hex of HMAC(salt, ip)); none = unknown. The IP itself is never kept. */
+  net?: string;
+}
+
+const HEX_BYTE_CHARS = 2;
+const toHex = (b: ArrayBuffer): string =>
+  [...new Uint8Array(b)].map((x) => x.toString(16).padStart(HEX_BYTE_CHARS, '0')).join('');
+
+export async function netTag(ip: string, salt: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(salt),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  return toHex(await crypto.subtle.sign('HMAC', key, enc.encode(ip))).slice(0, NET_TAG_CHARS);
 }
 
 const dayOf = (now: number): string => new Date(now).toISOString().slice(0, DATE_CHARS);

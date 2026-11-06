@@ -17,6 +17,10 @@ const ID = new RegExp(`^[A-Za-z0-9_.-]{1,${WIRE_MAX_ID}}$`);
 // 32 bytes = 43 base64 chars + '=' (last char carries 2 bits: only A, E, I, M, Q, U, Y, c, g, k, o, s, w, 0, 4, 8 are canonical)
 const PUBLIC_KEY = /^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/;
 
+export const NET_TAG_CHARS = 8; // hex
+const NET_TAG = new RegExp(`^[0-9a-f]{${NET_TAG_CHARS}}$`);
+export const isNetTag = (s: unknown): s is string => typeof s === 'string' && NET_TAG.test(s);
+
 export const isPeerId = (s: unknown): s is string => typeof s === 'string' && ID.test(s);
 export const isPublicKey = (s: unknown): s is string => typeof s === 'string' && PUBLIC_KEY.test(s);
 
@@ -30,8 +34,8 @@ export interface PubWire {
 }
 export type RelayUp = { t: 'send'; w: PubWire[] };
 export type RelayDown =
-  | { t: 'roster'; peers: { id: string; pk: string }[] }
-  | { t: 'join'; id: string; pk: string }
+  | { t: 'roster'; you?: string; peers: { id: string; pk: string; net?: string }[] }
+  | { t: 'join'; id: string; pk: string; net?: string }
   | { t: 'leave'; id: string }
   | { t: 'w'; w: PubWire[] };
 
@@ -80,16 +84,18 @@ export function parseDown(text: string): RelayDown | null {
   switch (o.t) {
     case 'roster': {
       if (!Array.isArray(o.peers)) return null;
-      const peers: { id: string; pk: string }[] = [];
+      const peers: { id: string; pk: string; net?: string }[] = [];
       for (const raw of o.peers) {
         const p = obj(raw);
         if (!p || !isPeerId(p.id) || !isPublicKey(p.pk)) return null;
-        peers.push({ id: p.id, pk: p.pk });
+        peers.push({ id: p.id, pk: p.pk, ...(isNetTag(p.net) && { net: p.net }) });
       }
-      return { t: 'roster', peers };
+      return { t: 'roster', ...(isNetTag(o.you) && { you: o.you }), peers };
     }
     case 'join':
-      return isPeerId(o.id) && isPublicKey(o.pk) ? { t: 'join', id: o.id, pk: o.pk } : null;
+      return isPeerId(o.id) && isPublicKey(o.pk)
+        ? { t: 'join', id: o.id, pk: o.pk, ...(isNetTag(o.net) && { net: o.net }) }
+        : null;
     case 'leave':
       return isPeerId(o.id) ? { t: 'leave', id: o.id } : null;
     case 'w': {

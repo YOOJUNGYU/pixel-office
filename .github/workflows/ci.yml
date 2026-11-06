@@ -61,7 +61,7 @@ jobs:
         run: npm run check-types
 
       - name: Relay Type Check
-        run: npm ci --prefix relay && npm run check-types --prefix relay
+        run: npm ci --prefix relay --ignore-scripts && npm run check-types --prefix relay
 
       # The CLI tests spawn dist/cli.js, so build before the server tests.
       - name: Build

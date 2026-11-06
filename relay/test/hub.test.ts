@@ -9,6 +9,7 @@ import {
   exhausted,
   kick,
   msToReset,
+  netTag,
   newState,
   onFrame,
   pruneBans,
@@ -156,5 +157,15 @@ describe('authorized', () => {
     expect(authorized('Bearer xx', 'x')).toBe(false);
     expect(authorized(null, 'x')).toBe(false);
     expect(authorized('Bearer ', '')).toBe(false);
+  });
+});
+
+describe('netTag', () => {
+  it('is 8 hex, stable, salt-dependent', async () => {
+    const a = await netTag('1.2.3.4', 'aa');
+    expect(a).toMatch(/^[0-9a-f]{8}$/);
+    expect(await netTag('1.2.3.4', 'aa')).toBe(a);
+    expect(await netTag('1.2.3.4', 'bb')).not.toBe(a);
+    expect(await netTag('1.2.3.5', 'aa')).not.toBe(a);
   });
 });

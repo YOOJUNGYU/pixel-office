@@ -61,6 +61,21 @@ describe('parseDown', () => {
       expect(parseDown(JSON.stringify(f))).toEqual(f);
     }
   });
+  it('round-trips net tags and you', () => {
+    const f = { t: 'roster', you: 'deadbeef', peers: [{ id: 'a', pk, net: '0123abcd' }] };
+    expect(parseDown(JSON.stringify(f))).toEqual(f);
+    const j = { t: 'join', id: 'a', pk, net: '0123abcd' };
+    expect(parseDown(JSON.stringify(j))).toEqual(j);
+  });
+  it('drops a bad net/you but keeps the frame', () => {
+    const f = { t: 'roster', you: 'XYZ', peers: [{ id: 'a', pk, net: 'XYZ' }] };
+    expect(parseDown(JSON.stringify(f))).toEqual({ t: 'roster', peers: [{ id: 'a', pk }] });
+    expect(parseDown(JSON.stringify({ t: 'join', id: 'a', pk, net: 5 }))).toEqual({
+      t: 'join',
+      id: 'a',
+      pk,
+    });
+  });
   it('rejects bad frames', () => {
     expect(parseDown(JSON.stringify({ t: 'zzz' }))).toBeNull();
     const short = Buffer.alloc(31, 1).toString('base64');
