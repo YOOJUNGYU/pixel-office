@@ -88,6 +88,8 @@ Every PeerNet datagram is ≤ `MAX_DATAGRAM_BYTES` (1200) on the wire: some netw
 
 ## Internet public office (relay)
 
+Startup adds the OS certificate store to Node's trusted CAs (`lan/systemCa.ts`), so corporate TLS inspection (e.g. Fortinet) that the browser trusts also works for the relay and updater.
+
 Spec `docs/superpowers/specs/2026-11-06-internet-public-office-design.md`, deploy/admin/limits `relay/README.md`. The public office reaches every installed PC over the internet; team office and personal mode never do (a team/personal PC does not connect to the relay). Free Cloudflare only: a Worker + exactly ONE Durable Object `hub` (`idFromName('hub')`, WebSocket Hibernation, ping = `setWebSocketAutoResponse` text `ping`→`pong`, neither wakes it nor counts). Nothing else is installed on the PC and nothing inbound: one outbound WSS 443.
 
 ```

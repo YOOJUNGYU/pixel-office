@@ -41,6 +41,7 @@ import { PeerNet } from './lan/peerNet.js';
 import { KnownPeers, loadProfile } from './lan/profile.js';
 import { Relay, relayKick, relayUrl } from './lan/relay.js';
 import { discoverRoots, Scanner } from './lan/scanner.js';
+import { trustSystemCa } from './lan/systemCa.js';
 import { TranscriptService } from './lan/transcript.js';
 import { startTray, trayCheck } from './lan/tray.js';
 import {
@@ -129,6 +130,7 @@ Options:
  * updated version in ~/.pixel-office/app (bootUpdated), which runs main(false).
  */
 export async function main(boot = true): Promise<void> {
+  trustSystemCa(); // before any HTTPS (relay, updater); also for a booted bundle
   let args: CliArgs;
   try {
     args = parseArgs(process.argv.slice(2));
