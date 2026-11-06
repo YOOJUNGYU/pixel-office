@@ -17,7 +17,7 @@ const fail = (why) => {
   console.error(`FAIL: ${why}`);
   process.exit(1);
 };
-setTimeout(() => fail('timeout (3 s)'), 3000);
+setTimeout(() => fail('timeout (15 s)'), 15_000);
 
 const opened = (ws) =>
   new Promise((res, rej) => {

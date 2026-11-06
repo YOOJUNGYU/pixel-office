@@ -80,7 +80,7 @@ Open the office in this PC's browser and an **Install Pixel Office as an app** p
 - 🏠 **Personal**: press **Personal** in the office buttons at the top for a small office of your own (agents, chat and avatar position never leave the PC; only your name shows in other PCs' people panel under `Personal`). Your team offices are kept: press **Public office** or a team button to return, no code needed. Personal mode has its own layout, saved on this PC only (a public or team office's layout is shared by everyone in it).
 - **Admin kick (admin only)**: with the relay's admin token (`ADMIN_TOKEN`, known only to whoever deployed it) enter it under **Settings → Admin token** (stored only in this PC's settings file, never shown again) and use **[Kick]** on a public-office row in the people panel. Without the app, curl works too (24 h ban by default, `hours` changes it):
   ```bash
-  R=https://<relay address>   # see relay/README.md
+  R=https://pixel-office-relay.pixel-office-relay.workers.dev   # the deployed relay (relay/README.md)
   T='Authorization: Bearer <ADMIN_TOKEN>'
   curl -s -H "$T" $R/admin/stats                                          # people, today's usage
   curl -s -H "$T" -X POST -d '{"id":"<peerId>","hours":24}' $R/admin/kick # kick

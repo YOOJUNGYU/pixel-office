@@ -266,7 +266,7 @@ export const TRANSCRIPT_MAX_OPEN = 8;
 export const TRANSCRIPT_POLL_MS = 1000;
 
 /** Internet public-office relay (Cloudflare Worker). '' = off. */
-export const RELAY_URL = ''; // Task 8 fills in the real address
+export const RELAY_URL = 'wss://pixel-office-relay.pixel-office-relay.workers.dev/ws';
 export const RELAY_URL_ENV = 'PIXEL_OFFICE_RELAY_URL';
 /** setRelayAdminToken: longest token accepted (asyncapi maxLength). */
 export const RELAY_ADMIN_TOKEN_MAX = 256;
