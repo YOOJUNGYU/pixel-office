@@ -106,7 +106,8 @@ function ViaBadge({ via }: { via: DirectoryPersonMessage['via'] }) {
   );
 }
 
-/** Admin only (relayAdmin), public office rows other than mine: remove the PC from the relay. */
+/** Admin only (relayAdmin), public office rows other than mine: remove the PC from the relay.
+ *  Hidden until the row is hovered (or the button has keyboard focus), then centred over it. */
 function KickButton({ person }: { person: DirectoryPersonMessage }) {
   return (
     <button
@@ -115,7 +116,7 @@ function KickButton({ person }: { person: DirectoryPersonMessage }) {
         if (!window.confirm(t('relay.kickConfirm', { name: peerLabel(person) }))) return;
         transport.send({ type: 'relayKick', peerId: person.peerId });
       }}
-      className="shrink-0 py-1 px-4 text-2xs bg-btn-bg text-text border-2 border-border rounded-none cursor-pointer hover:bg-btn-hover"
+      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 py-1 px-8 text-xs bg-btn-bg text-text border-2 border-border rounded-none shadow-pixel cursor-pointer hover:bg-btn-hover opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
     >
       {t('relay.kick')}
     </button>
@@ -151,7 +152,7 @@ function PlainRow({
   kick?: boolean;
 }) {
   return (
-    <li className="flex items-center gap-8 py-3 px-8 text-text">
+    <li className={`flex items-center gap-8 py-3 px-8 text-text${kick ? ' relative group' : ''}`}>
       <Face person={person} />
       <span className="flex-1 min-w-0 truncate">
         {peerLabel(person)}
@@ -248,7 +249,10 @@ export function PeoplePanel({
   const netOf = (p: DirectoryPersonMessage) => (p.net === undefined ? undefined : nets.get(p.net));
 
   const liveRows = rows.map((r) => (
-    <li key={r.person.peerId} className="flex items-center gap-4 pr-8 hover:bg-btn-hover">
+    <li
+      key={r.person.peerId}
+      className="relative group flex items-center gap-4 pr-8 hover:bg-btn-hover"
+    >
       <button
         type="button"
         onClick={() => focus(r)}
