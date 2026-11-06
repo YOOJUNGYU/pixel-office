@@ -315,7 +315,7 @@
 
 **Files:**
 
-- Modify: `server/src/lan/peerNet.ts`, `server/src/lan/redact.ts` (`quietView`), `core/src/lan.ts` (`AgentView.quiet?: true`, `parseView` 읽기)
+- Modify: `server/src/lan/peerNet.ts`, `server/src/lan/redact.ts` (`quietView`), `server/src/lan/office.ts` (`packet`), `core/src/lan.ts` (`AgentView.quiet?: true`, `parseView` 읽기)
 - Test: `server/__tests__/lan/peerNetRelay.test.ts` (새), `server/__tests__/lan/redact.test.ts` (quietView 추가)
 
 **Interfaces:**
@@ -346,7 +346,7 @@
   - 대상별 sealed pub (기존 `pubTo` 의 seal 부분을 `sealPub(id, h, texts): PubWire[]` 로 추출, UDP 와 공유) 을 모아 `RELAY_MAX_FRAME_BYTES` 이하로 자른 프레임들로 `relay.send`. 첫 send 가 false 면 중단 (상태 유지 → 다음 틱 재시도).
   - 보냈으면 `lastRelayKey = key`, `lastRelaySend = t`, `needsFull.clear()` (보낸 대상만 제거).
 - 팀/개인용일 때는 중계 송신 없음 (`want(false)` 가 닫는다).
-- **중계로 보내는 presence 는 작업 상세를 뺀다** (사용자 결정 2026-11-06, 범위는 중계만 — controller ruling): `quietView(v: AgentView): AgentView` (`redact.ts`) = `ageSec`·`todo`·`diff`·`fail`·`ctx` 삭제, `target: ''`, `reason: ''`, `quiet: true`; **`act`·`room`·`provider`·`kind`·`tree`·`permission` 은 그대로** (방 이동·앉아서 일하기·PC 화면·! 는 유지). 이미 `hidden` 인 view 는 그대로 둔다 (`hideView` 가 더 강함). UDP 경로·자기 snapshot 은 불변. 변화 감지 `key` 는 quiet 적용 후 packet 으로 계산 (target 변화로는 송신하지 않음).
+- **공개 오피스로 나가는 presence 는 작업 상세를 뺀다 — UDP·중계 둘 다** (사용자 결정 2026-11-06: "같은 망도 동일하게"; 내 에이전트는 내 화면에서 상세·말풍선 그대로). `quietView(v: AgentView): AgentView` (`redact.ts`) = `ageSec`·`todo`·`diff`·`fail`·`ctx` 삭제, `target: ''`, `reason: ''`, `quiet: true`; **`act`·`room`·`provider`·`kind`·`tree`·`permission` 은 그대로**. 이미 `hidden` 인 view 는 그대로 (`hideView` 가 더 강함). 적용 위치 = `LanService.packet(channel)` (`server/src/lan/office.ts:152`) 에서 `channel === PUBLIC_VIEW` 일 때 `redactView` 다음에 `quietView`. 팀 채널·자기 snapshot(`toViews` brief 아님) 은 불변. 변화 감지 `key` 는 이 packet 으로 계산하므로 target 변화로는 중계 송신이 일어나지 않는다.
 - `core/src/lan.ts`: `AgentView` 에 `quiet?: true`; `parseView` 가 `raw.quiet === true` 만 읽는다.
 
 - [ ] **Step 1: 실패 테스트** — `peerNetRelay.test.ts`. 가짜 relay 객체 2 개를 메모리로 서로 잇는 헬퍼 `pair()` (A.send → B.relayDown({t:'w'}) 동기 전달, connected()=true) + `targets: () => []` (UDP 없음), 가짜 `now`:
@@ -356,7 +356,7 @@
   - `coalesces to one frame per second`: 0.2 s 간격으로 아바타 바꾸며 `sendNow()` 5 회 → send 1 건; `now += 1_000` 후 1 건 더 (마지막 값 담김).
   - `ageSec only change sends nothing`: views 의 ageSec 만 +1 → send 0 건.
   - `target only change sends nothing`: act 같고 target 만 바뀜 → send 0 건; act 가 바뀌면 1 건.
-  - `relay presence is quiet`: B 가 받은 A 의 view 에 `quiet === true`, `target === ''`, `act` 는 A 의 act 그대로, `todo`/`diff`/`fail`/`ageSec` 없음. 같은 망(UDP) 으로 받은 경우엔 quiet 없음·target 그대로.
+  - `relay presence is quiet`: B 가 받은 A 의 view 에 `quiet === true`, `target === ''`, `act` 는 A 의 act 그대로, `todo`/`diff`/`fail`/`ageSec` 없음. 같은 망(UDP) 으로 받은 경우도 똑같이 quiet. 팀 채널 packet 은 quiet 없음·target 그대로 (office.test). 내 snapshot 의 내 에이전트는 target·ageSec 그대로.
   - redact.test: `quietView` 가 act/room/permission 유지, 상세 삭제, `hidden` view 는 변경 없음.
   - `new joiner gets full state`: 변화 없음 상태에서 C join → 다음 `sendNow()` 가 C 앞 pub 만 담은 프레임 1 건.
   - `udp lapse resends full over relay`: B 를 UDP hello 로도 들은 상태(udpAt=now) → 송신은 UDP 만 (relay send 0); `now += PEER_TTL_MS + 1` → 다음 틱 relay send 에 B 앞 pub 포함.
