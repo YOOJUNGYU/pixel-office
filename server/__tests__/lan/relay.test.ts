@@ -133,8 +133,8 @@ describe('Relay', () => {
     const seen: number[] = [];
     for (let i = 0; i < 3; i++) {
       r.want(true);
-      await until(() => f.urls.length === i + 1 && r.status.retryInMs !== undefined);
-      await until(() => r.status.state === 'error');
+      // wait for THIS socket's refusal: the status still holds the previous failure until then
+      await until(() => f.urls.length === i + 1 && (r.status.retryInMs ?? 0) > (seen.at(-1) ?? 0));
       seen.push(r.status.retryInMs ?? 0);
       expect(r.connected()).toBe(false);
       t += r.status.retryInMs ?? 0;
