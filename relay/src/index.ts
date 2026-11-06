@@ -19,7 +19,9 @@ import {
   DEFAULT_LIMITS,
   exhausted,
   type HubState,
+  isSilent,
   kick,
+  lastActive,
   type Limits,
   msToReset,
   netTag,
@@ -27,6 +29,7 @@ import {
   onFrame,
   pruneBans,
   REQUEST_WEIGHT,
+  toHex,
   unban,
 } from './hub.js';
 
@@ -49,6 +52,8 @@ const SALT_BYTES = 32;
 const MAX_KICK_HOURS = 8760;
 /** Ceiling for a MAX_FRAMES_PER_MIN override: the frames array lives in the 2 KB socket attachment. */
 const MAX_FRAMES_CEILING = 150;
+/** Close code for a socket the hub dropped as silent (WebSocket "going away"). */
+const SILENT_CLOSE = 1001;
 const ADMIN = '/admin/';
 const BANS = `${ADMIN}bans/`;
 
@@ -71,8 +76,6 @@ function limits(env: Env): Limits {
   };
 }
 
-const toHex = (b: Uint8Array): string =>
-  [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
 const json = (body: unknown, status = 200): Response => Response.json(body, { status });
 const send = (ws: WebSocket, m: RelayDown): void => {
   try {
@@ -145,6 +148,29 @@ export class Hub extends DurableObject<Env> {
     if (announce) for (const o of this.live()) send(o.ws, { t: 'leave', id: x.c.id });
   }
 
+  /**
+   * Drops sockets not heard for SILENT_DROP_MS (a PC that slept or lost its network without a
+   * FIN: pings are auto-answered and never wake the hub, so nothing else would notice). Runs
+   * on the events the hub already handles. Limit: with nobody sending anything it waits for
+   * the next event — then nobody's view changes either, and an upgrade sweeps before admit
+   * and the roster, so a joiner never sees a ghost.
+   */
+  private sweep(now: number, except?: WebSocket): void {
+    for (const x of this.live()) {
+      if (x.ws === except) continue;
+      const pingAt = this.ctx.getWebSocketAutoResponseTimestamp(x.ws)?.getTime();
+      if (!isSilent(lastActive(x.c, pingAt), now)) continue;
+      x.c.gone = true;
+      x.ws.serializeAttachment(x.c);
+      try {
+        x.ws.close(SILENT_CLOSE, 'silent');
+      } catch {
+        // already closed
+      }
+      for (const o of this.live()) send(o.ws, { t: 'leave', id: x.c.id });
+    }
+  }
+
   override async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const now = Date.now();
@@ -161,7 +187,12 @@ export class Hub extends DurableObject<Env> {
   }
 
   private async upgrade(req: Request, url: URL, now: number): Promise<Response> {
+    // The only await, before admit: from admit to the attachment write nothing may interleave
+    // (another upgrade could pass the maxPeers / same-id checks in between).
+    const ip = req.headers.get('CF-Connecting-IP');
+    const net = ip ? await netTag(ip, this.salt) : undefined;
     pruneBans(this.s, now);
+    this.sweep(now);
     const id = url.searchParams.get('id') ?? '';
     const pk = url.searchParams.get('pk') ?? '';
     let live = this.live();
@@ -181,9 +212,7 @@ export class Hub extends DurableObject<Env> {
     }
     const [client, server] = Object.values(new WebSocketPair()) as [WebSocket, WebSocket];
     this.ctx.acceptWebSocket(server);
-    const ip = req.headers.get('CF-Connecting-IP');
-    const net = ip ? await netTag(ip, this.salt) : undefined;
-    const me: Att = { id, pk, frames: [], ...(net && { net }) };
+    const me: Att = { id, pk, frames: [], at: now, ...(net && { net }) };
     server.serializeAttachment(me);
     send(server, {
       t: 'roster',
@@ -195,6 +224,7 @@ export class Hub extends DurableObject<Env> {
   }
 
   private async admin(req: Request, url: URL, now: number): Promise<Response> {
+    this.sweep(now);
     const path = url.pathname;
     if (req.method === 'POST' && path === `${ADMIN}kick`) {
       let body: { id?: unknown; hours?: unknown };
@@ -243,6 +273,7 @@ export class Hub extends DurableObject<Env> {
     if (!me || me.gone) return;
     const now = Date.now();
     if (this.spend(1, now)) return;
+    this.sweep(now, ws);
     const live = this.live();
     const r = onFrame(
       this.s,

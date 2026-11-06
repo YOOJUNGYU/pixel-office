@@ -43,12 +43,15 @@ export interface Conn {
   pk: string;
   /** receive times within the last minute */
   frames: number[];
+  /** accept time (ms epoch, hub clock); with frames' last element and the ping
+   *  auto-response time it says when the socket was last heard (lastActive). */
+  at?: number;
   /** same-network tag (8 hex of HMAC(salt, ip)); none = unknown. The IP itself is never kept. */
   net?: string;
 }
 
 const HEX_BYTE_CHARS = 2;
-const toHex = (b: ArrayBuffer): string =>
+export const toHex = (b: ArrayBuffer | Uint8Array): string =>
   [...new Uint8Array(b)].map((x) => x.toString(16).padStart(HEX_BYTE_CHARS, '0')).join('');
 
 export async function netTag(ip: string, salt: string): Promise<string> {
@@ -142,6 +145,15 @@ export function onFrame(
   }
   return { deliver };
 }
+
+/** Clients ping every 30 s; three missed = gone without a FIN (sleep, dropped network). */
+export const SILENT_DROP_MS = 90_000;
+
+/** When `c` was last heard: its newest ping (`pingAt`, the auto-response time), frame or accept. */
+export const lastActive = (c: Conn, pingAt: number | undefined): number =>
+  Math.max(pingAt ?? 0, c.frames.at(-1) ?? 0, c.at ?? 0);
+
+export const isSilent = (last: number, now: number): boolean => now - last > SILENT_DROP_MS;
 
 export function kick(s: HubState, id: string, hours: number, now: number): number {
   return setBan(s, id, now + hours * MS_HOUR);

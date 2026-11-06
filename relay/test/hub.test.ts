@@ -7,12 +7,16 @@ import {
   type Conn,
   DEFAULT_LIMITS as L,
   exhausted,
+  isSilent,
   kick,
+  lastActive,
   msToReset,
   netTag,
   newState,
   onFrame,
   pruneBans,
+  SILENT_DROP_MS,
+  toHex,
   unban,
 } from '../src/hub.js';
 
@@ -167,5 +171,26 @@ describe('netTag', () => {
     expect(await netTag('1.2.3.4', 'aa')).toBe(a);
     expect(await netTag('1.2.3.4', 'bb')).not.toBe(a);
     expect(await netTag('1.2.3.5', 'aa')).not.toBe(a);
+  });
+});
+
+describe('silent sockets', () => {
+  it('last activity = newest of ping, last frame, accept', () => {
+    expect(lastActive({ ...conn('a'), at: 5 }, undefined)).toBe(5);
+    expect(lastActive({ ...conn('a'), at: 5, frames: [7, 9] }, 8)).toBe(9);
+    expect(lastActive({ ...conn('a'), at: 5, frames: [7] }, 20)).toBe(20);
+    expect(lastActive(conn('a'), undefined)).toBe(0);
+  });
+  it('silent only after SILENT_DROP_MS', () => {
+    expect(SILENT_DROP_MS).toBe(90_000);
+    expect(isSilent(NOW, NOW + SILENT_DROP_MS)).toBe(false);
+    expect(isSilent(NOW, NOW + SILENT_DROP_MS + 1)).toBe(true);
+  });
+});
+
+describe('toHex', () => {
+  it('two chars per byte, from a buffer or a view', () => {
+    expect(toHex(new Uint8Array([0, 15, 255]))).toBe('000fff');
+    expect(toHex(new Uint8Array([1, 2]).buffer)).toBe('0102');
   });
 });

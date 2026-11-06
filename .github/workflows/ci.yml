@@ -72,3 +72,6 @@ jobs:
 
       - name: Webview Tests
         run: npm run test:webview
+
+      - name: Relay Tests
+        run: npm run test:relay
