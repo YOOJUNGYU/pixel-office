@@ -13,7 +13,8 @@ import {
   PERSONAL_VIEW,
   PUBLIC_VIEW,
 } from '../../../core/src/lan.js';
-import { WIRE_MAX_ID } from '../../../core/src/relay.js';
+import type { PubWire, RelayDown } from '../../../core/src/relay.js';
+import { RELAY_MAX_FRAME_BYTES, WIRE_MAX_ID } from '../../../core/src/relay.js';
 import {
   GCM_NONCE_BYTES,
   GCM_TAG_BYTES,
@@ -33,6 +34,7 @@ import {
   PRESENCE_MAX_COMPRESSED,
   PRESENCE_MAX_JSON,
   PRESENCE_PART_BYTES,
+  RELAY_MIN_SEND_MS,
   SEQ_MEMORY_MS,
 } from '../constants.js';
 import type { Identity, Wire } from './crypto.js';
@@ -68,6 +70,8 @@ interface Heard {
   address: string;
   port: number;
   at: number;
+  /** Last UDP hello/watch (-Infinity = heard over the relay only). */
+  udpAt: number;
   replied: number;
 }
 
@@ -96,6 +100,26 @@ export function broadcastAddresses(
   }
   out.add('255.255.255.255');
   return [...out];
+}
+
+/** Wires grouped into `{t: 'send', w}` frames of at most RELAY_MAX_FRAME_BYTES (UTF-8). */
+function relayFrames(wires: PubWire[]): PubWire[][] {
+  const base = Buffer.byteLength(JSON.stringify({ t: 'send', w: [] }));
+  const frames: PubWire[][] = [];
+  let cur: PubWire[] = [];
+  let size = base;
+  for (const w of wires) {
+    const n = Buffer.byteLength(JSON.stringify(w));
+    if (cur.length && size + 1 + n > RELAY_MAX_FRAME_BYTES) {
+      frames.push(cur);
+      cur = [];
+      size = base;
+    }
+    size += (cur.length ? 1 : 0) + n;
+    cur.push(w);
+  }
+  if (cur.length) frames.push(cur);
+  return frames;
 }
 
 /** Drops trailing views until the presence fits MAX_PRESENCE_PARTS deflated parts
@@ -301,6 +325,16 @@ export class PeerNet {
   /** Team names as members announce them (shown when joined without a name). */
   private readonly names = new Map<string, string>();
   private readonly warned = new Set<string>();
+  /** Relay: ids from roster/join until leave (live without a TTL), ids owed our whole
+   *  public state (new on the relay, or no longer heard over UDP), their network tags. */
+  private readonly relayLive = new Set<string>();
+  private readonly needsFull = new Set<string>();
+  private readonly nets = new Map<string, string>();
+  private myNet: string | undefined;
+  /** Hellos sent our pub over UDP last tick. */
+  private udpSent = new Set<string>();
+  private lastRelayKey = '';
+  private lastRelaySend = -Infinity;
   /** Per process, seeded with the clock so a restart still counts upward. */
   private seq = Date.now();
   private readonly now: () => number;
@@ -328,6 +362,8 @@ export class PeerNet {
         blob(channel: string): Buffer | null;
         receive(channel: string, rev: LayoutRev, text: string): void;
       };
+      /** Internet relay for the public office (connected only while in it). */
+      relay?: { want(on: boolean): void; send(w: PubWire[]): boolean; connected(): boolean };
       now?: () => number;
     },
   ) {
@@ -362,6 +398,7 @@ export class PeerNet {
   sendNow(): void {
     const sock = this.sock;
     if (!sock) return;
+    this.opts.relay?.want(this.inPublic());
     this.prune();
     const { identity } = this.opts;
     const offices = this.opts.offices();
@@ -413,22 +450,147 @@ export class PeerNet {
     };
     const watcherPlains = watchers.length ? presencePlains(personOnly, identity.id, around) : [];
     const pubTo = (id: string, h: Heard, texts: string[]) => {
-      h.key ??= pairKey(identity.privateKeyPem, h.pk, identity.id, id);
-      if (!h.key) return;
-      for (const plain of texts) {
-        const sealed = seal(h.key, pubAad(identity.id, id), plain);
-        const wire: Wire = { v: 2, t: 'pub', from: identity.id, to: id, ...sealed };
+      for (const wire of this.sealPub(id, h, texts))
         this.send(sock, wire, `${h.address}:${h.port.toString()}`);
-      }
     };
+    // Over UDP only to PCs heard over UDP; the rest are reached over the relay.
+    const t = this.now();
+    const udp = new Set<string>();
     for (const [id, h] of this.hellos) {
-      const peer = this.seen.get(PUBLIC_VIEW)?.get(id);
-      pubTo(id, h, [
-        ...plains,
-        ...(peer ? this.layoutToPush(PUBLIC_VIEW, `pub|${id}`, [peer]) : []),
-      ]);
+      if (!this.udpLive(h, t)) continue;
+      udp.add(id);
+      this.needsFull.delete(id);
+      pubTo(id, h, [...plains, ...this.layoutFor(id)]);
     }
     for (const [id, h] of watchers) pubTo(id, h, watcherPlains);
+    // No longer heard over UDP: owed the whole state over the relay.
+    for (const id of this.udpSent) if (!udp.has(id)) this.needsFull.add(id);
+    this.udpSent = udp;
+    this.sendRelay(inner.packet, plains, t);
+  }
+
+  /** `texts` sealed pairwise for `id` as pub wires (none without a pair key). */
+  private sealPub(id: string, h: Heard, texts: string[]): PubWire[] {
+    const { identity } = this.opts;
+    h.key ??= pairKey(identity.privateKeyPem, h.pk, identity.id, id);
+    if (!h.key) return [];
+    const key = h.key;
+    return texts.map((plain) => ({
+      v: 2,
+      t: 'pub',
+      from: identity.id,
+      to: id,
+      ...seal(key, pubAad(identity.id, id), plain),
+    }));
+  }
+
+  /** Our layout parts for a public peer whose version is older (rate-limited per peer). */
+  private layoutFor(id: string): string[] {
+    const peer = this.seen.get(PUBLIC_VIEW)?.get(id);
+    return peer ? this.layoutToPush(PUBLIC_VIEW, `pub|${id}`, [peer]) : [];
+  }
+
+  /**
+   * Relay-only peers get our presence only when it changed (ageSec aside: receivers age
+   * it themselves) or when they are owed it in full, at most once per RELAY_MIN_SEND_MS,
+   * all in as few frames as the size cap allows. A refused send leaves everything owed.
+   */
+  private sendRelay(packet: PeerPacket, plains: string[], t: number): void {
+    const relay = this.opts.relay;
+    if (!relay?.connected() || t - this.lastRelaySend < RELAY_MIN_SEND_MS) return;
+    const key = JSON.stringify({
+      ...packet,
+      views: packet.views.map(({ ageSec: _a, ...v }) => v),
+    });
+    const changed = key !== this.lastRelayKey;
+    const full: string[] = [];
+    const wires: PubWire[] = [];
+    for (const id of this.relayLive) {
+      const h = this.hellos.get(id);
+      if (!h || this.udpSent.has(id)) continue;
+      const owed = changed || this.needsFull.has(id);
+      if (owed) full.push(id);
+      wires.push(...this.sealPub(id, h, [...(owed ? plains : []), ...this.layoutFor(id)]));
+    }
+    if (!wires.length) return;
+    for (const frame of relayFrames(wires)) if (!relay.send(frame)) return;
+    this.lastRelayKey = key;
+    this.lastRelaySend = t;
+    for (const id of full) this.needsFull.delete(id);
+  }
+
+  /** A relay frame (already shape-checked by parseDown, or built by tests). */
+  relayDown(f: RelayDown): void {
+    switch (f.t) {
+      case 'roster':
+        this.myNet = f.you;
+        for (const p of f.peers) this.relayJoin(p);
+        return;
+      case 'join':
+        this.relayJoin(f);
+        return;
+      case 'leave':
+        this.relayDrop(f.id);
+        return;
+      case 'w':
+        for (const raw of f.w) {
+          const w = parseWire(JSON.stringify(raw));
+          if (w?.t === 'pub') this.receivePub(w);
+        }
+    }
+  }
+
+  /** A new relay connection: start clean; its roster makes everyone owed our state. */
+  relayOpened(): void {
+    this.relayClosed();
+    this.lastRelaySend = -Infinity;
+  }
+
+  /** The relay connection is gone: its peers leave at once (UDP-heard ones stay). */
+  relayClosed(): void {
+    for (const id of [...this.relayLive]) this.relayDrop(id);
+    this.needsFull.clear();
+    this.myNet = undefined;
+  }
+
+  /** A person's network: heard over UDP = mine (the relay's tag for me, else 'lan'),
+   *  else the relay's tag for theirs; undefined = unknown. */
+  netOf(id: string): string | undefined {
+    const h = this.hellos.get(id);
+    if (id === this.opts.identity.id || (h && this.udpLive(h, this.now())))
+      return this.myNet ?? 'lan';
+    return this.nets.get(id);
+  }
+
+  // ponytail: roster pks are TOFU — a malicious relay operator can slip a fake pk in at a
+  // first meeting and read that pair; add a fingerprint-compare UI if that ever matters.
+  private relayJoin(p: { id: string; pk: string; net?: string }): void {
+    if (p.id === this.opts.identity.id || !this.heard(this.hellos, p.id, p.pk, null)) return;
+    this.relayLive.add(p.id);
+    this.needsFull.add(p.id);
+    if (p.net) this.nets.set(p.id, p.net);
+    else this.nets.delete(p.id);
+  }
+
+  // ponytail: ids are unproven, so anyone copying a PC's id+pk can push its relay socket
+  // out (replaced → leave here); the content stays unreadable to them.
+  private relayDrop(id: string): void {
+    this.relayLive.delete(id);
+    this.needsFull.delete(id);
+    this.nets.delete(id);
+    const h = this.hellos.get(id);
+    if (h && this.udpLive(h, this.now())) return;
+    this.hellos.delete(id);
+    this.seen.get(PUBLIC_VIEW)?.delete(id);
+  }
+
+  private udpLive(h: Heard, t: number): boolean {
+    return t - h.udpAt <= PEER_TTL_MS;
+  }
+
+  /** Within the TTL, or (public office only) on the relay until it says leave. */
+  private live(channel: string, id: string, at: number, t: number): boolean {
+    return t - at <= PEER_TTL_MS || (channel === PUBLIC_VIEW && this.relayLive.has(id));
   }
 
   /** Personal mode: our name card, sealed pairwise, to every live hello'd PC and watcher
@@ -439,6 +601,7 @@ export class PeerNet {
     if (!peer) return;
     const plain = JSON.stringify({ seq: ++this.seq, peer });
     for (const [id, h] of new Map([...this.hellos, ...this.watchers])) {
+      if (!this.udpLive(h, this.now())) continue; // relay-only: no address
       h.key ??= pairKey(identity.privateKeyPem, h.pk, identity.id, id);
       if (!h.key) continue;
       const sealed = seal(h.key, cardAad(identity.id, id), plain);
@@ -462,7 +625,10 @@ export class PeerNet {
     if (mine.rev === 0 || !blob) return [];
     if (t - (this.layoutPushed.get(target) ?? -Infinity) < LAYOUT_PUSH_MS) return [];
     const lagging = peers.some(
-      (e) => t - e.at <= PEER_TTL_MS && e.packet.layout && newerLayout(mine, e.packet.layout),
+      (e) =>
+        this.live(channel, e.packet.peer.id, e.at, t) &&
+        e.packet.layout &&
+        newerLayout(mine, e.packet.layout),
     );
     if (!lagging) return [];
     this.layoutPushed.set(target, t);
@@ -475,8 +641,8 @@ export class PeerNet {
     if (view === PUBLIC_VIEW ? this.opts.offices().length > 0 : !this.isJoined(view)) return [];
     const t = this.now();
     const out: PeerPacket[] = [];
-    for (const e of this.seen.get(view)?.values() ?? [])
-      if (t - e.at <= PEER_TTL_MS) out.push(aged(e.packet, t - e.at));
+    for (const [id, e] of this.seen.get(view) ?? [])
+      if (this.live(view, id, e.at, t)) out.push(aged(e.packet, t - e.at));
     return out;
   }
 
@@ -486,9 +652,9 @@ export class PeerNet {
     const live = <T extends { at: number }>(e: T) => t - e.at <= PEER_TTL_MS;
     type Row = { peer: PeerInfo; at: number };
     const teamRows = (tag: string): Row[] =>
-      [...(this.seen.get(tag)?.values() ?? [])]
-        .filter(live)
-        .map((e) => ({ peer: e.packet.peer, at: e.at }));
+      [...(this.seen.get(tag) ?? [])]
+        .filter(([id, e]) => this.live(tag, id, e.at, t))
+        .map(([, e]) => ({ peer: e.packet.peer, at: e.at }));
     const pub: Row[] = this.inPublic()
       ? teamRows(PUBLIC_VIEW)
       : [...this.heardPublic.values()].filter(live);
@@ -591,22 +757,7 @@ export class PeerNet {
       return;
     }
     if (w.t === 'pub') {
-      const h = this.hellos.get(w.from);
-      if (w.to !== me || !h) return;
-      h.key ??= pairKey(this.opts.identity.privateKeyPem, h.pk, me, w.from);
-      if (!h.key) return;
-      const plain = open(h.key, pubAad(w.from, w.to), w.n, w.c);
-      if (this.inPublic()) {
-        if (this.layoutPart(PUBLIC_VIEW, plain)) return;
-        const inner = this.unpack(PUBLIC_VIEW, plain, w.from);
-        if (inner?.packet.peer.id === w.from) this.accept(PUBLIC_VIEW, inner);
-        return;
-      }
-      // Watcher: the person only — no agents, chat, avatar, and never a layout.
-      if (plain === null || parseLayoutPart(plain)) return;
-      const inner = this.unpack(PUBLIC_VIEW, plain, w.from);
-      if (inner?.packet.peer.id === w.from && this.fresh(`${PUBLIC_VIEW}|${w.from}`, inner.seq))
-        this.heardPublic.set(w.from, { peer: inner.packet.peer, at: this.now() });
+      this.receivePub(w);
       return;
     }
     const office = this.opts.offices().find((o) => o.tag === w.tag);
@@ -618,9 +769,30 @@ export class PeerNet {
     if (this.accept(w.tag, inner) && inner.office?.name) this.names.set(w.tag, inner.office.name);
   }
 
+  /** A pairwise public presence or layout part, from UDP or the relay. */
+  private receivePub(w: Extract<Wire, { t: 'pub' }>): void {
+    const me = this.opts.identity.id;
+    const h = this.hellos.get(w.from);
+    if (w.to !== me || !h) return;
+    h.key ??= pairKey(this.opts.identity.privateKeyPem, h.pk, me, w.from);
+    if (!h.key) return;
+    const plain = open(h.key, pubAad(w.from, w.to), w.n, w.c);
+    if (this.inPublic()) {
+      if (this.layoutPart(PUBLIC_VIEW, plain)) return;
+      const inner = this.unpack(PUBLIC_VIEW, plain, w.from);
+      if (inner?.packet.peer.id === w.from) this.accept(PUBLIC_VIEW, inner);
+      return;
+    }
+    // Watcher: the person only — no agents, chat, avatar, and never a layout.
+    if (plain === null || parseLayoutPart(plain)) return;
+    const inner = this.unpack(PUBLIC_VIEW, plain, w.from);
+    if (inner?.packet.peer.id === w.from && this.fresh(`${PUBLIC_VIEW}|${w.from}`, inner.seq))
+      this.heardPublic.set(w.from, { peer: inner.packet.peer, at: this.now() });
+  }
+
   /**
-   * A hello or watch: TOFU pin check, at most MAX_HELLO_PEERS ids (a full map ignores new
-   * ones), recorded in `map`. Answered 1:1 with our discovery() (rate-limited): a peer that
+   * A hello or watch (or, `rinfo` null, a relay roster/join entry: no reply): TOFU pin
+   * check, at most MAX_HELLO_PEERS ids (a full map ignores new ones), recorded in `map`. Answered 1:1 with our discovery() (rate-limited): a peer that
    * reaches us only via its manual-peer list would otherwise never hear us (watcher ↔
    * watcher too: a card is accepted only from a PC whose watch we heard).
    */
@@ -628,12 +800,12 @@ export class PeerNet {
     map: Map<string, Heard>,
     id: string,
     pk: string,
-    rinfo: { address: string; port: number },
-  ): void {
+    rinfo: { address: string; port: number } | null,
+  ): boolean {
     const pinned = this.opts.pins.get(id);
     if (pinned !== undefined && pinned !== pk) {
       this.warnOnce(`pin:${id}`, `[Pixel Office] PC ${id} 의 키가 바뀌어 무시합니다 (사칭 의심).`);
-      return;
+      return false;
     }
     const prev = map.get(id);
     if (!prev && map.size >= MAX_HELLO_PEERS) {
@@ -642,21 +814,23 @@ export class PeerNet {
         `full:${kind}`,
         `[Pixel Office] PC ${kind} 목록이 가득 찼습니다 (${MAX_HELLO_PEERS.toString()}명): 새 PC 는 보이지 않습니다.`,
       );
-      return;
+      return false;
     }
     if (pinned === undefined) this.opts.pins.set(id, pk);
     const t = this.now();
-    const reply = !prev || t - prev.replied >= HELLO_REPLY_MS;
+    const reply = rinfo !== null && (!prev || t - prev.replied >= HELLO_REPLY_MS);
     map.set(id, {
       pk,
       key: prev?.pk === pk ? prev.key : null,
-      address: rinfo.address,
-      port: rinfo.port,
+      address: rinfo?.address ?? prev?.address ?? '',
+      port: rinfo?.port ?? prev?.port ?? 0,
       at: t,
-      replied: reply ? t : prev.replied,
+      udpAt: rinfo ? t : (prev?.udpAt ?? -Infinity),
+      replied: reply ? t : (prev?.replied ?? -Infinity),
     });
     if (reply && this.sock)
       this.send(this.sock, this.discovery(), `${rinfo.address}:${rinfo.port.toString()}`);
+    return true;
   }
 
   /**
@@ -774,11 +948,13 @@ export class PeerNet {
   private prune(): void {
     const t = this.now();
     const live = new Set([PUBLIC_VIEW, ...this.opts.offices().map((o) => o.tag)]);
-    for (const m of [this.hellos, this.watchers, this.heardPublic, this.cards])
+    for (const [id, e] of this.hellos)
+      if (!this.live(PUBLIC_VIEW, id, e.at, t)) this.hellos.delete(id);
+    for (const m of [this.watchers, this.heardPublic, this.cards])
       for (const [id, e] of m) if (t - e.at > PEER_TTL_MS) m.delete(id);
     for (const [ch, peers] of this.seen) {
       if (!live.has(ch)) this.seen.delete(ch);
-      else for (const [id, e] of peers) if (t - e.at > PEER_TTL_MS) peers.delete(id);
+      else for (const [id, e] of peers) if (!this.live(ch, id, e.at, t)) peers.delete(id);
     }
     for (const tag of this.names.keys()) if (!live.has(tag)) this.names.delete(tag);
     for (const [ch, a] of this.layoutAssemblies)
