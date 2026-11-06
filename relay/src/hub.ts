@@ -18,7 +18,7 @@ export interface Limits {
 }
 export const DEFAULT_LIMITS: Limits = {
   maxPeers: 20,
-  dailyBudget: 1_800_000,
+  dailyBudget: 1_900_000,
   maxFramesPerMin: 120,
   abuseBanMin: 60,
   kickHours: 24,

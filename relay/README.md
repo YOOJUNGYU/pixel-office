@@ -52,5 +52,5 @@ A ban is per peer id: deleting `profile.json` gets a new id. No IP bans (a whole
 | Workers requests    | 100,000/day            | One per WebSocket upgrade or admin request                                                      |
 | DO storage (SQLite) | 100,000 row writes/day | Never write per message                                                                         |
 
-Reset = UTC 00:00 (KST 09:00). The hub stops at 90 % (`DAILY_BUDGET` 1,800,000 messages, an
+Reset = UTC 00:00 (KST 09:00). The hub stops at 95 % (`DAILY_BUDGET` 1,900,000 messages, an
 upgrade or admin request = 20) and closes everyone with `budget` until the reset.

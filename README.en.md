@@ -137,7 +137,7 @@ The people panel on the right has three areas, **Public office / Team / Personal
 - Broadcasts stay inside one subnet. Across floors or VLANs, add the other PC's IP under **Settings → My profile → Advanced: when a PC isn't found automatically**.
 - The public office can't keep out anyone who installs the app (or who just knows the address). Use a team office (same network only) to choose who joins. The admin can remove someone, but a ban is per peer id, so deleting `profile.json` avoids it.
 - If a corporate proxy or firewall blocks outbound `wss` (443), the internet link fails and the chip shows `No internet connection`. Same-network PCs still show. Ask IT for an exception rather than working around it.
-- Free-tier limits: 20 people at once, and the relay stops for the day when usage reaches 90 % of the limit (same network unaffected; resets at 00:00 UTC (09:00 KST)).
+- Free-tier limits: 20 people at once, and the relay stops for the day when usage reaches 95 % of the limit (same network unaffected; resets at 00:00 UTC (09:00 KST)).
 - A malicious relay operator could swap the public key of a first-time pair and read that pair (operator = the app's admin). There is no key fingerprint screen yet.
 - Codex doesn't record approval requests, so ❗ appears for Codex only when it asks you a question.
 - The redaction may miss a password typed directly into a command or search.

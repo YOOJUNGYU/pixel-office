@@ -67,7 +67,7 @@ Open the office in this PC's browser and an **Install Pixel Office as an app** p
   - `🌐 Internet connected`: normal.
   - `Connecting to the internet…`: connecting.
   - `Internet: waiting, office full`: the relay's 20 concurrent slots are taken; retries in about 5 minutes.
-  - `Internet paused: daily limit reached`: 90 % of the free server's daily limit is used, so it pauses for the day (reconnects by itself after the 00:00 UTC (09:00 KST) reset).
+  - `Internet paused: daily limit reached`: 95 % of the free server's daily limit is used, so it pauses for the day (reconnects by itself after the 00:00 UTC (09:00 KST) reset).
   - `Removed by the admin`: the admin removed you (reconnects after the time shown).
   - `No internet connection — same network only`: the internet is unreachable (offline, or a corporate proxy/firewall blocks outbound `wss` on 443). Same-network PCs still show. In proxy environments the link may not work; ask IT for an exception rather than working around it.
   - In every case you **stay in the public office** (never switched to personal) and it reconnects by itself when the condition clears.

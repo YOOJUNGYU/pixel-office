@@ -117,7 +117,7 @@ export class Hub extends DurableObject<Env> {
   private spend(n: number, now: number): boolean {
     const was = exhausted(this.s, this.l);
     charge(this.s, n, now);
-    // ponytail: 잠들기 직전 최대 49 건 미기록, 예산 90% 여유로 흡수
+    // ponytail: 잠들기 직전 최대 49 건 미기록, 예산 95% 여유로 흡수
     this.unsaved += n;
     if (this.unsaved >= RELAY_BUDGET_FLUSH) this.save();
     if (was || !exhausted(this.s, this.l)) return false;

@@ -15,7 +15,7 @@ new_sqlite_classes = ["Hub"]
 # `npx wrangler secret put ADMIN_TOKEN`, locally `.dev.vars` (gitignored).
 # [vars]
 # MAX_PEERS = 20
-# DAILY_BUDGET = 1800000
+# DAILY_BUDGET = 1900000
 # MAX_FRAMES_PER_MIN = 120
 # ABUSE_BAN_MIN = 60
 # KICK_HOURS = 24
