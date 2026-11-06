@@ -46,6 +46,19 @@ export interface Conn {
 
 const dayOf = (now: number): string => new Date(now).toISOString().slice(0, DATE_CHARS);
 
+// ids like "__proto__" are valid peer ids: touch bans only as own properties.
+const banUntil = (s: HubState, id: string): number | undefined =>
+  Object.hasOwn(s.bans, id) ? s.bans[id] : undefined;
+function setBan(s: HubState, id: string, until: number): number {
+  Object.defineProperty(s.bans, id, {
+    value: until,
+    enumerable: true,
+    writable: true,
+    configurable: true,
+  });
+  return until;
+}
+
 export const newState = (now: number): HubState => ({ day: dayOf(now), used: 0, bans: {} });
 
 export function charge(s: HubState, n: number, now: number): void {
@@ -72,7 +85,7 @@ export function admit(
   l: Limits,
 ): Admit {
   if (!isPeerId(id) || !isPublicKey(pk)) return { ok: false, kind: 'bad' };
-  const until = s.bans[id];
+  const until = banUntil(s, id);
   if (until !== undefined && until > now) return { ok: false, kind: 'kicked', ms: until - now };
   if (exhausted(s, l)) return { ok: false, kind: 'budget', ms: msToReset(now) };
   const same = conns.find((c) => c.id === id);
@@ -96,7 +109,7 @@ export function onFrame(
   c.frames.push(now);
   if (c.frames.length > l.maxFramesPerMin) {
     const ms = l.abuseBanMin * MS_MIN;
-    s.bans[c.id] = now + ms;
+    setBan(s, c.id, now + ms);
     return { close: 'kicked', ms, ban: true };
   }
   const deliver = new Map<string, PubWire[]>();
@@ -112,11 +125,11 @@ export function onFrame(
 }
 
 export function kick(s: HubState, id: string, hours: number, now: number): number {
-  return (s.bans[id] = now + hours * MS_HOUR);
+  return setBan(s, id, now + hours * MS_HOUR);
 }
 
 export function unban(s: HubState, id: string): boolean {
-  if (!(id in s.bans)) return false;
+  if (!Object.hasOwn(s.bans, id)) return false;
   delete s.bans[id];
   return true;
 }

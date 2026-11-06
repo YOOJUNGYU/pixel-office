@@ -123,6 +123,32 @@ describe('bans', () => {
   });
 });
 
+describe('bans with prototype-like ids', () => {
+  it('kick + admit __proto__', () => {
+    const s = newState(NOW);
+    kick(s, '__proto__', 1, NOW);
+    expect(admit(s, [], '__proto__', PK, NOW, L)).toMatchObject({ ok: false, kind: 'kicked' });
+  });
+  it('abuse ban sticks', () => {
+    const s = newState(NOW);
+    const c = conn('__proto__');
+    for (let i = 0; i <= 120; i++) onFrame(s, c, '{}', [c], NOW, L);
+    expect(admit(s, [], '__proto__', PK, NOW, L)).toMatchObject({ ok: false, kind: 'kicked' });
+  });
+  it('unban of inherited names is false', () => {
+    const s = newState(NOW);
+    for (const id of ['constructor', 'toString', '__proto__']) expect(unban(s, id)).toBe(false);
+  });
+  it('survives a JSON round trip', () => {
+    const s = newState(NOW);
+    kick(s, '__proto__', 1, NOW);
+    const r = JSON.parse(JSON.stringify(s)) as typeof s;
+    expect(admit(r, [], '__proto__', PK, NOW, L)).toMatchObject({ ok: false, kind: 'kicked' });
+    pruneBans(r, NOW + 2 * 3_600_000);
+    expect(admit(r, [], '__proto__', PK, NOW + 2 * 3_600_000, L)).toEqual({ ok: true });
+  });
+});
+
 describe('authorized', () => {
   it('checks the bearer token', () => {
     expect(authorized('Bearer x', 'x')).toBe(true);
