@@ -26,6 +26,8 @@ export type ServerMessage =
   | UpdateAvailable
   | UpdateStatus
   | AutostartState
+  | RelayState
+  | RelayKickResult
   | OfficesState
   | OfficeCreated
   | OfficeCode
@@ -59,7 +61,9 @@ export type ClientMessage =
   | SetNotifications
   | OpenTranscript
   | LoadTranscriptBefore
-  | CloseTranscript;
+  | CloseTranscript
+  | SetRelayAdminToken
+  | RelayKick;
 
 export interface LayoutLoaded {
   type: 'layoutLoaded';
@@ -158,6 +162,7 @@ export interface SettingsLoaded {
   notifyPresence: boolean;
   notifyAgents: boolean;
   notifyChat: boolean;
+  relayAdmin: boolean;
 }
 
 export interface ExternalAssetDirectoriesUpdated {
@@ -259,6 +264,7 @@ export interface OfficePersonMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
+  net?: string;
   self: boolean;
   chat?: ChatMessage;
   avatar?: AvatarMessage;
@@ -293,6 +299,7 @@ export interface DirectoryPersonMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
+  net?: string;
   self: boolean;
 }
 
@@ -339,6 +346,23 @@ export interface AutostartState {
   enabled: boolean;
   supported: boolean;
 }
+
+export interface RelayState {
+  type: 'relayState';
+  state: RelayStateKind;
+  retryInMs?: number;
+}
+
+export type RelayStateKind =
+  'off' | 'connecting' | 'connected' | 'full' | 'budget' | 'kicked' | 'error';
+
+export interface RelayKickResult {
+  type: 'relayKickResult';
+  ok: boolean;
+  reason?: RelayKickReason;
+}
+
+export type RelayKickReason = 'auth' | 'network' | 'bad' | 'noToken';
 
 export interface OfficesState {
   type: 'officesState';
@@ -545,4 +569,14 @@ export interface LoadTranscriptBefore {
 export interface CloseTranscript {
   type: 'closeTranscript';
   id?: string;
+}
+
+export interface SetRelayAdminToken {
+  type: 'setRelayAdminToken';
+  token: string;
+}
+
+export interface RelayKick {
+  type: 'relayKick';
+  peerId: string;
 }

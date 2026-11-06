@@ -12,6 +12,8 @@ export interface AdapterSettings {
   notifyAgents: boolean;
   /** OS notification for a new chat bubble in the office on screen. */
   notifyChat: boolean;
+  /** Relay admin token (kick from the internet public office); '' = none. Never sent to a page. */
+  relayAdminToken: string;
 }
 
 /** All keys in AdapterSettings. Used by FileStateAdapter to map `pixel-agents.foo` → `foo`. */
@@ -20,6 +22,7 @@ export const ADAPTER_SETTING_KEYS = [
   'notifyPresence',
   'notifyAgents',
   'notifyChat',
+  'relayAdminToken',
 ] as const;
 
 export type AdapterSettingKey = (typeof ADAPTER_SETTING_KEYS)[number];
@@ -34,6 +37,7 @@ const DEFAULT_ADAPTER_SETTINGS: AdapterSettings = {
   notifyPresence: true,
   notifyAgents: true,
   notifyChat: true,
+  relayAdminToken: '',
 };
 
 function getConfigFilePath(): string {
@@ -58,6 +62,10 @@ function parseAdapterSettings(raw: unknown): AdapterSettings {
         : DEFAULT_ADAPTER_SETTINGS.notifyAgents,
     notifyChat:
       typeof obj.notifyChat === 'boolean' ? obj.notifyChat : DEFAULT_ADAPTER_SETTINGS.notifyChat,
+    relayAdminToken:
+      typeof obj.relayAdminToken === 'string'
+        ? obj.relayAdminToken
+        : DEFAULT_ADAPTER_SETTINGS.relayAdminToken,
   };
 }
 
@@ -102,7 +110,8 @@ export function writeConfig(config: PixelAgentsConfig): boolean {
     }
     const json = JSON.stringify(config, null, 2);
     const tmpPath = filePath + '.tmp';
-    fs.writeFileSync(tmpPath, json, 'utf-8');
+    // 0600: it may hold the relay admin token.
+    fs.writeFileSync(tmpPath, json, { encoding: 'utf-8', mode: 0o600 });
     fs.renameSync(tmpPath, filePath);
     return true;
   } catch (err) {

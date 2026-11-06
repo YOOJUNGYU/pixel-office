@@ -1,10 +1,12 @@
-import type { ClientMessage, OfficeErrorReason } from '../../core/src/messages.js';
+import type { ClientMessage, OfficeErrorReason, RelayKickReason } from '../../core/src/messages.js';
+import { isPeerId } from '../../core/src/relay.js';
 import type { LoadedAssets, LoadedCharacterSprites, LoadedPetSprites } from './assetLoader.js';
 import { readConfig, writeConfig } from './configPersistence.js';
 import type { FileStateAdapter } from './fileStateAdapter.js';
 import type { AutostartState } from './lan/autostart.js';
 import type { LanService } from './lan/office.js';
 import { validateProfileUpdate } from './lan/profile.js';
+import type { RelayStatus } from './lan/relay.js';
 import type { TranscriptService } from './lan/transcript.js';
 import type { Updater } from './lan/updater.js';
 import { APP_VERSION } from './lan/updater.js';
@@ -70,6 +72,16 @@ export interface ClientMessageContext {
   transcripts?: TranscriptService;
   /** The socket itself: a transcript subscription belongs to it (falls back to `send`). */
   client?: object;
+  /** Internet public office relay (cli.ts). Absent = no relay ('off'). */
+  relay?: {
+    status(): RelayStatus;
+    kick(id: string): Promise<{ ok: boolean; reason?: RelayKickReason }>;
+  };
+}
+
+/** relayState for the page (handshake and every change). */
+export function relayStateMessage(s: RelayStatus) {
+  return { type: 'relayState', ...s } as const;
 }
 
 // ── Setting keys ──
@@ -77,6 +89,8 @@ const KEY_ALWAYS_SHOW_LABELS = 'pixel-agents.alwaysShowLabels';
 const KEY_NOTIFY_PRESENCE = 'pixel-agents.notifyPresence';
 const KEY_NOTIFY_AGENTS = 'pixel-agents.notifyAgents';
 const KEY_NOTIFY_CHAT = 'pixel-agents.notifyChat';
+const KEY_RELAY_ADMIN_TOKEN = 'pixel-agents.relayAdminToken';
+const RELAY_ADMIN_TOKEN_MAX = 256;
 
 /**
  * Handle an incoming ClientMessage from a WebSocket client. The server is the
@@ -218,6 +232,24 @@ export function handleClientMessage(
     case 'quitApp':
       ctx.onQuitApp?.();
       break;
+
+    // The token stays in config.json: the page only learns whether one is set.
+    case 'setRelayAdminToken':
+      if (typeof msg.token === 'string' && msg.token.length <= RELAY_ADMIN_TOKEN_MAX)
+        adapter.setSetting(KEY_RELAY_ADMIN_TOKEN, msg.token);
+      send(settingsSnapshot(ctx));
+      break;
+
+    // The kick request goes from this server to the relay, never from the browser.
+    case 'relayKick': {
+      const result = (r: { ok: boolean; reason?: RelayKickReason }) =>
+        send({ type: 'relayKickResult', ...r });
+      const token = adapter.getSetting(KEY_RELAY_ADMIN_TOKEN, '');
+      if (!token) result({ ok: false, reason: 'noToken' });
+      else if (!isPeerId(msg.peerId) || !ctx.relay) result({ ok: false, reason: 'bad' });
+      else void ctx.relay.kick(msg.peerId).then(result);
+      break;
+    }
 
     // This PC's agent transcript: answers go to this socket only (TranscriptService).
     case 'openTranscript':
@@ -406,6 +438,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
 
   // 5. Start-at-login checkbox and update banner: this PC's browser only.
   if (ctx.privileged && ctx.autostart) send(autostartMessage(ctx.autostart.get()));
+  if (ctx.privileged) send(relayStateMessage(ctx.relay?.status() ?? { state: 'off' }));
   const update = ctx.privileged ? ctx.updater?.availableMessage() : null;
   if (update) {
     send(update);
@@ -427,6 +460,7 @@ function settingsSnapshot(ctx: ClientMessageContext) {
     notifyPresence: adapter.getSetting(KEY_NOTIFY_PRESENCE, true),
     notifyAgents: adapter.getSetting(KEY_NOTIFY_AGENTS, true),
     notifyChat: adapter.getSetting(KEY_NOTIFY_CHAT, true),
+    relayAdmin: adapter.getSetting(KEY_RELAY_ADMIN_TOKEN, '') !== '',
   } as const;
 }
 
@@ -454,6 +488,8 @@ const KNOWN_CLIENT_TYPES: ReadonlySet<string> = new Set<ClientMessage['type']>([
   'leaveOffice',
   'setActiveView',
   'getOfficeCode',
+  'setRelayAdminToken',
+  'relayKick',
 ]);
 const UNKNOWN_REFUSAL_KEY = 'unknown';
 
@@ -496,6 +532,9 @@ function refuseReadOnly(
       return;
     case 'saveProfile':
       if (ctx.lan) send(profileMessage(ctx.lan, false));
+      return;
+    case 'setRelayAdminToken':
+      send(settingsSnapshot(ctx));
       return;
   }
 }

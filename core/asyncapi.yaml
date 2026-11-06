@@ -96,6 +96,9 @@ components:
         - $ref: '#/components/schemas/UpdateStatus'
         # Start at login (loopback browser only)
         - $ref: '#/components/schemas/AutostartState'
+        # Internet public office relay (loopback browser only)
+        - $ref: '#/components/schemas/RelayState'
+        - $ref: '#/components/schemas/RelayKickResult'
         # Offices (loopback browser only)
         - $ref: '#/components/schemas/OfficesState'
         - $ref: '#/components/schemas/OfficeCreated'
@@ -134,6 +137,8 @@ components:
         - $ref: '#/components/schemas/OpenTranscript'
         - $ref: '#/components/schemas/LoadTranscriptBefore'
         - $ref: '#/components/schemas/CloseTranscript'
+        - $ref: '#/components/schemas/SetRelayAdminToken'
+        - $ref: '#/components/schemas/RelayKick'
       discriminator: type
 
     # ── Server message variants ────────────────────────────────────
@@ -340,6 +345,7 @@ components:
         - notifyPresence
         - notifyAgents
         - notifyChat
+        - relayAdmin
       properties:
         type:
           const: settingsLoaded
@@ -358,6 +364,9 @@ components:
         notifyChat:
           type: boolean
           description: OS notification, once per bubble, for a new chat of someone in the office on screen (default true).
+        relayAdmin:
+          type: boolean
+          description: Whether a relay admin token is set (config.json); the token itself is never sent.
 
     ExternalAssetDirectoriesUpdated:
       description: External asset directory list changed (after add/remove).
@@ -425,6 +434,45 @@ components:
           type: boolean
         supported:
           type: boolean
+
+    RelayState:
+      description: >-
+        The internet public office connection (relay). Loopback browsers only:
+        on webviewReady (after autostartState) and on every change. `off` = not
+        in the public office or no relay configured.
+      type: object
+      additionalProperties: false
+      required: [type, state]
+      properties:
+        type:
+          const: relayState
+        state:
+          $ref: '#/components/schemas/RelayStateKind'
+        retryInMs:
+          type: integer
+          minimum: 0
+          description: When the next connection attempt is due.
+
+    RelayKickResult:
+      description: Answer to relayKick, to the requesting socket only.
+      type: object
+      additionalProperties: false
+      required: [type, ok]
+      properties:
+        type:
+          const: relayKickResult
+        ok:
+          type: boolean
+        reason:
+          $ref: '#/components/schemas/RelayKickReason'
+
+    RelayStateKind:
+      type: string
+      enum: ['off', connecting, connected, full, budget, kicked, error]
+
+    RelayKickReason:
+      type: string
+      enum: [auth, network, bad, noToken]
 
     OfficesState:
       description: >-
@@ -798,6 +846,12 @@ components:
           $ref: '#/components/schemas/PetId'
         tagColors:
           $ref: '#/components/schemas/TagColors'
+        net:
+          type: string
+          pattern: '^([0-9a-f]{8}|lan)$'
+          description: >-
+            Public office only: this person's network, the relay's 8-hex tag or
+            `lan` (heard over UDP on this PC's LAN). Absent = unknown.
         self:
           type: boolean
 
@@ -827,6 +881,12 @@ components:
           $ref: '#/components/schemas/PetId'
         tagColors:
           $ref: '#/components/schemas/TagColors'
+        net:
+          type: string
+          pattern: '^([0-9a-f]{8}|lan)$'
+          description: >-
+            Public office only: this person's network, the relay's 8-hex tag or
+            `lan` (heard over UDP on this PC's LAN). Absent = unknown.
         self:
           type: boolean
           description: This server's own PC.
@@ -1315,6 +1375,35 @@ components:
       properties:
         type:
           const: quitApp
+
+    SetRelayAdminToken:
+      description: >-
+        Store the relay admin token in config.json (loopback browser only; ''
+        = delete). Answered with settingsLoaded, which only says whether one is set.
+      type: object
+      additionalProperties: false
+      required: [type, token]
+      properties:
+        type:
+          const: setRelayAdminToken
+        token:
+          type: string
+          maxLength: 256
+
+    RelayKick:
+      description: >-
+        Ask the relay to drop a peer from the internet public office (loopback
+        browser only; needs the admin token). The server makes the request.
+        Answered with relayKickResult.
+      type: object
+      additionalProperties: false
+      required: [type, peerId]
+      properties:
+        type:
+          const: relayKick
+        peerId:
+          type: string
+          pattern: '^[A-Za-z0-9_.-]{1,64}$'
 
     CreateOffice:
       description: >-

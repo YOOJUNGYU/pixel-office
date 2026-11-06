@@ -63,6 +63,8 @@ export interface HttpServerOptions {
   transcripts?: TranscriptService;
   /** `GET /api/health?waiting`: a page showing "server is off" is polling (it reloads by itself). */
   onWaitingPage?: () => void;
+  /** Internet public office relay: status for the handshake, admin kick. */
+  relay?: ClientMessageContext['relay'];
 }
 
 /** Result of createHttpServer(). */
@@ -71,6 +73,8 @@ export interface HttpServerHandle {
   port: number;
   /** Close every UI socket with this code (app quit). */
   closeClients: (code: number) => void;
+  /** Send to every UI socket (not the transcript popouts). */
+  broadcast: (msg: Record<string, unknown>) => void;
 }
 
 /** The parts of a request isLoopback reads (a FastifyRequest satisfies it). */
@@ -276,6 +280,7 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
           onQuitApp: options.onQuitApp,
           transcripts: options.transcripts,
           client: socket,
+          relay: options.relay,
         });
       } catch {
         // Malformed JSON, ignore
@@ -315,6 +320,9 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     port,
     closeClients: (code) => {
       for (const c of [...clients, ...popouts]) c.close(code, 'quit');
+    },
+    broadcast: (msg) => {
+      for (const c of clients) safeSend(c, msg);
     },
   };
 }

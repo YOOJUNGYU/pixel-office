@@ -18,6 +18,7 @@ import {
   loadAllPets,
 } from './assetReload.js';
 import type { AssetCache, ReloadAssetsSideEffect } from './clientMessageHandler.js';
+import { relayStateMessage } from './clientMessageHandler.js';
 import { readConfig } from './configPersistence.js';
 import {
   LAN_HTTP_HOST,
@@ -38,6 +39,7 @@ import { Notifier } from './lan/notify.js';
 import { checkExisting, LanService } from './lan/office.js';
 import { PeerNet } from './lan/peerNet.js';
 import { KnownPeers, loadProfile } from './lan/profile.js';
+import { Relay, relayKick, relayUrl } from './lan/relay.js';
 import { discoverRoots, Scanner } from './lan/scanner.js';
 import { TranscriptService } from './lan/transcript.js';
 import { startTray, trayCheck } from './lan/tray.js';
@@ -186,6 +188,22 @@ export async function main(boot = true): Promise<void> {
   const pins = new KnownPeers();
   const udpPort = Number(process.env[UDP_PORT_ENV]) || LAN_UDP_PORT;
   const udpTargets = process.env[UDP_TARGETS_ENV]?.split(',').filter(Boolean);
+  const noPeers = process.env[NO_PEERS_ENV] === '1';
+  // Internet public office: none in tests (NO_PEERS) or without a relay URL (status 'off').
+  // Its callbacks reach peerNet, created right below and before anything can connect.
+  const url = noPeers ? '' : relayUrl(process.env);
+  const relay = url
+    ? new Relay({
+        url,
+        id: lan.profile.peerId,
+        pk: lan.profile.identity.publicKey,
+        version: APP_VERSION,
+        onDown: (f) => peerNet.relayDown(f),
+        onOpen: () => peerNet.relayOpened(),
+        onClosed: () => peerNet.relayClosed(),
+        onStatus: (s) => server.broadcast(relayStateMessage(s)),
+      })
+    : null;
   const peerNet = new PeerNet({
     port: udpPort,
     ...(udpTargets?.length && { targets: () => udpTargets }),
@@ -201,16 +219,19 @@ export async function main(boot = true): Promise<void> {
       receive: (channel, rev, text) => lan.receiveLayout(channel, rev, text),
     },
     pins,
+    ...(relay && { relay }),
   });
-  try {
-    if (process.env[NO_PEERS_ENV] !== '1') {
+  if (!noPeers) {
+    try {
       await peerNet.start();
-      lan.net = peerNet;
+    } catch (err) {
+      // No UDP: PCs on this LAN are not seen, but the internet public office (relay) still works.
+      peerNet.runWithoutUdp();
+      console.warn(
+        `[Pixel Office] UDP ${udpPort.toString()} 포트를 열 수 없어 이 LAN 의 다른 PC 는 보이지 않습니다 (인터넷 공개 오피스는 동작합니다): ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
-  } catch (err) {
-    console.warn(
-      `[Pixel Office] UDP ${udpPort.toString()} 포트를 열 수 없어 다른 PC 와 연결하지 않습니다: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    lan.net = peerNet;
   }
 
   let shuttingDown = false;
@@ -237,6 +258,7 @@ export async function main(boot = true): Promise<void> {
     scanner.stop();
     transcripts.stop();
     peerNet.stop();
+    relay?.stop();
     pins.flush();
     updater.stop();
     await server.stop(quit);
@@ -306,6 +328,12 @@ export async function main(boot = true): Promise<void> {
       updater,
       autostart: { get: () => getAutostart(), set: (on) => setAutostart(on) },
       transcripts,
+      relay: relay
+        ? {
+            status: () => relay.status,
+            kick: (id) => relayKick(url, readConfig().standalone.relayAdminToken, id),
+          }
+        : undefined,
     });
     reportListening();
     updater.start();

@@ -94,6 +94,8 @@ export class LanService {
     sendNow(): void;
     teamName(tag: string): string | undefined;
     directory(): NetDirectory;
+    /** A person's network ('lan' or the relay's 8-hex tag); public office only. */
+    netOf?(id: string): string | undefined;
   } = {
     peers: () => [],
     sendNow: () => {},
@@ -286,14 +288,17 @@ export class LanService {
       { peer: this.self(), chat: this.ownChat(view), avatar: this.ownAvatar(view) },
       ...this.peersIn(view),
     ];
+    const pub = view === PUBLIC_VIEW;
     return rows.map(({ peer, chat, avatar }, i) => ({
-      ...this.person(peer, i === 0),
+      ...this.person(peer, i === 0, pub),
       ...(chat && { chat: toChatMessage(chat) }),
       ...(avatar && { avatar: { ...avatar } }),
     }));
   }
 
-  private person(p: PeerInfo, self: boolean): DirectoryPersonMessage {
+  /** `pub` = a public office row: carries the person's network when known. */
+  private person(p: PeerInfo, self: boolean, pub = false): DirectoryPersonMessage {
+    const net = pub ? this.net.netOf?.(p.id) : undefined;
     return {
       peerId: p.id,
       account: p.account,
@@ -303,6 +308,7 @@ export class LanService {
       hueShift: p.hueShift,
       ...(p.pet && { pet: p.pet }),
       ...(p.tagColors && { tagColors: p.tagColors }),
+      ...(net && { net }),
       self,
     };
   }
@@ -315,17 +321,19 @@ export class LanService {
     const tag = this.profile.offices[0]?.tag;
     const mine = (area: 'public' | 'team' | 'personal') => {
       const here = this.personal ? 'personal' : tag ? 'team' : 'public';
-      return here === area ? [this.person(this.self(), true)] : [];
+      return here === area ? [this.person(this.self(), true, area === 'public')] : [];
     };
-    const list = (own: DirectoryPersonMessage[], peers: PeerInfo[]) => {
+    const list = (own: DirectoryPersonMessage[], peers: PeerInfo[], pub = false) => {
       const seen = new Set<string>([...own.map((p) => p.peerId), me]);
       return [
         ...own,
-        ...peers.filter((p) => !seen.has(p.id) && seen.add(p.id)).map((p) => this.person(p, false)),
+        ...peers
+          .filter((p) => !seen.has(p.id) && seen.add(p.id))
+          .map((p) => this.person(p, false, pub)),
       ];
     };
     return {
-      public: list(mine('public'), net.public),
+      public: list(mine('public'), net.public, true),
       teams: this.officeList().map(({ tag: t, name }) => ({
         tag: t,
         name,

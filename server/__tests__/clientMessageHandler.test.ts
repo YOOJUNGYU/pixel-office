@@ -91,7 +91,7 @@ describe('clientMessageHandler', () => {
   }
 
   describe('webviewReady', () => {
-    it('sends access, assets, settings, then the layout last', () => {
+    it('sends access, assets, settings, the layout, then relayState', () => {
       send({ type: 'webviewReady' }, ctx(true, FULL_CACHE));
       expect(sent.map((m) => m.type)).toEqual([
         'officeAccess',
@@ -100,9 +100,10 @@ describe('clientMessageHandler', () => {
         'carpetTilesLoaded',
         'settingsLoaded',
         'layoutLoaded',
+        'relayState',
       ]);
       expect(sent[0]).toEqual({ type: 'officeAccess', readOnly: false, version: '0.0.0' });
-      expect(sent.at(-1)).toEqual({
+      expect(sent.find((m) => m.type === 'layoutLoaded')).toEqual({
         type: 'layoutLoaded',
         layout: { version: 1, marker: 'default' },
       });
@@ -132,7 +133,7 @@ describe('clientMessageHandler', () => {
         JSON.stringify({ ...GRID, marker: 'old-file' }),
       );
       send({ type: 'webviewReady' }, ctx(true, FULL_CACHE));
-      expect(sent.at(-1)).toEqual({
+      expect(sent.find((m) => m.type === 'layoutLoaded')).toEqual({
         type: 'layoutLoaded',
         layout: { version: 1, marker: 'default' },
       });

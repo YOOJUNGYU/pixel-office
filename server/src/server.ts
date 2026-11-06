@@ -25,6 +25,7 @@ import type { Updater } from './lan/updater.js';
 export class PixelAgentsServer {
   private app: FastifyInstance | null = null;
   private closeClients: ((code: number) => void) | null = null;
+  private sendAll: ((msg: Record<string, unknown>) => void) | null = null;
 
   /** Start listening. Resolves with the bound port. */
   async start(options?: {
@@ -42,8 +43,9 @@ export class PixelAgentsServer {
     autostart?: ClientMessageContext['autostart'];
     onWaitingPage?: () => void;
     transcripts?: TranscriptService;
+    relay?: ClientMessageContext['relay'];
   }): Promise<{ port: number }> {
-    const { app, port, closeClients } = await createHttpServer({
+    const { app, port, closeClients, broadcast } = await createHttpServer({
       host: options?.host,
       port: options?.port,
       adapter: options?.adapter ?? new FileStateAdapter(),
@@ -58,10 +60,17 @@ export class PixelAgentsServer {
       autostart: options?.autostart,
       onWaitingPage: options?.onWaitingPage,
       transcripts: options?.transcripts,
+      relay: options?.relay,
     });
     this.app = app;
     this.closeClients = closeClients;
+    this.sendAll = broadcast;
     return { port };
+  }
+
+  /** Send to every UI socket; a no-op before start(). */
+  broadcast(msg: Record<string, unknown>): void {
+    this.sendAll?.(msg);
   }
 
   /** Stop the server. `quit`: the user quit the app — pages get WS_CLOSE_APP_QUIT and stop reconnecting. */
