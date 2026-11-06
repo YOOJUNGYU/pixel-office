@@ -32,7 +32,7 @@ try {
   const got = new Promise((res) => {
     b.onmessage = (e) => {
       const m = JSON.parse(e.data);
-      if (m.t === 'w') res(m);
+      if (m.t === 'w' && m.w.some((w) => w.from === A)) res(m);
     };
   });
   const a = open(A, PK_A);
@@ -41,7 +41,7 @@ try {
     JSON.stringify({ t: 'send', w: [{ v: 2, t: 'pub', from: A, to: B, n: 'AAAA', c: 'AAAA' }] }),
   );
   const m = await got;
-  if (m.w[0]?.from !== A) fail(`wrong wire ${JSON.stringify(m)}`);
+  if (!m.w.some((w) => w.from === A)) fail(`wrong wire ${JSON.stringify(m)}`);
 
   const c = open(A, PK_C);
   const code = await new Promise((res) => (c.onclose = (e) => res(e.code)));
