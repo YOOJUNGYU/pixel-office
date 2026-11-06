@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { createServer as createNetServer } from 'node:net';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebSocketServer } from 'ws';
@@ -11,7 +12,14 @@ import {
   RELAY_RETRY_MIN_MS,
   RELAY_URL,
 } from '../../src/constants.js';
-import { Relay, relayKick, type RelayStatus, relayUrl, retryAfter } from '../../src/lan/relay.js';
+import {
+  Relay,
+  relayKick,
+  type RelayOptions,
+  type RelayStatus,
+  relayUrl,
+  retryAfter,
+} from '../../src/lan/relay.js';
 
 const PK = 'A'.repeat(42) + 'A=';
 const until = async (f: () => boolean): Promise<void> => {
@@ -40,7 +48,7 @@ async function fake(onConn?: (ws: import('ws').WebSocket) => void) {
   return { wss, msgs, urls, url: `ws://127.0.0.1:${(wss.address() as AddressInfo).port}/ws` };
 }
 
-function mk(url: string, now = () => Date.now()) {
+function mk(url: string, now = () => Date.now(), extra: Partial<RelayOptions> = {}) {
   const ev = { down: [] as unknown[], open: 0, closed: 0, status: [] as RelayStatus[] };
   const r = new Relay({
     url,
@@ -53,6 +61,7 @@ function mk(url: string, now = () => Date.now()) {
     onStatus: (s) => ev.status.push(s),
     now,
     rand: () => 0,
+    ...extra,
   });
   cleanup.push(() => r.stop());
   return { r, ev };
@@ -119,9 +128,7 @@ describe('Relay', () => {
       r.want(true);
       await until(() => r.status.state === 'error' && r.status.retryInMs !== undefined);
       seen.push(r.status.retryInMs ?? 0);
-      r.want(true); // too early: no new attempt
       t += r.status.retryInMs ?? 0;
-      // wait for status to be reachable again
     }
     expect(seen).toEqual([5000, 10_000, 20_000]);
     const errs = log.mock.calls.filter((c) => String(c[0]).includes(': error'));
@@ -136,6 +143,65 @@ describe('Relay', () => {
     r.want(false);
     expect(r.status.state).toBe('off');
     await until(() => f.wss.clients.size === 0);
+  });
+});
+
+describe('Relay liveness', () => {
+  it('drops a half-open socket (no pong)', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const f = await fake(() => {}); // swallows pings, never answers
+    const { r, ev } = mk(f.url, undefined, { pingMs: 20, pongTimeoutMs: 60 });
+    r.want(true);
+    await until(() => r.connected());
+    await until(() => r.status.state === 'error');
+    expect(ev.closed).toBe(1);
+    expect(r.connected()).toBe(false);
+    expect(r.status.retryInMs).toBe(RELAY_RETRY_MIN_MS);
+  });
+
+  it('pong keeps it alive and is not forwarded', async () => {
+    const f = await fake((ws) => ws.on('message', () => ws.send('pong')));
+    const { r, ev } = mk(f.url, undefined, { pingMs: 20, pongTimeoutMs: 80 });
+    r.want(true);
+    await until(() => r.connected());
+    await new Promise((x) => setTimeout(x, 250));
+    expect(r.connected()).toBe(true);
+    expect(ev.down.length).toBe(0);
+  });
+
+  it('abandons a blackholed connect and retries after backoff', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const socks: import('node:net').Socket[] = [];
+    const srv = createNetServer((s) => socks.push(s)); // accepts, never answers
+    await new Promise<void>((r) => srv.listen(0, '127.0.0.1', r));
+    cleanup.push(() => {
+      socks.forEach((s) => s.destroy());
+      srv.close();
+    });
+    let t = 1000;
+    const url = `ws://127.0.0.1:${(srv.address() as AddressInfo).port}/ws`;
+    const { r, ev } = mk(url, () => t, { connectTimeoutMs: 50 });
+    r.want(true);
+    expect(r.status.state).toBe('connecting');
+    await until(() => r.status.state === 'error');
+    expect(ev.closed).toBe(0);
+    expect(r.status.retryInMs).toBe(RELAY_RETRY_MIN_MS);
+    r.want(true);
+    expect(socks.length).toBe(1);
+    t += RELAY_RETRY_MIN_MS;
+    r.want(true);
+    // second attempt also blackholed: backoff doubled
+    await until(() => r.status.retryInMs === RELAY_RETRY_MIN_MS * 2);
+  });
+
+  it('connected() is false inside onClosed on want(false)', async () => {
+    const f = await fake();
+    let inside: boolean | null = null;
+    const { r } = mk(f.url, undefined, { onClosed: () => (inside = r.connected()) });
+    r.want(true);
+    await until(() => r.connected());
+    r.want(false);
+    expect(inside).toBe(false);
   });
 });
 

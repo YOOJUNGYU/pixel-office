@@ -276,3 +276,7 @@ export const RELAY_RETRY_FULL_MS = 5 * 60_000;
 export const RELAY_RETRY_JITTER_MS = 10 * 60_000;
 /** Text 'ping' (the relay answers 'pong' without waking). */
 export const RELAY_PING_MS = 30_000;
+/** No message (pong included) for this long on an open relay socket = half-open: drop it. */
+export const RELAY_PONG_TIMEOUT_MS = 2 * RELAY_PING_MS;
+/** A socket not open after this long is abandoned (blackholed host). */
+export const RELAY_CONNECT_TIMEOUT_MS = 15_000;

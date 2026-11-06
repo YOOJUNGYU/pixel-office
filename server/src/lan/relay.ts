@@ -8,7 +8,9 @@ import {
   type RelayDown,
 } from '../../../core/src/relay.js';
 import {
+  RELAY_CONNECT_TIMEOUT_MS,
   RELAY_PING_MS,
+  RELAY_PONG_TIMEOUT_MS,
   RELAY_RETRY_FULL_MS,
   RELAY_RETRY_JITTER_MS,
   RELAY_RETRY_MAX_MS,
@@ -70,6 +72,10 @@ export interface RelayOptions {
   onStatus(s: RelayStatus): void;
   now?: () => number;
   rand?: () => number;
+  /** Tests only: shorter timers. */
+  pingMs?: number;
+  pongTimeoutMs?: number;
+  connectTimeoutMs?: number;
 }
 
 export class Relay {
@@ -77,6 +83,9 @@ export class Relay {
   private attempt = 0;
   private nextAt = 0;
   private ping: ReturnType<typeof setInterval> | null = null;
+  private connTimer: ReturnType<typeof setTimeout> | null = null;
+  private opened = false;
+  private lastRx = 0;
   private st: RelayStatus = { state: 'off' };
   private readonly now: () => number;
   private readonly rand: () => number;
@@ -102,10 +111,12 @@ export class Relay {
 
   want(on: boolean): void {
     if (!on) {
+      const wasOpen = this.connected();
       this.close();
       this.attempt = 0;
       this.nextAt = 0;
       if (this.st.state !== 'off') this.set({ state: 'off' });
+      if (wasOpen) this.o.onClosed();
       return;
     }
     if (this.ws || !this.o.url || this.now() < this.nextAt) return;
@@ -129,7 +140,7 @@ export class Relay {
     const u = new URL(this.o.url);
     u.pathname = u.pathname === '/' ? RELAY_PATH : u.pathname;
     u.search = q;
-    let opened = false;
+    this.opened = false;
     let ws: WebSocket;
     try {
       ws = new WebSocket(u.toString());
@@ -138,30 +149,41 @@ export class Relay {
       return;
     }
     this.ws = ws;
+    this.connTimer = setTimeout(
+      () => this.drop(ws),
+      this.o.connectTimeoutMs ?? RELAY_CONNECT_TIMEOUT_MS,
+    );
+    this.connTimer.unref();
     // stay 'error' while retrying: one log line per outage
     if (this.st.state !== 'error') this.set({ state: 'connecting' });
     ws.addEventListener('open', () => {
       if (this.ws !== ws) return;
-      opened = true;
+      this.opened = true;
+      this.clearConnTimer();
+      this.lastRx = this.now();
       this.attempt = 0;
       this.set({ state: 'connected' });
       this.ping = setInterval(() => {
-        if (ws.readyState === 1) ws.send('ping');
-      }, RELAY_PING_MS);
+        if (this.now() - this.lastRx >= (this.o.pongTimeoutMs ?? RELAY_PONG_TIMEOUT_MS)) {
+          this.drop(ws);
+        } else if (ws.readyState === 1) ws.send('ping');
+      }, this.o.pingMs ?? RELAY_PING_MS);
       this.ping.unref();
       this.o.onOpen();
     });
     ws.addEventListener('message', (e) => {
       if (this.ws !== ws || typeof e.data !== 'string') return;
+      this.lastRx = this.now();
+      if (e.data === 'pong') return;
       const f = parseDown(e.data);
       if (f) this.o.onDown(f);
     });
     ws.addEventListener('close', (e) => {
       if (this.ws !== ws) return;
       this.ws = null;
-      this.clearPing();
+      this.clearTimers();
       const { kind, ms } = parseCloseReason(e.code, e.reason);
-      this.fail(kind, ms, opened);
+      this.fail(kind, ms, this.opened);
     });
     ws.addEventListener('error', () => {
       // 'close' follows
@@ -178,23 +200,40 @@ export class Relay {
     if (opened) this.o.onClosed();
   }
 
-  private clearPing(): void {
-    if (this.ping) clearInterval(this.ping);
-    this.ping = null;
-  }
-
-  private close(): void {
-    const ws = this.ws;
+  /** Half-open or blackholed socket: close it and fail like a network error. */
+  private drop(ws: WebSocket): void {
+    if (this.ws !== ws) return;
     this.ws = null;
-    this.clearPing();
-    if (!ws) return;
-    const wasOpen = this.st.state === 'connected';
+    this.clearTimers();
     try {
       ws.close();
     } catch {
       // already closed
     }
-    if (wasOpen) this.o.onClosed();
+    this.fail('other', undefined, this.opened);
+  }
+
+  private clearConnTimer(): void {
+    if (this.connTimer) clearTimeout(this.connTimer);
+    this.connTimer = null;
+  }
+
+  private clearTimers(): void {
+    if (this.ping) clearInterval(this.ping);
+    this.ping = null;
+    this.clearConnTimer();
+  }
+
+  private close(): void {
+    const ws = this.ws;
+    this.ws = null;
+    this.clearTimers();
+    if (!ws) return;
+    try {
+      ws.close();
+    } catch {
+      // already closed
+    }
   }
 }
 
