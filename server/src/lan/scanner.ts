@@ -17,6 +17,7 @@ import {
   TAIL_BYTES,
   TALK_MS,
   TALK_PENDING_MS,
+  VIEW_TITLE_MAX,
 } from '../constants.js';
 import { applyClaudeLine, hostPath } from './claudeParser.js';
 import { applyCodexLine, codexSessionMeta, parseCodexIndex } from './codexParser.js';
@@ -378,7 +379,25 @@ export class Scanner {
     const now = this.now();
     return [...this.files.values()]
       .filter((t) => t.endedAt === null || now - t.endedAt < CHILD_ENDED_HIDE_MS)
-      .flatMap((t) => toViews(t.s, brief, now));
+      .flatMap((t) => {
+        const views = toViews(t.s, brief, now);
+        if (brief) return views;
+        // Local only: this PC's own snapshot shows each agent's session title in its bubble.
+        const title = this.titleOf(t.s);
+        if (title) for (const v of views) v.title = title;
+        return views;
+      });
+  }
+
+  /** The bubble title of a session (its shells share it): main → info().title; a subagent →
+   *  its own task prompt, else its parent's. LOCAL ONLY (views(brief=false) only). */
+  private titleOf(s: SessionState): string {
+    const raw =
+      s.kind === 'main'
+        ? (this.info(s.id)?.title ?? '')
+        : s.local.prompt || (this.info(s.parentId ?? '')?.title ?? '');
+    const cps = Array.from(raw);
+    return cps.length > VIEW_TITLE_MAX ? `${cps.slice(0, VIEW_TITLE_MAX - 1).join('')}…` : raw;
   }
 
   start(): void {

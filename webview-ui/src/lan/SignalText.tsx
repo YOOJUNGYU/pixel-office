@@ -7,15 +7,21 @@ import { ctxText, elapsedText, elapsedWarn, todoText } from './statusSignals.js'
  *  session window's status line). Panel colours, not the bubble's: readable in both themes. */
 export function SignalText({
   a,
+  inBubble = false,
 }: {
   a: Pick<OfficeAgent, 'ageSec' | 'permission' | 'todo' | 'fail' | 'diff' | 'ctx'>;
+  /** Inside the hover bubble: its header already shows the task count and elapsed time,
+   *  and the slate bubble takes a dimmed text instead of the panel's muted colour. */
+  inBubble?: boolean;
 }) {
-  const elapsed = elapsedText(a.ageSec);
-  const todo = todoText(a);
+  const elapsed = inBubble ? '' : elapsedText(a.ageSec);
+  const todo = inBubble ? '' : todoText(a);
   const ctx = ctxText(a);
   if (!elapsed && !todo && !a.fail && !a.diff && !ctx) return null;
   return (
-    <span className="shrink-0 flex items-center gap-4 text-text-muted">
+    <span
+      className={`shrink-0 flex items-center gap-4 ${inBubble ? 'opacity-70' : 'text-text-muted'}`}
+    >
       {todo && <span data-todo={todo}>{t('signal.todo', { n: todo })}</span>}
       {a.diff && (
         <span data-diff className="font-mono" title={t('signal.diff')}>

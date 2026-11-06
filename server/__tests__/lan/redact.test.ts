@@ -89,9 +89,11 @@ describe('status signals and quiet views', () => {
     fail: true,
     diff: { add: 3, del: 1 },
     ctx: { used: 10, window: 100 },
+    title: 'my session',
   } as unknown as AgentView;
   it('redactView keeps them (counts and a flag only) but never the local ctx', () => {
     expect(redactView(v)).not.toHaveProperty('ctx');
+    expect(redactView(v)).not.toHaveProperty('title');
     expect(redactView(v)).toMatchObject({ ageSec: 90, todo: { done: 1, total: 3 }, fail: true });
   });
   it('quietView keeps act, room and waiting, drops the work details', () => {
@@ -103,7 +105,8 @@ describe('status signals and quiet views', () => {
       kind: 'main',
     } as AgentView;
     const q = quietView(w);
-    for (const k of ['ageSec', 'todo', 'fail', 'diff', 'ctx']) expect(q).not.toHaveProperty(k);
+    for (const k of ['ageSec', 'todo', 'fail', 'diff', 'ctx', 'title'])
+      expect(q).not.toHaveProperty(k);
     expect(q).toMatchObject({
       act: 'edit',
       room: 'coding',

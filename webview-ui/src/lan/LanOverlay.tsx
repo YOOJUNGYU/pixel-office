@@ -18,15 +18,14 @@ import {
   FX_MINUS_COLOR,
   FX_PLUS_COLOR,
   FX_SIDE_OFFSET_X,
-  LAN_ACTIVITY_BADGE_GAP_PX,
   LAN_ACTIVITY_LINE_PX,
-  LAN_ACTIVITY_MAX_LINES,
-  LAN_ACTIVITY_MAX_WIDTH_PX,
   LAN_ACTIVITY_PAD_X_PX,
   LAN_ACTIVITY_PAD_Y_PX,
   LAN_ALERT_COLOR,
   LAN_BUBBLE_HEAD_OFFSET,
+  LAN_BUBBLE_HEADER_GAP_PX,
   LAN_BUBBLE_MAX_WIDTH_PX,
+  LAN_BUBBLE_TITLE_FONT,
   LAN_BUBBLE_Z_INDEX,
   LAN_PERMISSION_Z_INDEX,
   LAN_PROVIDER_BADGE_FG,
@@ -54,8 +53,9 @@ import { BUBBLE_PERMISSION_SPRITE } from '../office/sprites/spriteData.js';
 import { type Character, CharacterState } from '../office/types.js';
 import { ActIcon } from './ActIcon.js';
 import { actIcon, type IconId } from './actIcons.js';
+import { agentBubbleLayout } from './agentBubble.js';
 import { badgeColors } from './badgeColors.js';
-import { bubbleScale, clampRows, stackBubbles, wrapLines } from './chat.js';
+import { bubbleScale, stackBubbles } from './chat.js';
 import {
   activityText,
   type AvatarRef,
@@ -102,6 +102,56 @@ function TodoChip({ a }: { a: OfficeAgent }) {
 }
 
 /** The failure drop beside a head: fixed size, so it shows at any zoom. */
+/** A speech bubble's header: provider badge + act icon | session title (centre; this PC's
+ *  agents only) | task count + elapsed. `full` (hover bubble): the title wraps instead of …. */
+function BubbleHeader({
+  a,
+  icon,
+  elapsed,
+  full = false,
+}: {
+  a: OfficeAgent;
+  icon?: IconId;
+  elapsed: string;
+  full?: boolean;
+}) {
+  return (
+    <span
+      className="flex items-center leading-none"
+      style={{ gap: STATUS_PART_GAP_PX, minHeight: LAN_TAG_LINE_PX }}
+    >
+      <span
+        data-provider={a.provider}
+        className="shrink-0 px-2 text-2xs font-bold leading-none"
+        style={{ background: LAN_PROVIDER_COLORS[a.provider], color: LAN_PROVIDER_BADGE_FG }}
+      >
+        {providerName(a)}
+      </span>
+      {icon && <ActIcon icon={icon} size={ACT_ICON_INLINE_PX} color={langColor(a)} />}
+      <span
+        data-title={a.title ?? ''}
+        className={`min-w-0 flex-1 text-center text-2xs opacity-80 ${full ? 'whitespace-normal break-words' : 'overflow-hidden text-ellipsis whitespace-nowrap'}`}
+      >
+        {a.title}
+      </span>
+      {a.todo && <TodoChip a={a} />}
+      {elapsed && (
+        <span
+          data-elapsed={elapsed}
+          className="shrink-0 text-2xs font-bold leading-none"
+          style={{
+            padding: `1px ${STATUS_CHIP_PAD_X_PX}px`,
+            color: elapsedWarn(a) ? 'var(--elapsed-warn-fg)' : undefined,
+            opacity: elapsedWarn(a) ? 1 : 0.7,
+          }}
+        >
+          {elapsed}
+        </span>
+      )}
+    </span>
+  );
+}
+
 /** My agent's context use in its name tag: "29%", filled up to it (warning colour from
  *  CONTEXT_WARN_PCT). Only this PC's agents carry `ctx`. */
 function CtxChip({ a }: { a: OfficeAgent }) {
@@ -422,40 +472,37 @@ export function LanOverlay({
         });
         continue;
       }
-      const chrome =
-        2 * (LAN_ACTIVITY_PAD_X_PX + CHAT_BORDER_PX) +
-        LAN_TAG_BADGE_CHROME_PX +
-        textWidth(providerName(a), LAN_TAG_BADGE_FONT) +
-        (wrap ? LAN_ACTIVITY_BADGE_GAP_PX : 0) +
-        (icon ? ACT_ICON_INLINE_PX + STATUS_PART_GAP_PX : 0) +
-        chipW(todoText(a)) +
-        chipW(elapsed);
-      const rows = wrap
-        ? clampRows(
-            wrapLines(text, LAN_ACTIVITY_MAX_WIDTH_PX - chrome, measureTag),
-            LAN_ACTIVITY_MAX_LINES,
-            LAN_ACTIVITY_MAX_WIDTH_PX - chrome,
-            measureTag,
-          )
-        : undefined;
-      const lineH = rows && rows.length > 1 ? LAN_ACTIVITY_LINE_PX : LAN_TAG_LINE_PX;
+      const box = agentBubbleLayout(
+        {
+          provider: providerName(a),
+          icon: !!icon,
+          title: a.title ?? '',
+          todo: todoText(a),
+          elapsed,
+          text,
+          wrap,
+        },
+        {
+          text: measureTag,
+          badge: (s) => textWidth(s, LAN_TAG_BADGE_FONT),
+          chip: (s) => textWidth(s, STATUS_CHIP_FONT),
+          title: (s) => textWidth(s, LAN_BUBBLE_TITLE_FONT),
+        },
+      );
       lines.push({
         key: a.key,
         a,
         text,
-        rows,
+        rows: box.rows,
         inline: icon ?? undefined,
         elapsed,
         s: k,
         x: project.toScreenX(ch.x),
         head,
         // Unscaled size; w/h/bottom below are on screen (× k).
-        w0: Math.min(
-          LAN_ACTIVITY_MAX_WIDTH_PX,
-          chrome + Math.max(...(rows ?? [text]).map(measureTag)),
-        ),
+        w0: box.w,
         w: 0,
-        h: ((rows?.length ?? 1) * lineH + 2 * (LAN_ACTIVITY_PAD_Y_PX + CHAT_BORDER_PX)) * k,
+        h: box.h * k,
         bottom: head - CHAT_TAIL_PX * k,
       });
     }
@@ -509,7 +556,7 @@ export function LanOverlay({
           <div
             key={`act:${l.key}`}
             data-activity={l.key}
-            className={`bubble-agent flex gap-4 whitespace-nowrap text-sm leading-none pointer-events-none ${l.rows && l.rows.length > 1 ? 'items-start' : 'items-center'}`}
+            className="bubble-agent flex flex-col whitespace-nowrap text-sm leading-none pointer-events-none"
             style={{
               left: l.x - l.w / 2,
               top: bottoms[i] - l.h,
@@ -518,26 +565,17 @@ export function LanOverlay({
               transform: `scale(${k})`,
               transformOrigin: '0 0',
               padding: `${LAN_ACTIVITY_PAD_Y_PX}px ${LAN_ACTIVITY_PAD_X_PX}px`,
+              gap: LAN_BUBBLE_HEADER_GAP_PX,
               zIndex: LAN_TAG_Z_INDEX,
             }}
           >
-            <span
-              data-provider={l.a.provider}
-              className="shrink-0 px-2 text-2xs font-bold leading-none"
-              style={{
-                background: LAN_PROVIDER_COLORS[l.a.provider],
-                color: LAN_PROVIDER_BADGE_FG,
-              }}
-            >
-              {providerName(l.a)}
-            </span>
-            {l.inline && (
-              <ActIcon icon={l.inline} size={ACT_ICON_INLINE_PX} color={langColor(l.a)} />
-            )}
-            {l.rows && l.rows.length > 1 ? (
+            <BubbleHeader a={l.a} icon={l.inline} elapsed={l.elapsed} />
+            {l.rows ? (
               <span
                 className="min-w-0 flex flex-col"
-                style={{ lineHeight: `${LAN_ACTIVITY_LINE_PX}px` }}
+                style={{
+                  lineHeight: `${l.rows.length > 1 ? LAN_ACTIVITY_LINE_PX : LAN_TAG_LINE_PX}px`,
+                }}
               >
                 {l.rows.map((r, j) => (
                   <span key={j} className="whitespace-pre">
@@ -546,20 +584,11 @@ export function LanOverlay({
                 ))}
               </span>
             ) : (
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis">{l.text}</span>
-            )}
-            {l.a.todo && <TodoChip a={l.a} />}
-            {l.elapsed && (
               <span
-                data-elapsed={l.elapsed}
-                className="shrink-0 text-2xs font-bold leading-none"
-                style={{
-                  padding: `1px ${STATUS_CHIP_PAD_X_PX}px`,
-                  color: elapsedWarn(l.a) ? 'var(--elapsed-warn-fg)' : undefined,
-                  opacity: elapsedWarn(l.a) ? 1 : 0.7,
-                }}
+                className="min-w-0 overflow-hidden text-ellipsis"
+                style={{ lineHeight: `${LAN_TAG_LINE_PX}px` }}
               >
-                {l.elapsed}
+                {l.text}
               </span>
             )}
           </div>
@@ -648,19 +677,29 @@ export function LanOverlay({
       <div
         key="hover"
         data-tour="hover-bubble"
-        className="absolute -translate-x-1/2 -translate-y-full pixel-panel px-8 py-6 flex flex-col gap-4 w-max text-sm leading-snug break-words pointer-events-none"
+        className="bubble-agent -translate-x-1/2 -translate-y-full flex flex-col w-max text-sm leading-snug break-words pointer-events-none"
         style={{
           left: project.toScreenX(hoveredCh.x),
-          top: project.toScreenY(
-            hoveredCh.y +
-              (typing ? CHARACTER_SITTING_OFFSET_PX : 0) +
-              (hoveredCh.pet ? PET_HEAD_DROP_PX : 0) -
-              LAN_BUBBLE_HEAD_OFFSET,
-          ),
+          top:
+            project.toScreenY(
+              hoveredCh.y +
+                (typing ? CHARACTER_SITTING_OFFSET_PX : 0) +
+                (hoveredCh.pet ? PET_HEAD_DROP_PX : 0) -
+                LAN_BUBBLE_HEAD_OFFSET,
+            ) - CHAT_TAIL_PX,
           maxWidth: LAN_BUBBLE_MAX_WIDTH_PX,
+          padding: `${LAN_ACTIVITY_PAD_Y_PX * 2}px ${LAN_ACTIVITY_PAD_X_PX}px`,
+          gap: STATUS_PART_GAP_PX,
           zIndex: LAN_BUBBLE_Z_INDEX,
         }}
       >
+        <BubbleHeader
+          a={hovered}
+          icon={hovered.permission ? undefined : (actIcon(hovered) ?? undefined)}
+          elapsed={elapsedText(hovered.ageSec)}
+          full
+        />
+        <span>{activityText(hovered)}</span>
         <span className="font-bold">
           {hovered.permission && (
             <>
@@ -669,9 +708,8 @@ export function LanOverlay({
           )}
           {t(`room.${hovered.room}`)}
         </span>
-        <span>{activityText(hovered)}</span>
-        <SignalText a={hovered} />
-        {hovered.reason && <span className="text-text-muted">“{hovered.reason}”</span>}
+        <SignalText a={hovered} inBubble />
+        {hovered.reason && <span className="opacity-70">“{hovered.reason}”</span>}
       </div>,
     );
   }

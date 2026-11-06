@@ -169,6 +169,9 @@ export interface AgentView {
   diff?: AgentDiff;
   /** THIS PC's browser only (never on the wire, not parsed from peers): context window use. */
   ctx?: { used: number; window: number };
+  /** THIS PC's browser only (never on the wire, not parsed from peers): the session's title
+   *  (≤ 60 code points) for the bubble header. */
+  title?: string;
 }
 export interface AgentDiff {
   add: number;

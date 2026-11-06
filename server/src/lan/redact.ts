@@ -86,13 +86,13 @@ export function redactText(s: string): string {
 
 /** The reason is the agent's own reply text: free prose, so it is not sent at all. */
 export function redactView(v: AgentView): AgentView {
-  const { ctx: _c, ...rest } = v; // local only, never to peers
+  const { ctx: _c, title: _ti, ...rest } = v; // local only, never to peers
   return { ...rest, target: redactText(v.target), reason: '' };
 }
 
 /** Public office (UDP and relay alike): the agent still moves between rooms, types and
  *  waits, but what it works on stays home. */
 export function quietView(v: AgentView): AgentView {
-  const { ageSec: _a, todo: _t, fail: _f, diff: _d, ctx: _c, ...rest } = v;
+  const { ageSec: _a, todo: _t, fail: _f, diff: _d, ctx: _c, title: _ti, ...rest } = v;
   return { ...rest, target: '', reason: '', quiet: true };
 }

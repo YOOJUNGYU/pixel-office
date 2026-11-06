@@ -198,6 +198,7 @@ export interface OfficeAgentMessage {
   fail?: boolean;
   diff?: AgentDiff;
   ctx?: AgentContext;
+  title?: string;
   peer: PeerInfoMessage;
 }
 

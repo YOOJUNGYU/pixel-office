@@ -51,28 +51,34 @@ export class ChatBubbles {
   }
 }
 
-/** Lines `text` wraps into at `max` px: greedy by words, an over-long word broken anywhere
- *  (CSS `overflow-wrap: anywhere`). */
+/** Break opportunities: after spaces and the separators of commands, paths and lists. */
+const CHUNK = /.*?(?:\s+|&&|[/;|,=]|$)/g;
+
+/** Lines `text` wraps into at `max` px: greedy by chunks that end after a space or a separator
+ *  (`/` `;` `|` `&&` `,` `=`), so commands and paths break cleanly; only a chunk wider than a
+ *  whole line (a long word, CJK without spaces) is broken by character. */
 export function wrapLines(text: string, max: number, measure: (s: string) => number): string[] {
   const lines: string[] = [];
   let line = '';
-  for (const word of text.split(' ')) {
-    const tryLine = line ? `${line} ${word}` : word;
-    if (measure(tryLine) <= max) {
-      line = tryLine;
-      continue;
-    }
-    if (line) lines.push(line);
+  const push = () => {
+    lines.push(line.trimEnd());
     line = '';
-    for (const ch of Array.from(word)) {
-      if (line && measure(line + ch) > max) {
-        lines.push(line);
-        line = '';
+  };
+  for (const chunk of text.match(CHUNK) ?? []) {
+    if (!chunk) continue;
+    if (measure((line + chunk).trimEnd()) <= max) {
+      line += chunk;
+    } else if (measure(chunk.trimEnd()) <= max) {
+      push();
+      line = chunk;
+    } else {
+      for (const ch of Array.from(chunk)) {
+        if (line && measure((line + ch).trimEnd()) > max) push();
+        line += ch;
       }
-      line += ch;
     }
   }
-  if (line || lines.length === 0) lines.push(line);
+  if (line || lines.length === 0) push();
   return lines;
 }
 

@@ -1042,6 +1042,10 @@ components:
           $ref: '#/components/schemas/AgentDiff'
         ctx:
           $ref: '#/components/schemas/AgentContext'
+        title:
+          type: string
+          maxLength: 60
+          description: The session's title for this PC's own agents (the local snapshot only; never sent to peers).
         peer:
           $ref: '#/components/schemas/PeerInfoMessage'
 

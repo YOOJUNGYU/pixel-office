@@ -445,8 +445,10 @@ export const LAN_ACTIVITY_MAX_WIDTH_PX = 240;
 export const LAN_ACTIVITY_MAX_LINES = 5;
 /** Line height of a wrapped activity bubble (CSS px). */
 export const LAN_ACTIVITY_LINE_PX = 16;
-/** Gap between the provider badge and the text (`gap-4`). */
-export const LAN_ACTIVITY_BADGE_GAP_PX = 4;
+/** Gap between the bubble's header (badge, title, elapsed) and the activity text under it. */
+export const LAN_BUBBLE_HEADER_GAP_PX = 3;
+/** The session title in the bubble header (centre, clipped with …). */
+export const LAN_BUBBLE_TITLE_FONT = '11px Pretendard';
 /** Its padding inside the pixel-panel border (CSS px); the tail and border match the chat bubbles. */
 export const LAN_ACTIVITY_PAD_X_PX = 6;
 export const LAN_ACTIVITY_PAD_Y_PX = 3;

@@ -254,6 +254,8 @@ export const NOTIFY_TITLE_MAX = 60;
 export const NOTIFY_TITLE_SHORT_MAX = 24;
 /** A session's first prompt is kept (local only) up to this many chars as its fallback title. */
 export const SESSION_PROMPT_MAX = 200;
+/** A session title in this PC's own bubble header (AgentView.title, local only), code points. */
+export const VIEW_TITLE_MAX = 60;
 /** Codex `session_index.jsonl` (thread names): only its last this-many bytes are read. */
 export const CODEX_INDEX_MAX_BYTES = 256 * 1024;
 /** Transcript panel: one entry's text is clipped to this many chars (meta lines: the second). */

@@ -70,6 +70,48 @@ describe('chat geometry', () => {
     expect(wrapLines('', 40, m)).toEqual(['']);
   });
 
+  it('wrapLines: commands and paths break after separators, never inside a word', () => {
+    const m = (s: string) => s.length * 10;
+    const cmd =
+      'cd /home/yoojungyu/GIT/PRIVATE/pixel-office; sleep 10; p=$(gh run list --workflow=ci.yml | head -1)';
+    const lines = wrapLines(cmd, 200, m);
+    expect(lines.join('').replace(/ /g, '')).toBe(cmd.replace(/ /g, ''));
+    for (const l of lines) expect(m(l)).toBeLessThanOrEqual(200);
+    // every line ends at a separator or a space (no word cut in half)
+    for (const l of lines.slice(0, -1)) expect(l).toMatch(/[/;|,=]$|&&$|\w$/);
+    expect(lines).toEqual([
+      'cd /home/yoojungyu/',
+      'GIT/PRIVATE/',
+      'pixel-office; sleep',
+      '10; p=$(gh run list',
+      '--workflow=ci.yml |',
+      'head -1)',
+    ]);
+    // a long URL/path breaks after slashes
+    expect(wrapLines('https://example.com/a/very/long/path/file.ts', 120, m)).toEqual([
+      'https://',
+      'example.com/',
+      'a/very/long/',
+      'path/file.ts',
+    ]);
+    // && is one separator
+    expect(wrapLines('npm ci&&npm test', 80, m)).toEqual(['npm ci&&', 'npm test']);
+  });
+
+  it('wrapLines: CJK without spaces breaks by character; with spaces by word', () => {
+    const m = (s: string) => Array.from(s).length * 10;
+    expect(wrapLines('가나다라마바사아자차', 40, m)).toEqual(['가나다라', '마바사아', '자차']);
+    expect(wrapLines('설정 파일을 읽는 중', 60, m)).toEqual(['설정 파일을', '읽는 중']);
+  });
+
+  it('wrapLines + clampRows: at most 5 lines, the last ends in …', () => {
+    const m = (s: string) => s.length * 10;
+    const rows = clampRows(wrapLines('a/'.repeat(60), 100, m), 5, 100, m);
+    expect(rows).toHaveLength(5);
+    expect(rows[4].endsWith('…')).toBe(true);
+    for (const r of rows) expect(m(r)).toBeLessThanOrEqual(100);
+  });
+
   it('stackBubbles: separate ones stay; overlapping ones move up, never overlap', () => {
     expect(
       stackBubbles(

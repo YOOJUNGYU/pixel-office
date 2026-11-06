@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { PUBLIC_VIEW } from '../../../core/src/lan.js';
+import { VIEW_TITLE_MAX } from '../../src/constants.js';
 import { createIdentity } from '../../src/lan/crypto.js';
 import type { CheckPids, PidState } from '../../src/lan/liveness.js';
 import {
@@ -199,6 +200,10 @@ describe('Scanner', () => {
     ago(idx, -5_000); // a different mtime, as a real append gives
     await scanner.discover();
     expect(scanner.info('cx')?.title).toBe('CODEX thread');
+    // this PC's own snapshot carries the title for the bubble header; brief (peers) never
+    const own = Object.fromEntries(scanner.views().map((v) => [v.id, v.title]));
+    expect(own).toMatchObject({ cl: 'MY secret title', cx: 'CODEX thread' });
+    for (const v of scanner.views(true)) expect(v).not.toHaveProperty('title');
 
     for (const channel of [PUBLIC_VIEW, 'team-tag']) {
       const lan = new LanService(
@@ -223,6 +228,18 @@ describe('Scanner', () => {
       expect(sent).not.toMatch(/SECRET|secret|AUTO title|CODEX|codex-repo|Old name/);
     }
     expect(JSON.stringify(scanner.views(true))).not.toContain(proj);
+  });
+
+  it('a long title is clipped for the bubble header', async () => {
+    const line = (o: unknown) => JSON.stringify(o) + '\n';
+    writeFileSync(
+      join(proj, 'long.jsonl'),
+      line({ type: 'custom-title', customTitle: '가'.repeat(100) }) + edit('a.ts'),
+    );
+    await scanner.discover();
+    const title = scanner.views().find((v) => v.id === 'long')?.title ?? '';
+    expect(Array.from(title)).toHaveLength(VIEW_TITLE_MAX);
+    expect(title.endsWith('…')).toBe(true);
   });
 
   describe('transcriptOf', () => {
