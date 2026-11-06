@@ -568,6 +568,20 @@ describe('LanService', () => {
         expect(p).not.toHaveProperty('net');
     });
 
+    it('via: other people in the public office only, never me', () => {
+      const lan = mk({ public: [mkPeer('a'), mkPeer('b')] });
+      const vias: Record<string, 'lan' | 'relay'> = { me: 'lan', a: 'lan', b: 'relay' };
+      lan.net.viaOf = (id) => vias[id];
+      lan.net.peers = (v) => (v === PUBLIC_VIEW ? [{ ...peer, peer: mkPeer('b') }] : []);
+      expect(lan.directory().public.map((p) => p.via)).toEqual([undefined, 'lan', 'relay']);
+      expect(lan.directory().public[0]).not.toHaveProperty('via');
+      expect(lan.people(PUBLIC_VIEW).map((p) => p.via)).toEqual([undefined, 'relay']);
+      const { tag } = lan.createOffice('우리팀') as CreatedOffice;
+      lan.net.directory = () => ({ public: [], teams: { [tag]: [mkPeer('a')] }, personal: [] });
+      for (const p of [...lan.directory().teams[0].people, ...lan.people(tag)])
+        expect(p).not.toHaveProperty('via');
+    });
+
     it('the office view ignores the directory', () => {
       const lan = mk({ public: [mkPeer('w')], personal: [mkPeer('c')] });
       expect(ids(lan.people(PUBLIC_VIEW))).toEqual(['me']);

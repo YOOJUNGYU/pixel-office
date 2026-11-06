@@ -566,6 +566,11 @@ export const NET_BADGE_COLORS: ReadonlyArray<{ bg: string; fg: string }> = [
   { bg: '#9b4dca', fg: '#ffffff' },
   { bg: '#d14249', fg: '#ffffff' },
 ];
+/** Connection-path badge in the public area (LAN = over UDP, 인터넷 = through the relay). */
+export const VIA_BADGE_COLORS: Readonly<Record<'lan' | 'relay', { bg: string; fg: string }>> = {
+  lan: { bg: '#2e7d32', fg: '#ffffff' },
+  relay: { bg: '#5c6bc0', fg: '#ffffff' },
+};
 /** Top-right stack (update banner, install popup, people panel): room kept clear below it, CSS px. */
 export const TOP_RIGHT_BOTTOM_RESERVE_PX = 64;
 /** Top-right stack: above name tags, bubbles and room plates, below plate popups (46) and modals (50). */

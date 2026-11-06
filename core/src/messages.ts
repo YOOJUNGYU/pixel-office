@@ -265,10 +265,13 @@ export interface OfficePersonMessage {
   pet?: PetId;
   tagColors?: TagColors;
   net?: string;
+  via?: ConnPath;
   self: boolean;
   chat?: ChatMessage;
   avatar?: AvatarMessage;
 }
+
+export type ConnPath = 'lan' | 'relay';
 
 export interface ChatMessage {
   id: string;
@@ -300,6 +303,7 @@ export interface DirectoryPersonMessage {
   pet?: PetId;
   tagColors?: TagColors;
   net?: string;
+  via?: ConnPath;
   self: boolean;
 }
 

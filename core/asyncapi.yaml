@@ -852,6 +852,8 @@ components:
           description: >-
             Public office only: this person's network, the relay's 8-hex tag or
             `lan` (heard over UDP on this PC's LAN). Absent = unknown.
+        via:
+          $ref: '#/components/schemas/ConnPath'
         self:
           type: boolean
 
@@ -887,6 +889,8 @@ components:
           description: >-
             Public office only: this person's network, the relay's 8-hex tag or
             `lan` (heard over UDP on this PC's LAN). Absent = unknown.
+        via:
+          $ref: '#/components/schemas/ConnPath'
         self:
           type: boolean
           description: This server's own PC.
@@ -1123,6 +1127,14 @@ components:
         fg:
           type: string
           pattern: '^#[0-9A-Fa-f]{6}$'
+
+    ConnPath:
+      type: string
+      description: >-
+        Public office only, never on this PC's own row: how this person
+        reaches this PC, `lan` = over UDP, `relay` = through the internet
+        relay. Absent = unknown.
+      enum: [lan, relay]
 
     PetId:
       type: string

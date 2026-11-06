@@ -599,6 +599,17 @@ export class PeerNet {
     return this.nets.get(id);
   }
 
+  /** How a person reaches this PC: confirmed over UDP (or a UDP hello within the TTL)
+   *  = 'lan', else on the relay = 'relay'; self or unknown = undefined. */
+  viaOf(id: string): 'lan' | 'relay' | undefined {
+    if (id === this.opts.identity.id) return undefined;
+    const h = this.hellos.get(id);
+    const t = this.now();
+    if (h && this.confirmed(h, t)) return 'lan';
+    if (this.relayLive.has(id)) return 'relay';
+    return h && this.udpLive(h, t) ? 'lan' : undefined;
+  }
+
   // ponytail: roster pks are TOFU — a malicious relay operator can slip a fake pk in at a
   // first meeting and read that pair; add a fingerprint-compare UI if that ever matters.
   private relayJoin(p: { id: string; pk: string; net?: string }): void {

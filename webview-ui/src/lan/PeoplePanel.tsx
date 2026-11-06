@@ -10,6 +10,7 @@ import {
   PEOPLE_HINT_MS,
   PEOPLE_PET_FACE_CROP,
   PEOPLE_WIDE_MIN_PX,
+  VIA_BADGE_COLORS,
 } from '../constants.js';
 import type { RelayStatus } from '../hooks/useExtensionMessages.js';
 import { type Key, t, useLang } from '../i18n.js';
@@ -90,6 +91,21 @@ function NetBadge({ n }: { n: number | undefined }) {
   );
 }
 
+/** Public office, other people: LAN (UDP) or 인터넷 (relay), whatever the networks. */
+function ViaBadge({ via }: { via: DirectoryPersonMessage['via'] }) {
+  if (!via) return null;
+  const c = VIA_BADGE_COLORS[via];
+  return (
+    <span
+      title={t(via === 'lan' ? 'people.via.lanTitle' : 'people.via.relayTitle')}
+      className="shrink-0 px-2 text-2xs font-bold leading-normal"
+      style={{ background: c.bg, color: c.fg }}
+    >
+      {t(via === 'lan' ? 'people.via.lan' : 'people.via.relay')}
+    </span>
+  );
+}
+
 /** Admin only (relayAdmin), public office rows other than mine: remove the PC from the relay. */
 function KickButton({ person }: { person: DirectoryPersonMessage }) {
   return (
@@ -141,6 +157,7 @@ function PlainRow({
         {peerLabel(person)}
         {person.self && ` ${t('people.you')}`}
       </span>
+      <ViaBadge via={person.via} />
       <NetBadge n={net} />
       {kick && <KickButton person={person} />}
     </li>
@@ -256,6 +273,7 @@ export function PeoplePanel({
         </span>
         <StatusMark status={r.status} />
       </button>
+      {publicViewed && <ViaBadge via={r.person.via} />}
       {publicViewed && <NetBadge n={netOf(r.person)} />}
       {publicViewed && canKick && !r.person.self && <KickButton person={r.person} />}
     </li>

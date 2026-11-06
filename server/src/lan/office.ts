@@ -96,6 +96,8 @@ export class LanService {
     directory(): NetDirectory;
     /** A person's network ('lan' or the relay's 8-hex tag); public office only. */
     netOf?(id: string): string | undefined;
+    /** How a person reaches this PC (UDP or relay); public office only. */
+    viaOf?(id: string): 'lan' | 'relay' | undefined;
   } = {
     peers: () => [],
     sendNow: () => {},
@@ -296,9 +298,11 @@ export class LanService {
     }));
   }
 
-  /** `pub` = a public office row: carries the person's network when known. */
+  /** `pub` = a public office row: carries the person's network (and, not for me, the path)
+   *  when known. */
   private person(p: PeerInfo, self: boolean, pub = false): DirectoryPersonMessage {
     const net = pub ? this.net.netOf?.(p.id) : undefined;
+    const via = pub && !self ? this.net.viaOf?.(p.id) : undefined;
     return {
       peerId: p.id,
       account: p.account,
@@ -309,6 +313,7 @@ export class LanService {
       ...(p.pet && { pet: p.pet }),
       ...(p.tagColors && { tagColors: p.tagColors }),
       ...(net && { net }),
+      ...(via && { via }),
       self,
     };
   }

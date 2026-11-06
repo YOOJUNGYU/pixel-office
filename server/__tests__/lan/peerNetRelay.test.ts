@@ -204,6 +204,7 @@ describe('PeerNet over the relay', () => {
     expect(ids(a.net.peers(PUBLIC_VIEW))).toEqual([b.id.id]);
     expect(ids(b.net.peers(PUBLIC_VIEW))).toEqual([a.id.id]);
     expect(a.wants.at(-1)).toBe(true);
+    expect(a.net.viaOf(b.id.id)).toBe('relay');
   });
 
   it('no frame when nothing changed, and relay peers never expire', async () => {
@@ -393,6 +394,8 @@ describe('PeerNet over the relay', () => {
     await pump([a, b], () => a.net.netOf(b.id.id) === 'lan' && b.net.netOf(a.id.id) === 'lan');
     roster(h, a, b);
     expect(a.net.netOf(b.id.id)).toBe('aaaa0001'); // confirmed over UDP: my net
+    expect(a.net.viaOf(b.id.id)).toBe('lan');
+    expect(a.net.viaOf(a.id.id)).toBeUndefined();
     for (let col = 1; col <= 3; col++) {
       clock.t += 1_000;
       a.avatar = { col, row: 1, dir: 'up' };
@@ -404,14 +407,17 @@ describe('PeerNet over the relay', () => {
     a.net.sendNow();
     expect(a.sent.at(-1)?.some((w) => w.to === b.id.id)).toBe(true);
     expect(a.net.netOf(b.id.id)).toBe('bbbb0002');
+    expect(a.net.viaOf(b.id.id)).toBe('relay'); // UDP lapsed, still on the relay
   });
 
   it('one-way UDP: hearing a hello is not enough, the relay still carries it', async () => {
     const { h, a, b } = await udpPair();
     dropPubsFrom(a, b.id.id); // A hears B's hellos, never its pubs
     await pump([a, b], () => b.net.netOf(a.id.id) === 'lan');
+    expect(a.net.viaOf(b.id.id)).toBe('lan'); // hello heard, no relay yet
     roster(h, a, b);
     expect(a.net.netOf(b.id.id)).toBe('bbbb0002');
+    expect(a.net.viaOf(b.id.id)).toBe('relay'); // a hello alone loses to the relay
     a.net.sendNow();
     expect(a.sent.at(-1)?.some((w) => w.to === b.id.id)).toBe(true);
   });
@@ -437,6 +443,8 @@ describe('PeerNet over the relay', () => {
     expect(a.net.peers(PUBLIC_VIEW)).toEqual([]);
     expect(a.sent.flat().some((w) => w.to === b.id.id)).toBe(false);
     expect(a.net.netOf(b.id.id)).toBeUndefined();
+    expect(a.net.viaOf(b.id.id)).toBeUndefined();
+    expect(a.net.viaOf('nobody')).toBeUndefined();
   });
 
   it('splits frames over the byte cap without dropping anyone', async () => {

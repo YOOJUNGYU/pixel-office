@@ -72,6 +72,7 @@ Open the office in this PC's browser and an **Install Pixel Office as an app** p
   - `No internet connection — same network only`: the internet is unreachable (offline, or a corporate proxy/firewall blocks outbound `wss` on 443). Same-network PCs still show. In proxy environments the link may not work; ask IT for an exception rather than working around it.
   - In every case you **stay in the public office** (never switched to personal) and it reconnects by itself when the condition clears.
 - **Same-network badge**: only when two or more different networks are seen, people on the same network share a `LAN 1` / `LAN 2` badge in the people panel (your network = 1). A company with several exit IPs may appear under different numbers.
+- **Connection badge**: every other person's row in the public office shows `LAN` (same network, direct over UDP) or `Internet` (through the internet relay). Always shown, whatever the number of networks; not on your own row.
 - The shared layout also travels over the internet: anyone in the public office can edit and save, the last save wins.
 - 🔒 **Create a team office** (one team at a time: creating or joining another replaces the current one after a confirmation): **Settings → Offices → Create a team office**, enter a team name, **Create** → **Copy code** of the invite code (`PO2-…`) and send it to your teammates.
 - **Join**: paste it under **Settings → Offices → Join with a code** and press **Join**. Switch offices with the office buttons at the top of the screen.
