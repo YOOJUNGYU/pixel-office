@@ -77,6 +77,8 @@ export interface RelayOptions {
   pingMs?: number;
   pongTimeoutMs?: number;
   connectTimeoutMs?: number;
+  /** Tests only: a fake WebSocket class. */
+  WebSocketImpl?: typeof WebSocket;
 }
 
 export class Relay {
@@ -144,7 +146,7 @@ export class Relay {
     this.opened = false;
     let ws: WebSocket;
     try {
-      ws = new WebSocket(u.toString());
+      ws = new (this.o.WebSocketImpl ?? WebSocket)(u.toString());
     } catch {
       this.fail('other', undefined, false);
       return;
@@ -179,9 +181,9 @@ export class Relay {
       const { kind, ms } = parseCloseReason(e.code, e.reason);
       this.fail(kind, ms, this.opened);
     });
-    ws.addEventListener('error', () => {
-      // 'close' follows
-    });
+    // Node 22 fires 'error' without 'close' on a failed socket (Node 24 fires both):
+    // treat it as a network drop; a later 'close' is ignored (this.ws !== ws).
+    ws.addEventListener('error', () => this.drop(ws));
   }
 
   private established(ws: WebSocket): void {

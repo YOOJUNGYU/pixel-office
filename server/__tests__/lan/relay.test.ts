@@ -193,6 +193,33 @@ describe('Relay', () => {
     expect(errs.length).toBe(1);
   });
 
+  it('an error without close (Node 22) fails the connect once, also after the roster', () => {
+    const socks: EventTarget[] = [];
+    class FakeWS extends EventTarget {
+      readyState = 1;
+      constructor() {
+        super();
+        socks.push(this);
+      }
+      close() {}
+      send() {}
+    }
+    const opt = { WebSocketImpl: FakeWS as unknown as typeof WebSocket };
+    const a = mk('ws://127.0.0.1:1/ws', undefined, opt);
+    a.r.want(true);
+    socks[0].dispatchEvent(new Event('error'));
+    expect(a.r.status.state).toBe('error');
+    expect(a.ev.closed).toBe(0);
+    const b = mk('ws://127.0.0.1:1/ws', undefined, opt);
+    b.r.want(true);
+    socks[1].dispatchEvent(new MessageEvent('message', { data: ROSTER }));
+    expect(b.r.status.state).toBe('connected');
+    socks[1].dispatchEvent(new Event('error'));
+    socks[1].dispatchEvent(new Event('error'));
+    expect(b.r.status.state).toBe('error');
+    expect(b.ev.closed).toBe(1);
+  });
+
   it('want(false) closes and goes off', async () => {
     const f = await fake();
     const { r } = mk(f.url);
