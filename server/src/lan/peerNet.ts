@@ -72,6 +72,9 @@ interface Heard {
   at: number;
   /** Last UDP hello/watch (-Infinity = heard over the relay only). */
   udpAt: number;
+  /** Last fresh public presence accepted from it over UDP: our UDP path to it is
+   *  "confirmed" (-Infinity = never). Only then does the relay skip it. */
+  udpPubAt: number;
   replied: number;
 }
 
@@ -331,8 +334,8 @@ export class PeerNet {
   private readonly needsFull = new Set<string>();
   private readonly nets = new Map<string, string>();
   private myNet: string | undefined;
-  /** Hellos sent our pub over UDP last tick. */
-  private udpSent = new Set<string>();
+  /** Peers confirmed over UDP last tick (see Heard.udpPubAt). */
+  private udpConfirmed = new Set<string>();
   private lastRelayKey = '';
   private lastRelaySend = -Infinity;
   /** Per process, seeded with the clock so a restart still counts upward. */
@@ -380,11 +383,18 @@ export class PeerNet {
         sock.on('error', (err) => console.error('[Pixel Office] UDP socket error:', err.message));
         sock.setBroadcast(true);
         this.sock = sock;
-        this.timer = setInterval(() => this.sendNow(), SEND_INTERVAL_MS);
-        this.timer.unref();
+        this.runWithoutUdp();
         resolve();
       });
     });
+  }
+
+  /** Start the send timer with no UDP socket (start() failed to bind): the relay half
+   *  still works, UDP sends are skipped. start() calls it too; stop() ends either. */
+  runWithoutUdp(): void {
+    if (this.timer) return;
+    this.timer = setInterval(() => this.sendNow(), SEND_INTERVAL_MS);
+    this.timer.unref();
   }
 
   stop(): void {
@@ -396,8 +406,7 @@ export class PeerNet {
 
   /** Send this PC's state now; called every SEND_INTERVAL_MS and after any change. */
   sendNow(): void {
-    const sock = this.sock;
-    if (!sock) return;
+    if (!this.timer) return; // not started (or stopped)
     this.opts.relay?.want(this.inPublic());
     this.prune();
     const { identity } = this.opts;
@@ -408,9 +417,9 @@ export class PeerNet {
     ];
     if (!this.inPublic()) {
       const watch = this.discovery();
-      for (const t of broadcast) this.send(sock, watch, t);
+      for (const t of broadcast) this.send(watch, t);
       if (this.isOffline()) {
-        this.sendCards(sock);
+        this.sendCards();
         return;
       }
       for (const o of offices) {
@@ -422,19 +431,19 @@ export class PeerNet {
         const around = envelope({ v: 2, t: 'team', tag: o.tag });
         for (const plain of presencePlains(inner, identity.id, around)) {
           const wire: Wire = { v: 2, t: 'team', tag: o.tag, ...seal(o.key, teamAad(o.tag), plain) };
-          for (const t of broadcast) this.send(sock, wire, t);
+          for (const t of broadcast) this.send(wire, t);
         }
         // A member with an older layout (≥ 1.0.14, so it says which): the whole team gets ours.
         const plains = this.layoutToPush(o.tag, o.tag, [...(this.seen.get(o.tag)?.values() ?? [])]);
         for (const plain of plains) {
           const wire: Wire = { v: 2, t: 'team', tag: o.tag, ...seal(o.key, teamAad(o.tag), plain) };
-          for (const t of broadcast) this.send(sock, wire, t);
+          for (const t of broadcast) this.send(wire, t);
         }
       }
       return;
     }
     const hello = this.discovery();
-    for (const t of broadcast) this.send(sock, hello, t);
+    for (const t of broadcast) this.send(hello, t);
     // One presence (one seq, deflated once) sealed per peer; sized for the longest peer id.
     const watchers = [...this.watchers].filter(([id]) => !this.hellos.has(id));
     const inner: Inner = { seq: ++this.seq, packet: this.opts.getPacket(PUBLIC_VIEW) };
@@ -451,21 +460,24 @@ export class PeerNet {
     const watcherPlains = watchers.length ? presencePlains(personOnly, identity.id, around) : [];
     const pubTo = (id: string, h: Heard, texts: string[]) => {
       for (const wire of this.sealPub(id, h, texts))
-        this.send(sock, wire, `${h.address}:${h.port.toString()}`);
+        this.send(wire, `${h.address}:${h.port.toString()}`);
     };
-    // Over UDP only to PCs heard over UDP; the rest are reached over the relay.
+    // UDP as always, to every PC whose hello we hear. Hearing its hello does not prove our
+    // unicast reaches it (firewall, Wi-Fi isolation), so the relay skips only peers whose
+    // own UDP pub reached us; during a switch both paths may carry a seq (fresh() drops one).
     const t = this.now();
-    const udp = new Set<string>();
+    const confirmed = new Set<string>();
     for (const [id, h] of this.hellos) {
-      if (!this.udpLive(h, t)) continue;
-      udp.add(id);
-      this.needsFull.delete(id);
-      pubTo(id, h, [...plains, ...this.layoutFor(id)]);
+      if (this.confirmed(h, t)) {
+        confirmed.add(id);
+        this.needsFull.delete(id);
+      }
+      if (this.udpLive(h, t)) pubTo(id, h, [...plains, ...this.layoutFor(id)]);
     }
     for (const [id, h] of watchers) pubTo(id, h, watcherPlains);
-    // No longer heard over UDP: owed the whole state over the relay.
-    for (const id of this.udpSent) if (!udp.has(id)) this.needsFull.add(id);
-    this.udpSent = udp;
+    // No longer confirmed over UDP: owed the whole state over the relay.
+    for (const id of this.udpConfirmed) if (!confirmed.has(id)) this.needsFull.add(id);
+    this.udpConfirmed = confirmed;
     this.sendRelay(inner.packet, plains, t);
   }
 
@@ -507,7 +519,7 @@ export class PeerNet {
     const wires: PubWire[] = [];
     for (const id of this.relayLive) {
       const h = this.hellos.get(id);
-      if (!h || this.udpSent.has(id)) continue;
+      if (!h || this.udpConfirmed.has(id)) continue;
       const owed = changed || this.needsFull.has(id);
       if (owed) full.push(id);
       wires.push(...this.sealPub(id, h, [...(owed ? plains : []), ...this.layoutFor(id)]));
@@ -535,7 +547,7 @@ export class PeerNet {
       case 'w':
         for (const raw of f.w) {
           const w = parseWire(JSON.stringify(raw));
-          if (w?.t === 'pub') this.receivePub(w);
+          if (w?.t === 'pub') this.receivePub(w, false);
         }
     }
   }
@@ -553,11 +565,11 @@ export class PeerNet {
     this.myNet = undefined;
   }
 
-  /** A person's network: heard over UDP = mine (the relay's tag for me, else 'lan'),
+  /** A person's network: confirmed over UDP = mine (the relay's tag for me, else 'lan'),
    *  else the relay's tag for theirs; undefined = unknown. */
   netOf(id: string): string | undefined {
     const h = this.hellos.get(id);
-    if (id === this.opts.identity.id || (h && this.udpLive(h, this.now())))
+    if (id === this.opts.identity.id || (h && this.confirmed(h, this.now())))
       return this.myNet ?? 'lan';
     return this.nets.get(id);
   }
@@ -579,9 +591,14 @@ export class PeerNet {
     this.needsFull.delete(id);
     this.nets.delete(id);
     const h = this.hellos.get(id);
-    if (h && this.udpLive(h, this.now())) return;
-    this.hellos.delete(id);
+    const t = this.now();
+    if (h && this.confirmed(h, t)) return;
+    if (!h || !this.udpLive(h, t)) this.hellos.delete(id);
     this.seen.get(PUBLIC_VIEW)?.delete(id);
+  }
+
+  private confirmed(h: Heard, t: number): boolean {
+    return t - h.udpPubAt <= PEER_TTL_MS;
   }
 
   private udpLive(h: Heard, t: number): boolean {
@@ -595,7 +612,7 @@ export class PeerNet {
 
   /** Personal mode: our name card, sealed pairwise, to every live hello'd PC and watcher
    *  (once per id; the watcher's address wins). The person only, never a team or agents. */
-  private sendCards(sock: dgram.Socket): void {
+  private sendCards(): void {
     const { identity } = this.opts;
     const peer = parsePeerInfo(this.opts.getPacket(PERSONAL_VIEW).peer);
     if (!peer) return;
@@ -606,7 +623,7 @@ export class PeerNet {
       if (!h.key) continue;
       const sealed = seal(h.key, cardAad(identity.id, id), plain);
       const wire: Wire = { v: 2, t: 'card', from: identity.id, to: id, ...sealed };
-      this.send(sock, wire, `${h.address}:${h.port.toString()}`);
+      this.send(wire, `${h.address}:${h.port.toString()}`);
     }
   }
 
@@ -705,7 +722,10 @@ export class PeerNet {
     return this.opts.offices().some((o) => o.tag === tag);
   }
 
-  private send(sock: dgram.Socket, wire: Wire, target: string): void {
+  /** One UDP datagram; nothing without a socket (relay-only run). */
+  private send(wire: Wire, target: string): void {
+    const sock = this.sock;
+    if (!sock) return;
     const buf = Buffer.from(JSON.stringify(wire), 'utf8');
     // "host:port" overrides the port (tests, rinfo replies; hostnames/IPv4 never contain ':')
     const [host, port] = target.split(':');
@@ -757,7 +777,7 @@ export class PeerNet {
       return;
     }
     if (w.t === 'pub') {
-      this.receivePub(w);
+      this.receivePub(w, true);
       return;
     }
     const office = this.opts.offices().find((o) => o.tag === w.tag);
@@ -770,7 +790,7 @@ export class PeerNet {
   }
 
   /** A pairwise public presence or layout part, from UDP or the relay. */
-  private receivePub(w: Extract<Wire, { t: 'pub' }>): void {
+  private receivePub(w: Extract<Wire, { t: 'pub' }>, viaUdp: boolean): void {
     const me = this.opts.identity.id;
     const h = this.hellos.get(w.from);
     if (w.to !== me || !h) return;
@@ -780,7 +800,8 @@ export class PeerNet {
     if (this.inPublic()) {
       if (this.layoutPart(PUBLIC_VIEW, plain)) return;
       const inner = this.unpack(PUBLIC_VIEW, plain, w.from);
-      if (inner?.packet.peer.id === w.from) this.accept(PUBLIC_VIEW, inner);
+      if (inner?.packet.peer.id === w.from && this.accept(PUBLIC_VIEW, inner) && viaUdp)
+        h.udpPubAt = this.now();
       return;
     }
     // Watcher: the person only — no agents, chat, avatar, and never a layout.
@@ -826,10 +847,11 @@ export class PeerNet {
       port: rinfo?.port ?? prev?.port ?? 0,
       at: t,
       udpAt: rinfo ? t : (prev?.udpAt ?? -Infinity),
+      udpPubAt: prev?.udpPubAt ?? -Infinity,
       replied: reply ? t : (prev?.replied ?? -Infinity),
     });
     if (reply && this.sock)
-      this.send(this.sock, this.discovery(), `${rinfo.address}:${rinfo.port.toString()}`);
+      this.send(this.discovery(), `${rinfo.address}:${rinfo.port.toString()}`);
     return true;
   }
 

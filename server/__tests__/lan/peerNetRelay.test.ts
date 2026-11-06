@@ -65,12 +65,13 @@ interface Node {
   blob: Buffer | null;
   received: LayoutRev[];
   port: number;
+  pins: Map<string, string>;
 }
 
 /** In-memory hub: a node's relay.send routes each wire to its `to` node, synchronously. */
 function hub() {
   const nodes = new Map<string, Node>();
-  const mk = async (name: string, targets: string[] = []): Promise<Node> => {
+  const mk = async (name: string, targets: string[] = [], udp = true): Promise<Node> => {
     const port = await freePort();
     const node = {
       id: createIdentity(name),
@@ -83,6 +84,7 @@ function hub() {
       blob: null,
       received: [],
       port,
+      pins: new Map<string, string>(),
     } as Partial<Node> as Node;
     node.net = new PeerNet({
       port,
@@ -96,7 +98,7 @@ function hub() {
       }),
       manualPeers: () => [],
       offices: () => node.offices,
-      pins: new Map<string, string>(),
+      pins: node.pins,
       targets: () => targets,
       now: () => clock.t,
       layouts: {
@@ -120,7 +122,8 @@ function hub() {
       },
     });
     nets.push(node.net);
-    await node.net.start();
+    if (udp) await node.net.start();
+    else node.net.runWithoutUdp();
     nodes.set(node.id.id, node);
     return node;
   };
@@ -309,31 +312,86 @@ describe('PeerNet over the relay', () => {
     expect(ids(c.net.peers(PUBLIC_VIEW))).toEqual([a.id.id]);
   });
 
-  it('udp lapse resends the full state over the relay; netOf follows the path', async () => {
+  /** A and B on UDP (each targets the other) and on the relay hub. */
+  const udpPair = async () => {
     const h = hub();
-    const a = await h.mk('A');
-    const b = await h.mk('B');
-    // B's UDP side: a raw socket that says hello to A.
-    const raw = dgram.createSocket('udp4');
-    socks.push(raw);
-    await new Promise<void>((r) => raw.bind(0, '127.0.0.1', r));
-    const got: string[] = [];
-    raw.on('message', (m) => got.push(m.toString()));
+    const ta: string[] = [];
+    const tb: string[] = [];
+    const a = await h.mk('A', ta);
+    const b = await h.mk('B', tb);
+    ta.push(`127.0.0.1:${b.port.toString()}`);
+    tb.push(`127.0.0.1:${a.port.toString()}`);
+    return { h, a, b };
+  };
+  /** `n` ignores UDP pubs from `from` (one-way UDP: from → n blocked). */
+  const dropPubsFrom = (n: Node, from: string) => {
+    const o = n.net as unknown as { receive(text: string, rinfo: unknown): void };
+    const orig = o.receive.bind(o);
+    o.receive = (text, rinfo) => {
+      if (!(text.includes('"t":"pub"') && text.includes(`"from":"${from}"`))) orig(text, rinfo);
+    };
+  };
+  const roster = (h: ReturnType<typeof hub>, a: Node, b: Node) => {
     a.net.relayOpened();
     a.net.relayDown({ t: 'roster', you: 'aaaa0001', peers: [h.entry(b, 'bbbb0002')] });
-    expect(a.net.netOf(b.id.id)).toBe('bbbb0002');
-    const hello = JSON.stringify({ v: 2, t: 'hello', id: b.id.id, pk: b.id.publicKey });
-    raw.send(hello, a.port, '127.0.0.1');
-    await until(() => a.net.netOf(b.id.id) === 'aaaa0001');
-    expect(a.net.netOf(b.id.id)).toBe('aaaa0001'); // heard over UDP: my net
-    a.net.sendNow();
-    expect(a.sent.length).toBe(0);
-    await until(() => got.some((g) => g.includes('"t":"pub"')));
-    expect(got.some((g) => g.includes('"t":"pub"'))).toBe(true);
+    b.net.relayOpened();
+    b.net.relayDown({ t: 'roster', you: 'bbbb0002', peers: [h.entry(a, 'aaaa0001')] });
+  };
+  const pump = (ns: Node[], f: () => boolean) =>
+    until(() => {
+      tickAll(ns);
+      return f();
+    });
+
+  it('two-way UDP: no relay frames; a UDP lapse resends the full state over the relay', async () => {
+    const { h, a, b } = await udpPair();
+    await pump([a, b], () => a.net.netOf(b.id.id) === 'lan' && b.net.netOf(a.id.id) === 'lan');
+    roster(h, a, b);
+    expect(a.net.netOf(b.id.id)).toBe('aaaa0001'); // confirmed over UDP: my net
+    for (let col = 1; col <= 3; col++) {
+      clock.t += 1_000;
+      a.avatar = { col, row: 1, dir: 'up' };
+      await pump([a, b], () => b.net.peers(PUBLIC_VIEW)[0]?.avatar?.col === col);
+    }
+    expect(a.sent.length + b.sent.length).toBe(0);
+    dropPubsFrom(a, b.id.id);
     clock.t += PEER_TTL_MS + 1;
     a.net.sendNow();
     expect(a.sent.at(-1)?.some((w) => w.to === b.id.id)).toBe(true);
     expect(a.net.netOf(b.id.id)).toBe('bbbb0002');
+  });
+
+  it('one-way UDP: hearing a hello is not enough, the relay still carries it', async () => {
+    const { h, a, b } = await udpPair();
+    dropPubsFrom(a, b.id.id); // A hears B's hellos, never its pubs
+    await pump([a, b], () => b.net.netOf(a.id.id) === 'lan');
+    roster(h, a, b);
+    expect(a.net.netOf(b.id.id)).toBe('bbbb0002');
+    a.net.sendNow();
+    expect(a.sent.at(-1)?.some((w) => w.to === b.id.id)).toBe(true);
+  });
+
+  it('works over the relay with no UDP socket', async () => {
+    const h = hub();
+    const a = await h.mk('A', [], false);
+    const b = await h.mk('B');
+    h.connect();
+    tickAll([a, b]);
+    expect(ids(a.net.peers(PUBLIC_VIEW))).toEqual([b.id.id]);
+    expect(ids(b.net.peers(PUBLIC_VIEW))).toEqual([a.id.id]);
+    expect(a.wants.at(-1)).toBe(true);
+  });
+
+  it('ignores a roster entry whose key differs from the pinned one', async () => {
+    const h = hub();
+    const a = await h.mk('A');
+    const b = await h.mk('B');
+    a.pins.set(b.id.id, createIdentity('X').publicKey);
+    h.connect();
+    tickAll([a, b]);
+    expect(a.net.peers(PUBLIC_VIEW)).toEqual([]);
+    expect(a.sent.flat().some((w) => w.to === b.id.id)).toBe(false);
+    expect(a.net.netOf(b.id.id)).toBeUndefined();
   });
 
   it('splits frames over the byte cap without dropping anyone', async () => {
