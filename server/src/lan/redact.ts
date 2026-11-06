@@ -97,3 +97,11 @@ export function hideView(v: AgentView): AgentView {
   const { ageSec: _a, todo: _t, fail: _f, diff: _d, ctx: _c, ...rest } = v;
   return { ...rest, act: 'idle', target: '', reason: '', hidden: true };
 }
+
+/** Public office (UDP and relay alike): the agent still moves between rooms, types and
+ *  waits, but what it works on stays home. A hidden view is left as it is (stronger). */
+export function quietView(v: AgentView): AgentView {
+  if (v.hidden) return v;
+  const { ageSec: _a, todo: _t, fail: _f, diff: _d, ctx: _c, ...rest } = v;
+  return { ...rest, target: '', reason: '', quiet: true };
+}

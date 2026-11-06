@@ -186,6 +186,7 @@ export interface OfficeAgentMessage {
   target: string;
   reason: string;
   hidden?: boolean;
+  quiet?: boolean;
   talk?: boolean;
   ageSec?: number;
   todo?: AgentTodo;

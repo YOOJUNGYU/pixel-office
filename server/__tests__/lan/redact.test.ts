@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { AgentView } from '../../../core/src/lan.js';
-import { hideView, redactText, redactView } from '../../src/lan/redact.js';
+import { hideView, quietView, redactText, redactView } from '../../src/lan/redact.js';
 
 const cases: Array<[string, string]> = [
   ['/home/kim/proj/src/auth/login.ts 수정 중', 'login.ts 수정 중'],
@@ -102,5 +102,30 @@ describe('status signals and hiding', () => {
   it('redactView keeps them (counts and a flag only) but never the local ctx', () => {
     expect(redactView(v)).not.toHaveProperty('ctx');
     expect(redactView(v)).toMatchObject({ ageSec: 90, todo: { done: 1, total: 3 }, fail: true });
+  });
+  it('quietView keeps act, room and waiting, drops the work details', () => {
+    const w = {
+      ...v,
+      room: 'coding',
+      permission: true,
+      provider: 'claude',
+      kind: 'main',
+    } as AgentView;
+    const q = quietView(w);
+    for (const k of ['ageSec', 'todo', 'fail', 'diff', 'ctx']) expect(q).not.toHaveProperty(k);
+    expect(q).toMatchObject({
+      act: 'edit',
+      room: 'coding',
+      permission: true,
+      provider: 'claude',
+      kind: 'main',
+      target: '',
+      reason: '',
+      quiet: true,
+    });
+  });
+  it('quietView leaves a hidden view as it is', () => {
+    const h = hideView(v);
+    expect(quietView(h)).toEqual(h);
   });
 });

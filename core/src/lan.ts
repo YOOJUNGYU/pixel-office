@@ -152,6 +152,9 @@ export interface AgentView {
   reason: string;
   /** The owner hides its work: act/target/reason are blanked; room, kind and permission stay. */
   hidden?: true;
+  /** Public-office presence (any path): target, reason and the work signals are left out;
+   *  act, room and waiting stay. Older peers ignore it. */
+  quiet?: true;
   /** Children only: talking with its parent right now (handed a task, reporting back, or a
    *  SendMessage to it); viewers show the two face to face. Older peers ignore it. */
   talk?: true;
@@ -480,6 +483,7 @@ function parseView(raw: unknown): AgentView | null {
     reason,
   };
   if (raw.hidden === true) view.hidden = true;
+  if (raw.quiet === true) view.quiet = true;
   if (raw.talk === true) view.talk = true;
   // Optional fields: a bad one is dropped alone, the view stays.
   const age = int(raw.ageSec, 0, AGE_MAX_SEC);

@@ -43,7 +43,7 @@ import {
   saveProfile,
   validateOfficeName,
 } from './profile.js';
-import { hideView, redactView } from './redact.js';
+import { hideView, quietView, redactView } from './redact.js';
 import { SharedLayouts } from './sharedLayout.js';
 
 const toAgents = (peer: PeerInfo, views: AgentView[]): OfficeAgent[] =>
@@ -148,11 +148,13 @@ export class LanService {
   }
 
   /** What PeerNet sends (encrypted) on `channel` (PUBLIC_VIEW or a team tag). Never
-   *  throws: a failing scan sends no views. The chat goes only to the view it was said in. */
+   *  throws: a failing scan sends no views. The chat goes only to the view it was said in.
+   *  The public office gets quiet views (no work details), over UDP and the relay alike. */
   packet(channel: string = PUBLIC_VIEW): PeerPacket {
     let views: AgentView[] = [];
     try {
       views = this.local.views(true).map(this.profile.hideWork ? hideView : redactView);
+      if (channel === PUBLIC_VIEW) views = views.map(quietView);
     } catch (err) {
       console.error('[Pixel Office] Building peer packet failed:', err);
       views = [];

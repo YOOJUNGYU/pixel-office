@@ -84,7 +84,7 @@ describe('LanService', () => {
 
   it('sends an empty nickname until one is set, and always redacts', () => {
     const lan = new LanService({ ...profile }, { views: () => [view()] });
-    const p = lan.packet();
+    const p = lan.packet('team-tag');
     expect(p.peer).toEqual({
       id: 'me',
       account: lan.account,
@@ -104,7 +104,7 @@ describe('LanService', () => {
       },
     };
     const lan = new LanService({ ...profile }, local);
-    expect(lan.packet().views[0].target).toBe('ssh');
+    expect(lan.packet('team-tag').views[0].target).toBe('ssh');
     expect(lan.office(PUBLIC_VIEW)[0].target).toBe('ssh dev@db01.acme.local');
     expect(asked).toEqual([true, undefined]);
   });
@@ -125,6 +125,28 @@ describe('LanService', () => {
     expect(v).toMatchObject({ room: view().room, provider: view().provider, kind: view().kind });
     expect(lan.office(PUBLIC_VIEW)[0]).toMatchObject({ act: 'edit', target: 'a.ts' }); // mine: as-is
     expect(lan.office(PUBLIC_VIEW)[0].hidden).toBeUndefined();
+  });
+
+  it('public presence is quiet (UDP and relay alike); team and my own snapshot keep detail', () => {
+    const lan = new LanService(
+      { ...profile },
+      { views: () => [view({ act: 'edit', ageSec: 5, todo: { done: 1, total: 2 }, fail: true })] },
+    );
+    const [q] = lan.packet(PUBLIC_VIEW).views;
+    expect(q).toMatchObject({ act: 'edit', room: 'coding', target: '', reason: '', quiet: true });
+    for (const k of ['ageSec', 'todo', 'fail']) expect(q).not.toHaveProperty(k);
+    const [team] = lan.packet('team-tag').views;
+    expect(team).toMatchObject({ target: 'a.ts', ageSec: 5 });
+    expect(team).not.toHaveProperty('quiet');
+    expect(lan.office(PUBLIC_VIEW)[0]).toMatchObject({ target: '/home/kim/a.ts', ageSec: 5 });
+    expect(lan.office(PUBLIC_VIEW)[0]).not.toHaveProperty('quiet');
+  });
+
+  it('a hidden PC stays hidden in the public office (not quiet)', () => {
+    const lan = new LanService({ ...profile, hideWork: true }, { views: () => [view()] });
+    const [v] = lan.packet(PUBLIC_VIEW).views;
+    expect(v).toMatchObject({ act: 'idle', hidden: true });
+    expect(v).not.toHaveProperty('quiet');
   });
 
   it('packet() never throws: a failing scan sends no views', () => {
