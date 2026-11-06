@@ -27,8 +27,26 @@ describe('parseUp', () => {
       parseUp(JSON.stringify({ t: 'send', w: [wire({ to: 'x'.repeat(65) })] }), 'a'),
     ).toBeNull();
     expect(parseUp(JSON.stringify({ t: 'send', w: [wire({ n: 1 })] }), 'a')).toBeNull();
-    expect(parseUp('x'.repeat(RELAY_MAX_FRAME_BYTES + 1), 'a')).toBeNull();
     expect(parseUp('nope', 'a')).toBeNull();
+  });
+});
+
+describe('frame size limit', () => {
+  const frame = (c: string) => JSON.stringify({ t: 'send', w: [wire({ c })] });
+  const overhead = Buffer.byteLength(frame(''));
+  it('counts bytes, not UTF-16 units', () => {
+    const room = RELAY_MAX_FRAME_BYTES - overhead;
+    expect(parseUp(frame('x'.repeat(room)), 'a')).not.toBeNull();
+    expect(parseUp(frame('x'.repeat(room + 1)), 'a')).toBeNull();
+    // 200k chars < 512k units but 600k bytes
+    const han = frame('한'.repeat(200_000));
+    expect(han.length).toBeLessThan(RELAY_MAX_FRAME_BYTES);
+    expect(parseUp(han, 'a')).toBeNull();
+    expect(parseUp(frame('한'.repeat(100_000)), 'a')).not.toBeNull();
+  });
+  it('applies to parseDown too', () => {
+    const big = JSON.stringify({ t: 'w', w: [wire({ c: '한'.repeat(200_000) })] });
+    expect(parseDown(big)).toBeNull();
   });
 });
 

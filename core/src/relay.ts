@@ -40,7 +40,13 @@ const obj = (x: unknown): Obj | null =>
   x && typeof x === 'object' && !Array.isArray(x) ? (x as Obj) : null;
 
 function parseJson(text: string): Obj | null {
+  // bytes >= UTF-16 units, and <= 3 * units: encode only in the gray zone
   if (text.length > RELAY_MAX_FRAME_BYTES) return null;
+  if (
+    text.length * 3 > RELAY_MAX_FRAME_BYTES &&
+    new TextEncoder().encode(text).length > RELAY_MAX_FRAME_BYTES
+  )
+    return null;
   try {
     return obj(JSON.parse(text));
   } catch {
