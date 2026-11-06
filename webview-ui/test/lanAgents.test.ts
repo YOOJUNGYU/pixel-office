@@ -580,7 +580,7 @@ test('bubble text: a run shows the command alone (서버실 says it already), ot
   );
 });
 
-test('room card text of a quiet agent: 작업 중 / Working; idle keeps the idle text', () => {
+test('room card text of a quiet agent: 작업 중 / Working; idle and waiting keep their text', () => {
   setLang('ko');
   assert.equal(
     activityText(agent('a', 'coding', { act: 'edit', target: '', quiet: true })),
@@ -589,6 +589,15 @@ test('room card text of a quiet agent: 작업 중 / Working; idle keeps the idle
   assert.equal(
     activityText(agent('a', 'lounge', { act: 'idle', target: '', quiet: true })),
     '대기 중',
+  );
+  // waiting is not a work detail: the waiting text stays (no target)
+  assert.equal(
+    activityText(agent('a', 'coding', { act: 'ask', target: '', quiet: true })),
+    '답변 기다리는 중',
+  );
+  assert.equal(
+    activityText(agent('a', 'coding', { act: 'edit', target: '', quiet: true, permission: true })),
+    '파일 수정 중',
   );
   setLang('en');
   assert.equal(

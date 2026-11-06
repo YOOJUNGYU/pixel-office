@@ -64,12 +64,12 @@ export function tagText(a: OfficeAgent, parent?: OfficeAgent, withName = true): 
 /**
  * What an agent does, for its bubble and room card: the command alone for a run (its room,
  * 서버실, already says "running a command"), else the full activity text. A quiet agent
- * (another PC over the relay, no details) is just "working" unless idle.
+ * (another PC over the relay, no details) is just "working" unless idle or waiting.
  */
 export const activityText = (a: OfficeAgent): string =>
   a.hidden
     ? t('act.hidden')
-    : a.quiet && a.act !== 'idle'
+    : a.quiet && a.act !== 'idle' && a.act !== 'ask' && !a.permission
       ? t('act.quiet')
       : a.act === 'run' && a.target
         ? a.target

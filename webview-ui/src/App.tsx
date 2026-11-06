@@ -19,9 +19,9 @@ import {
   DEFAULT_LAYOUT_ASSET,
   FIRST_OPEN_FIT_FILL,
   FIT_TOP_MARGIN_PX,
-  LAYOUT_REJECTED_TOAST_MS,
   OFFICE_CANVAS_TEST_ID,
   PERSONAL_LAYOUT_ASSET,
+  TOAST_MS,
   TOP_RIGHT_BOTTOM_RESERVE_PX,
   TOP_RIGHT_Z_INDEX,
   TOUR_AUTOSTART_DELAY_MS,
@@ -313,7 +313,7 @@ function App() {
   }, [kickResult]);
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(null), LAYOUT_REJECTED_TOAST_MS);
+    const timer = setTimeout(() => setToast(null), TOAST_MS);
     return () => clearTimeout(timer);
   }, [toast]);
 

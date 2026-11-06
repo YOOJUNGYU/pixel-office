@@ -529,8 +529,8 @@ export const TOUR_FIT_FILL = 0.92;
 export const FIRST_OPEN_FIT_FILL = 0.95;
 /** First-open fit leaves this much room at the top (CSS px): the office switcher + a gap. */
 export const FIT_TOP_MARGIN_PX = 56;
-/** How long the "layout not saved" toast stays. */
-export const LAYOUT_REJECTED_TOAST_MS = 4_000;
+/** How long a toast stays (layout not saved, relay kick result). */
+export const TOAST_MS = 4_000;
 
 // ── App version ─────────────────────────────────────────────
 /** An unbuilt (dev/test) server's version: never triggers a reload. */
