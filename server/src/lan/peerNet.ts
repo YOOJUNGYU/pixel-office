@@ -377,12 +377,13 @@ export class PeerNet {
     return new Promise((resolve, reject) => {
       const sock = dgram.createSocket({ type: 'udp4', reuseAddr: true });
       sock.on('message', (msg, rinfo) => this.receive(msg.toString('utf8'), rinfo));
-      sock.once('error', (err) => {
+      const onBindError = (err: Error): void => {
         sock.close(); // a failed bind must not leave the socket open
         reject(err);
-      });
+      };
+      sock.once('error', onBindError);
       sock.bind(this.opts.port, '0.0.0.0', () => {
-        sock.removeListener('error', reject);
+        sock.removeListener('error', onBindError);
         sock.on('error', (err) => console.error('[Pixel Office] UDP socket error:', err.message));
         sock.setBroadcast(true);
         this.sock = sock;

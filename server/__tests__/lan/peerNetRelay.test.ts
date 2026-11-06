@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto';
 import * as dgram from 'dgram';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as zlib from 'zlib';
 
 import type { AgentView, LayoutRev, PeerPacket } from '../../../core/src/lan.js';
@@ -71,7 +71,12 @@ interface Node {
 /** In-memory hub: a node's relay.send routes each wire to its `to` node, synchronously. */
 function hub() {
   const nodes = new Map<string, Node>();
-  const mk = async (name: string, targets: string[] = [], udp = true): Promise<Node> => {
+  /** udp 'fail': the port is already taken without SO_REUSEADDR, so start() must reject. */
+  const mk = async (
+    name: string,
+    targets: string[] = [],
+    udp: boolean | 'fail' = true,
+  ): Promise<Node> => {
     const port = await freePort();
     const node = {
       id: createIdentity(name),
@@ -122,7 +127,13 @@ function hub() {
       },
     });
     nets.push(node.net);
-    if (udp) await node.net.start();
+    if (udp === 'fail') {
+      const taken = dgram.createSocket('udp4');
+      socks.push(taken);
+      await new Promise<void>((r) => taken.bind(port, '0.0.0.0', r));
+      await expect(node.net.start()).rejects.toThrow(/EADDRINUSE/);
+      node.net.runWithoutUdp();
+    } else if (udp) await node.net.start();
     else node.net.runWithoutUdp();
     nodes.set(node.id.id, node);
     return node;
@@ -148,6 +159,39 @@ function hub() {
 }
 
 const tickAll = (ns: Node[]) => ns.forEach((n) => n.net.sendNow());
+
+describe('PeerNet UDP socket', () => {
+  it('after start, only the runtime error logger is left; a runtime error keeps it open', async () => {
+    const h = hub();
+    const a = await h.mk('A', ['127.0.0.1:9']);
+    const sock = (a.net as unknown as { sock: dgram.Socket }).sock;
+    expect(sock.listenerCount('error')).toBe(1);
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    sock.emit('error', new Error('boom'));
+    log.mockRestore();
+    expect(() => sock.address()).not.toThrow(); // still bound
+    expect(() => a.net.sendNow()).not.toThrow();
+  });
+
+  it('a failed bind closes its socket; the relay still works without UDP', async () => {
+    const h = hub();
+    const close = vi.spyOn(dgram.Socket.prototype, 'close');
+    let a: Node;
+    try {
+      a = await h.mk('A', [], 'fail');
+      // freePort's probe + the failed socket; the socket holding the port stays open
+      expect(close).toHaveBeenCalledTimes(2);
+      expect(() => socks.at(-1)!.address()).not.toThrow();
+    } finally {
+      close.mockRestore();
+    }
+    const b = await h.mk('B', [], false);
+    h.connect();
+    tickAll([a, b]);
+    expect(a.sent.length).toBeGreaterThan(0);
+    expect(ids(b.net.peers(PUBLIC_VIEW))).toEqual([a.id.id]);
+  });
+});
 
 describe('PeerNet over the relay', () => {
   it('sees each other over relay only', async () => {

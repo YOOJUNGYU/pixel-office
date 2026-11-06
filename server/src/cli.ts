@@ -331,7 +331,7 @@ export async function main(boot = true): Promise<void> {
       relay: relay
         ? {
             status: () => relay.status,
-            kick: (id) => relayKick(url, readConfig().standalone.relayAdminToken, id),
+            kick: (id, token) => relayKick(url, token, id),
           }
         : undefined,
     });

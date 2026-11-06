@@ -76,7 +76,8 @@ export interface ClientMessageContext {
   /** Internet public office relay (cli.ts). Absent = no relay ('off'). */
   relay?: {
     status(): RelayStatus;
-    kick(id: string): Promise<{ ok: boolean; reason?: RelayKickReason }>;
+    /** `token` = the admin token from config.json, read by the handler. */
+    kick(id: string, token: string): Promise<{ ok: boolean; reason?: RelayKickReason }>;
   };
 }
 
@@ -251,7 +252,7 @@ export function handleClientMessage(
       const token = adapter.getSetting(KEY_RELAY_ADMIN_TOKEN, '');
       if (!token) result({ ok: false, reason: 'noToken' });
       else if (!isPeerId(msg.peerId) || !ctx.relay) result({ ok: false, reason: 'bad' });
-      else void ctx.relay.kick(msg.peerId).then(result);
+      else void ctx.relay.kick(msg.peerId, token).then(result);
       break;
     }
 

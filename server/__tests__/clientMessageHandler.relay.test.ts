@@ -72,7 +72,7 @@ describe('clientMessageHandler relay', () => {
     kick.mockResolvedValueOnce({ ok: false, reason: 'auth' } as never);
     send({ type: 'relayKick', peerId: 'peer-1' });
     await flush();
-    expect(kick).toHaveBeenCalledWith('peer-1');
+    expect(kick).toHaveBeenCalledWith('peer-1', 'abc');
     expect(sent).toEqual([{ type: 'relayKickResult', ok: false, reason: 'auth' }]);
   });
 
