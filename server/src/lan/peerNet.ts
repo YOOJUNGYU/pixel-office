@@ -34,6 +34,7 @@ import {
   PRESENCE_MAX_COMPRESSED,
   PRESENCE_MAX_JSON,
   PRESENCE_PART_BYTES,
+  RELAY_MAX_FRAMES_PER_TICK,
   RELAY_MIN_SEND_MS,
   SEQ_MEMORY_MS,
 } from '../constants.js';
@@ -480,7 +481,8 @@ export class PeerNet {
     }
     for (const [id, h] of watchers) pubTo(id, h, watcherPlains);
     // No longer confirmed over UDP: owed the whole state over the relay.
-    for (const id of this.udpConfirmed) if (!confirmed.has(id)) this.needsFull.add(id);
+    for (const id of this.udpConfirmed)
+      if (!confirmed.has(id) && this.relayLive.has(id)) this.needsFull.add(id);
     this.udpConfirmed = confirmed;
     this.sendRelay(inner.packet, plains, t);
   }
@@ -509,7 +511,9 @@ export class PeerNet {
   /**
    * Relay-only peers get our presence only when it changed (ageSec aside: receivers age
    * it themselves) or when they are owed it in full, at most once per RELAY_MIN_SEND_MS,
-   * all in as few frames as the size cap allows. A refused send leaves everything owed.
+   * all in as few frames as the size cap allows, at most RELAY_MAX_FRAMES_PER_TICK of them.
+   * A recipient whose wires were not all sent (over the cap, or a refused send) stays owed:
+   * its full state (needsFull) and its layout push (push time put back) go next tick.
    */
   private sendRelay(packet: PeerPacket, plains: string[], t: number): void {
     const relay = this.opts.relay;
@@ -519,20 +523,37 @@ export class PeerNet {
       views: packet.views.map(({ ageSec: _a, ...v }) => v),
     });
     const changed = key !== this.lastRelayKey;
-    const full: string[] = [];
+    /** Per recipient, in send order: whether it was owed the full state, its last wire's
+     *  index + 1 in `wires`, its layout push time before this tick. */
+    const groups: { id: string; owed: boolean; end: number; pushed: number | undefined }[] = [];
     const wires: PubWire[] = [];
     for (const id of this.relayLive) {
       const h = this.hellos.get(id);
       if (!h || this.udpConfirmed.has(id)) continue;
       const owed = changed || this.needsFull.has(id);
-      if (owed) full.push(id);
-      wires.push(...this.sealPub(id, h, [...(owed ? plains : []), ...this.layoutFor(id)]));
+      const pushed = this.layoutPushed.get(`pub|${id}`);
+      const mine = this.sealPub(id, h, [...(owed ? plains : []), ...this.layoutFor(id)]);
+      if (!mine.length) continue;
+      wires.push(...mine);
+      groups.push({ id, owed, end: wires.length, pushed });
     }
     if (!wires.length) return;
-    for (const frame of relayFrames(wires)) if (!relay.send(frame)) return;
+    let sent = 0;
+    for (const frame of relayFrames(wires).slice(0, RELAY_MAX_FRAMES_PER_TICK)) {
+      if (!relay.send(frame)) break;
+      sent += frame.length;
+    }
     this.lastRelayKey = key;
-    this.lastRelaySend = t;
-    for (const id of full) this.needsFull.delete(id);
+    if (sent) this.lastRelaySend = t;
+    for (const g of groups) {
+      if (g.end <= sent) {
+        if (g.owed) this.needsFull.delete(g.id);
+        continue;
+      }
+      if (g.owed) this.needsFull.add(g.id);
+      if (g.pushed === undefined) this.layoutPushed.delete(`pub|${g.id}`);
+      else this.layoutPushed.set(`pub|${g.id}`, g.pushed);
+    }
   }
 
   /** A relay frame (already shape-checked by parseDown, or built by tests). */

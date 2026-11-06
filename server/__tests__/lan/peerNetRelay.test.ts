@@ -7,6 +7,7 @@ import type { AgentView, LayoutRev, PeerPacket } from '../../../core/src/lan.js'
 import { DEFAULT_LAYOUT_REV, PUBLIC_VIEW } from '../../../core/src/lan.js';
 import type { PubWire, RelayDown } from '../../../core/src/relay.js';
 import { RELAY_MAX_FRAME_BYTES } from '../../../core/src/relay.js';
+import { RELAY_MAX_FRAMES_PER_TICK } from '../../src/constants.js';
 import type { Identity } from '../../src/lan/crypto.js';
 import { createIdentity, teamKey, teamTag } from '../../src/lan/crypto.js';
 import type { TeamChannel } from '../../src/lan/peerNet.js';
@@ -458,13 +459,59 @@ describe('PeerNet over the relay', () => {
       peers: others.map((o) => ({ id: o.id, pk: o.publicKey })),
     });
     a.net.sendNow();
-    expect(a.sent.length).toBeGreaterThan(1);
+    expect(a.sent.length).toBe(RELAY_MAX_FRAMES_PER_TICK);
+    for (let i = 0; i < 5; i++) {
+      clock.t += 1_000;
+      a.net.sendNow();
+    }
+    expect(a.sent.length).toBeGreaterThan(RELAY_MAX_FRAMES_PER_TICK);
     for (const w of a.sent)
       expect(Buffer.byteLength(JSON.stringify({ t: 'send', w }))).toBeLessThanOrEqual(
         RELAY_MAX_FRAME_BYTES,
       );
     const to = new Set(a.sent.flat().map((w) => w.to));
     expect(to).toEqual(new Set(others.map((o) => o.id)));
+  });
+
+  it('a big layout push to 30 peers: at most RELAY_MAX_FRAMES_PER_TICK frames a tick, all delivered', async () => {
+    const h = hub();
+    const a = await h.mk('A', [], false);
+    const others: Node[] = [];
+    for (let i = 0; i < 30; i++) others.push(await h.mk(`R${i.toString()}`, [], false));
+    const json = JSON.stringify({
+      version: 1,
+      cols: 1,
+      rows: 1,
+      tiles: [0],
+      furniture: [],
+      pad: randomBytes(60_000).toString('base64'),
+    });
+    h.connect();
+    tickAll([a, ...others]); // everyone learns everyone's (default) layout
+    a.layout = { rev: 2, by: a.id.id, h: layoutHash(json) };
+    a.blob = zlib.deflateSync(json);
+    const counts: number[] = [];
+    for (let i = 0; i < 20 && others.some((o) => o.received.length === 0); i++) {
+      clock.t += 1_000;
+      const before = a.sent.length;
+      a.net.sendNow();
+      counts.push(a.sent.length - before);
+    }
+    expect(Math.max(...counts)).toBeLessThanOrEqual(RELAY_MAX_FRAMES_PER_TICK);
+    expect(counts.filter((c) => c > 0).length).toBeGreaterThan(1); // it really was spread
+    for (const o of others) expect(o.received).toEqual([a.layout]);
+  });
+
+  it('a lapsed UDP peer is owed the full state only when it is on the relay', async () => {
+    const { a, b } = await udpPair();
+    await pump([a, b], () => a.net.netOf(b.id.id) === 'lan');
+    const owed = (n: Node) => (n.net as unknown as { needsFull: Set<string> }).needsFull;
+    dropPubsFrom(a, b.id.id);
+    for (let i = 0; i < 3; i++) {
+      clock.t += PEER_TTL_MS + 1;
+      a.net.sendNow();
+    }
+    expect(owed(a).size).toBe(0);
   });
 
   it('team mode closes the relay', async () => {

@@ -11,6 +11,7 @@ import {
   RELAY_CONNECT_TIMEOUT_MS,
   RELAY_PING_MS,
   RELAY_PONG_TIMEOUT_MS,
+  RELAY_RETRY_FULL_JITTER_MS,
   RELAY_RETRY_FULL_MS,
   RELAY_RETRY_JITTER_MS,
   RELAY_RETRY_MAX_MS,
@@ -49,7 +50,7 @@ export function retryAfter(
 ): number {
   switch (kind) {
     case 'full':
-      return RELAY_RETRY_FULL_MS;
+      return RELAY_RETRY_FULL_MS + rand() * RELAY_RETRY_FULL_JITTER_MS;
     case 'budget':
       return (ms ?? 0) + rand() * RELAY_RETRY_JITTER_MS;
     case 'kicked':
@@ -156,27 +157,20 @@ export class Relay {
     this.connTimer.unref();
     // stay 'error' while retrying: one log line per outage
     if (this.st.state !== 'error') this.set({ state: 'connecting' });
-    ws.addEventListener('open', () => {
-      if (this.ws !== ws) return;
-      this.opened = true;
-      this.clearConnTimer();
-      this.lastRx = this.now();
-      this.attempt = 0;
-      this.set({ state: 'connected' });
-      this.ping = setInterval(() => {
-        if (this.now() - this.lastRx >= (this.o.pongTimeoutMs ?? RELAY_PONG_TIMEOUT_MS)) {
-          this.drop(ws);
-        } else if (ws.readyState === 1) ws.send('ping');
-      }, this.o.pingMs ?? RELAY_PING_MS);
-      this.ping.unref();
-      this.o.onOpen();
-    });
+    // The hub refuses by accepting and then closing (the code is the reason), so 'open'
+    // proves nothing: only the roster (sent to admitted sockets only) means connected.
+    // Until then the connect timeout runs, and a close is a failure with nothing to close.
     ws.addEventListener('message', (e) => {
       if (this.ws !== ws || typeof e.data !== 'string') return;
       this.lastRx = this.now();
       if (e.data === 'pong') return;
       const f = parseDown(e.data);
-      if (f) this.o.onDown(f);
+      if (!f) return;
+      if (!this.opened) {
+        if (f.t !== 'roster') return;
+        this.established(ws);
+      }
+      this.o.onDown(f);
     });
     ws.addEventListener('close', (e) => {
       if (this.ws !== ws) return;
@@ -188,6 +182,20 @@ export class Relay {
     ws.addEventListener('error', () => {
       // 'close' follows
     });
+  }
+
+  private established(ws: WebSocket): void {
+    this.opened = true;
+    this.clearConnTimer();
+    this.attempt = 0;
+    this.set({ state: 'connected' });
+    this.ping = setInterval(() => {
+      if (this.now() - this.lastRx >= (this.o.pongTimeoutMs ?? RELAY_PONG_TIMEOUT_MS)) {
+        this.drop(ws);
+      } else if (ws.readyState === 1) ws.send('ping');
+    }, this.o.pingMs ?? RELAY_PING_MS);
+    this.ping.unref();
+    this.o.onOpen();
   }
 
   private fail(kind: RelayCloseKind | 'other', ms: number | undefined, opened: boolean): void {

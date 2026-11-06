@@ -7,6 +7,7 @@ import { WebSocketServer } from 'ws';
 
 import { closeReason, type PubWire } from '../../../core/src/relay.js';
 import {
+  RELAY_RETRY_FULL_JITTER_MS,
   RELAY_RETRY_FULL_MS,
   RELAY_RETRY_MAX_MS,
   RELAY_RETRY_MIN_MS,
@@ -27,6 +28,7 @@ const until = async (f: () => boolean): Promise<void> => {
   expect(f()).toBe(true);
 };
 
+const ROSTER = JSON.stringify({ t: 'roster', peers: [] });
 const cleanup: (() => void)[] = [];
 afterEach(() => {
   cleanup.splice(0).forEach((f) => f());
@@ -41,7 +43,7 @@ async function fake(onConn?: (ws: import('ws').WebSocket) => void) {
     urls.push(req.url ?? '');
     ws.on('message', (m) => msgs.push(String(m)));
     if (onConn) onConn(ws);
-    else ws.send(JSON.stringify({ t: 'roster', peers: [] }));
+    else ws.send(ROSTER);
   });
   cleanup.push(() => wss.close());
   await new Promise((r) => wss.once('listening', r));
@@ -84,6 +86,9 @@ describe('retryAfter', () => {
     expect(retryAfter('budget', 1000, 0, z)).toBe(1000);
     expect(retryAfter('kicked', 5000, 3, z)).toBe(5000);
     expect(retryAfter('full', undefined, 0, z)).toBe(RELAY_RETRY_FULL_MS);
+    expect(retryAfter('full', undefined, 0, () => 0.5)).toBe(
+      RELAY_RETRY_FULL_MS + 0.5 * RELAY_RETRY_FULL_JITTER_MS,
+    );
     expect(retryAfter('other', undefined, 10, z)).toBe(RELAY_RETRY_MAX_MS);
     expect(retryAfter('bad', undefined, 1, z)).toBe(RELAY_RETRY_MIN_MS * 2);
     expect(retryAfter('replaced', undefined, 0, z)).toBe(Infinity);
@@ -106,17 +111,68 @@ describe('Relay', () => {
     expect(r.send([{ ...w, c: 'x'.repeat(600_000) }])).toBe(false);
   });
 
-  it('full close: status, onClosed once, no instant reconnect', async () => {
+  it('full close (accepted, then closed before any roster): status, never opened, no instant reconnect', async () => {
     const f = await fake((ws) => ws.close(4020, closeReason('full')));
     const { r, ev } = mk(f.url);
     r.want(true);
     await until(() => r.status.state === 'full');
     expect(r.status).toEqual({ state: 'full', retryInMs: RELAY_RETRY_FULL_MS });
-    expect(ev.closed).toBe(1);
+    expect(ev.open).toBe(0);
+    expect(ev.closed).toBe(0);
     r.want(true);
     await new Promise((x) => setTimeout(x, 100));
     expect(f.urls.length).toBe(1);
     expect(r.send([])).toBe(false);
+  });
+
+  it('an accept-then-close refusal (bad) backs off and never opens', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const f = await fake((ws) => ws.close(4024, closeReason('bad')));
+    let t = 1000;
+    const { r, ev } = mk(f.url, () => t);
+    const seen: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      r.want(true);
+      await until(() => f.urls.length === i + 1 && r.status.retryInMs !== undefined);
+      await until(() => r.status.state === 'error');
+      seen.push(r.status.retryInMs ?? 0);
+      expect(r.connected()).toBe(false);
+      t += r.status.retryInMs ?? 0;
+    }
+    expect(seen).toEqual([5000, 10_000, 20_000]);
+    expect(ev.open).toBe(0);
+    expect(ev.closed).toBe(0);
+    expect(r.status.state).toBe('error');
+  });
+
+  it('connected only on the roster; a kick after it closes once', async () => {
+    let sock: import('ws').WebSocket | undefined;
+    const f = await fake((ws) => (sock = ws));
+    const { r, ev } = mk(f.url);
+    r.want(true);
+    await until(() => sock !== undefined);
+    await new Promise((x) => setTimeout(x, 50));
+    expect(r.status.state).toBe('connecting');
+    expect(ev.open).toBe(0);
+    sock!.send(ROSTER);
+    await until(() => r.connected());
+    expect(ev.open).toBe(1);
+    expect(ev.down).toEqual([{ t: 'roster', peers: [] }]);
+    sock!.close(4022, closeReason('kicked', 60_000));
+    await until(() => r.status.state === 'kicked');
+    expect(r.status).toEqual({ state: 'kicked', retryInMs: 60_000 });
+    expect(ev.closed).toBe(1);
+  });
+
+  it('no roster within the connect timeout: error, never opened', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const f = await fake(() => {}); // accepts, never sends a roster
+    const { r, ev } = mk(f.url, undefined, { connectTimeoutMs: 50 });
+    r.want(true);
+    await until(() => r.status.state === 'error');
+    expect(r.status.retryInMs).toBe(RELAY_RETRY_MIN_MS);
+    expect(ev.open).toBe(0);
+    expect(ev.closed).toBe(0);
   });
 
   it('backs off and logs once', async () => {
@@ -149,7 +205,7 @@ describe('Relay', () => {
 describe('Relay liveness', () => {
   it('drops a half-open socket (no pong)', async () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
-    const f = await fake(() => {}); // swallows pings, never answers
+    const f = await fake((ws) => ws.send(ROSTER)); // then swallows pings, never answers
     const { r, ev } = mk(f.url, undefined, { pingMs: 20, pongTimeoutMs: 60 });
     r.want(true);
     await until(() => r.connected());
@@ -160,13 +216,16 @@ describe('Relay liveness', () => {
   });
 
   it('pong keeps it alive and is not forwarded', async () => {
-    const f = await fake((ws) => ws.on('message', () => ws.send('pong')));
+    const f = await fake((ws) => {
+      ws.send(ROSTER);
+      ws.on('message', () => ws.send('pong'));
+    });
     const { r, ev } = mk(f.url, undefined, { pingMs: 20, pongTimeoutMs: 80 });
     r.want(true);
     await until(() => r.connected());
     await new Promise((x) => setTimeout(x, 250));
     expect(r.connected()).toBe(true);
-    expect(ev.down.length).toBe(0);
+    expect(ev.down.length).toBe(1); // the roster only
   });
 
   it('abandons a blackholed connect and retries after backoff', async () => {

@@ -271,9 +271,13 @@ export const RELAY_URL_ENV = 'PIXEL_OFFICE_RELAY_URL';
 /** setRelayAdminToken: longest token accepted (asyncapi maxLength). */
 export const RELAY_ADMIN_TOKEN_MAX = 256;
 export const RELAY_MIN_SEND_MS = 1_000;
+/** Frames sent to the relay in one tick at most (each is one billed message); the rest wait. */
+export const RELAY_MAX_FRAMES_PER_TICK = 2;
 export const RELAY_RETRY_MIN_MS = 5_000;
 export const RELAY_RETRY_MAX_MS = 5 * 60_000;
 export const RELAY_RETRY_FULL_MS = 5 * 60_000;
+/** Spread for `full` retries, so a crowd turned away together does not return together. */
+export const RELAY_RETRY_FULL_JITTER_MS = 60_000;
 /** Spread of budget-reset reconnects (0..this) so every PC does not return at once. */
 export const RELAY_RETRY_JITTER_MS = 10 * 60_000;
 /** Text 'ping' (the relay answers 'pong' without waking). */
