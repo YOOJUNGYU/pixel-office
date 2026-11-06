@@ -45,3 +45,9 @@ export const ctxText = (a: Pick<OfficeAgent, 'ctx'>): string => {
 
 /** Text no longer readable at this bubble scale: show the act icon alone. */
 export const iconOnly = (scale: number, threshold: number): boolean => scale < threshold;
+
+/**
+ * A head bubble (and hover bubble, fail drop) for this agent: not for a quiet one —
+ * another PC's agent in the public office, whose work details are not sent.
+ */
+export const hasBubble = (a: Pick<OfficeAgent, 'quiet'>): boolean => !a.quiet;

@@ -70,6 +70,7 @@ import {
   ctxText,
   elapsedText,
   elapsedWarn,
+  hasBubble,
   iconOnly,
   langColor,
   todoPercent,
@@ -379,7 +380,8 @@ export function LanOverlay({
       bottom: number;
     }> = [];
     for (const { a, ch } of tags) {
-      if (ch.id === officeState.hoveredAgentId || ch.mergeInto !== undefined) continue;
+      if (ch.id === officeState.hoveredAgentId || ch.mergeInto !== undefined || !hasBubble(a))
+        continue;
       const text = activityText(a);
       const typing = ch.state === CharacterState.TYPE;
       const head = project.toScreenY(
@@ -637,7 +639,7 @@ export function LanOverlay({
   const hoveredId = officeState.hoveredAgentId;
   const hovered = hoveredId !== null ? lan.agentFor(hoveredId) : undefined;
   const hoveredCh = hoveredId !== null ? officeState.characters.get(hoveredId) : undefined;
-  if (hovered && hoveredCh) {
+  if (hovered && hoveredCh && hasBubble(hovered)) {
     const typing = hoveredCh.state === CharacterState.TYPE;
     nodes.push(
       <div

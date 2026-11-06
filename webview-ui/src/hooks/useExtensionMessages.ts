@@ -14,6 +14,8 @@ import type {
   ProfileError,
   ProfileErrorReason,
   ProfileLoaded,
+  RelayKickResult,
+  RelayState,
   UpdateAvailable,
   UpdateStatus,
 } from '../../../core/src/messages.js';
@@ -112,7 +114,16 @@ interface ExtensionMessageState {
   officeReply: OfficeReply | null;
   /** Drop the reply once handled, so reopening Settings does not apply it again. */
   clearOfficeReply: () => void;
+  /** The internet public office's connection (relayState); 'off' until reported. `at` = when it
+   *  arrived (retryInMs counts from then). */
+  relay: RelayStatus;
+  /** An admin token is stored on this PC (settingsLoaded.relayAdmin). */
+  relayAdmin: boolean;
+  /** Latest relayKick answer (each a new object: the toast shows on change). */
+  kickResult: RelayKickResult | null;
 }
+
+export type RelayStatus = Omit<RelayState, 'type'> & { at: number };
 
 export type OfficeReply = OfficeCreated | OfficeCode | OfficeError;
 
@@ -147,6 +158,9 @@ export function useExtensionMessages(
   const [notify, setNotify] = useState<NotifySettings | null>(null);
   const [officeReply, setOfficeReply] = useState<OfficeReply | null>(null);
   const clearOfficeReply = useCallback(() => setOfficeReply(null), []);
+  const [relay, setRelay] = useState<RelayStatus>({ state: 'off', at: 0 });
+  const [relayAdmin, setRelayAdmin] = useState(false);
+  const [kickResult, setKickResult] = useState<RelayKickResult | null>(null);
   const lanRef = useRef<LanAgents | null>(null);
   lanRef.current ??= new LanAgents(getOfficeState());
   const lan = lanRef.current;
@@ -219,6 +233,11 @@ export function useExtensionMessages(
         setLayoutSaveRejections((n) => n + 1);
       } else if (msg.type === 'profileError') {
         setProfileError((msg as ProfileError).reason);
+      } else if (msg.type === 'relayState') {
+        const { state, retryInMs } = msg as RelayState;
+        setRelay({ state, retryInMs, at: Date.now() });
+      } else if (msg.type === 'relayKickResult') {
+        setKickResult(msg as RelayKickResult);
       } else if (msg.type === 'updateAvailable') {
         setUpdate(msg as UpdateAvailable);
       } else if (msg.type === 'updateStatus') {
@@ -283,6 +302,7 @@ export function useExtensionMessages(
             chat: msg.notifyChat !== false,
           });
         }
+        setRelayAdmin(msg.relayAdmin === true);
         if (Array.isArray(msg.externalAssetDirectories)) {
           setExternalAssetDirectories(msg.externalAssetDirectories as string[]);
         }
@@ -345,5 +365,8 @@ export function useExtensionMessages(
     officeReply,
     clearOfficeReply,
     savedLayoutRef,
+    relay,
+    relayAdmin,
+    kickResult,
   };
 }

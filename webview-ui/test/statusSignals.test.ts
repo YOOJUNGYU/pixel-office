@@ -9,10 +9,12 @@ import { actIcon, ICONS } from '../src/lan/actIcons.js';
 import {
   elapsedText,
   elapsedWarn,
+  hasBubble,
   iconOnly,
   todoPercent,
   todoText,
 } from '../src/lan/statusSignals.js';
+import { screenKind } from '../src/office/engine/pcScreens.js';
 
 afterEach(() => setLang('ko'));
 
@@ -74,4 +76,11 @@ test('ctx chip text: my agents only carry ctx', async () => {
   assert.equal(ctxText({ ctx: { used: 294_000, window: 1_000_000 } }), '29%');
   assert.equal(ctxPercent({ ctx: { used: 300_000, window: 200_000 } }), 100);
   assert.equal(ctxText({}), '');
+});
+
+test('a quiet agent (another PC over the relay) gets no bubble; its PC screen stays', () => {
+  assert.equal(hasBubble({ quiet: true }), false);
+  assert.equal(hasBubble({}), true);
+  const quiet = { act: 'edit', quiet: true } as const;
+  assert.equal(screenKind(quiet), 'code'); // act is kept: the PC screen still shows code
 });

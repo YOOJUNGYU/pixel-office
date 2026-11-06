@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { DirectoryPersonMessage } from '../../../core/src/messages.js';
 import {
   MOBILE_MEDIA_QUERY,
+  NET_BADGE_COLORS,
   PEOPLE_COLLAPSED_KEY,
   PEOPLE_FACE_CROP,
   PEOPLE_FACE_SCALE,
@@ -10,13 +11,17 @@ import {
   PEOPLE_PET_FACE_CROP,
   PEOPLE_WIDE_MIN_PX,
 } from '../constants.js';
+import type { RelayStatus } from '../hooks/useExtensionMessages.js';
 import { type Key, t, useLang } from '../i18n.js';
 import type { OfficeState } from '../office/engine/officeState.js';
+import { transport } from '../transport/index.js';
 import { type AreaSection, totalPeople, viewedExtras, viewedRows } from './directoryModel.js';
 import type { LanAgents } from './lanAgents.js';
+import { netNumbers } from './netBadges.js';
 import { peerLabel } from './nicknames.js';
 import { focusHintKey, inFrozenOrder, type PersonRow } from './peopleModel.js';
 import { CharacterPreview } from './ProfileModal.js';
+import { relayStatusView } from './relayStatus.js';
 
 /** Remembered choice, else expanded only on a wide, non-mobile screen. */
 function initialCollapsed(): boolean {
@@ -70,8 +75,65 @@ function Face({ person }: { person: DirectoryPersonMessage }) {
   );
 }
 
+/** "망 2" / "LAN 2": people with the same number reach each other directly. */
+function NetBadge({ n }: { n: number | undefined }) {
+  if (n === undefined) return null;
+  const c = NET_BADGE_COLORS[(n - 1) % NET_BADGE_COLORS.length];
+  return (
+    <span
+      title={t('people.netTitle')}
+      className="shrink-0 px-2 text-2xs font-bold leading-normal"
+      style={{ background: c.bg, color: c.fg }}
+    >
+      {t('people.net', { n: String(n) })}
+    </span>
+  );
+}
+
+/** Admin only (relayAdmin), public office rows other than mine: remove the PC from the relay. */
+function KickButton({ person }: { person: DirectoryPersonMessage }) {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (!window.confirm(t('relay.kickConfirm', { name: peerLabel(person) }))) return;
+        transport.send({ type: 'relayKick', peerId: person.peerId });
+      }}
+      className="shrink-0 py-1 px-4 text-2xs bg-btn-bg text-text border-2 border-border rounded-none cursor-pointer hover:bg-btn-hover"
+    >
+      {t('relay.kick')}
+    </button>
+  );
+}
+
+/** Next to the public area heading while it is on screen: the internet relay's state. */
+function RelayChip({ relay }: { relay: RelayStatus }) {
+  const v = relayStatusView(relay, relay.at);
+  if (!v) return null;
+  const text = t(v.key, { t: v.until ?? '' });
+  const tone =
+    v.tone === 'ok'
+      ? 'text-status-success'
+      : v.tone === 'warn'
+        ? 'text-warning'
+        : 'text-text-muted';
+  return (
+    <span title={text} className={`min-w-0 truncate font-normal ${tone}`}>
+      {text}
+    </span>
+  );
+}
+
 /** A person outside the viewed office (or not in its snapshot): face + name, no actions. */
-function PlainRow({ person }: { person: DirectoryPersonMessage }) {
+function PlainRow({
+  person,
+  net,
+  kick,
+}: {
+  person: DirectoryPersonMessage;
+  net?: number;
+  kick?: boolean;
+}) {
   return (
     <li className="flex items-center gap-8 py-3 px-8 text-text">
       <Face person={person} />
@@ -79,6 +141,8 @@ function PlainRow({ person }: { person: DirectoryPersonMessage }) {
         {peerLabel(person)}
         {person.self && ` ${t('people.you')}`}
       </span>
+      <NetBadge n={net} />
+      {kick && <KickButton person={person} />}
     </li>
   );
 }
@@ -93,6 +157,10 @@ interface PeoplePanelProps {
   officeState: OfficeState;
   /** The tour's people step shows it expanded regardless of the viewer's choice. */
   forceOpen: boolean;
+  /** Internet relay state: a chip by the public heading while the public office is on screen. */
+  relay: RelayStatus;
+  /** An admin token is set on this PC: [강퇴] on others' rows of the viewed public office. */
+  canKick: boolean;
 }
 
 /**
@@ -106,6 +174,8 @@ export function PeoplePanel({
   lan,
   officeState,
   forceOpen,
+  relay,
+  canKick,
 }: PeoplePanelProps) {
   useLang();
   const live = viewedRows(sections, snapshotRows);
@@ -149,8 +219,19 @@ export function PeoplePanel({
 
   const count = t('people.title', { n: String(totalPeople(sections, live)) });
 
+  // Same-network numbers: public area only (the viewed one = live rows + its extras).
+  const pub = sections.find((s) => s.area === 'public');
+  const pubPeople = pub
+    ? pub.viewed
+      ? [...live.map((r) => r.person), ...viewedExtras(pub, live)]
+      : pub.people
+    : [];
+  const nets = netNumbers(pubPeople, pubPeople.find((p) => p.self)?.net);
+  const publicViewed = pub?.viewed === true;
+  const netOf = (p: DirectoryPersonMessage) => (p.net === undefined ? undefined : nets.get(p.net));
+
   const liveRows = rows.map((r) => (
-    <li key={r.person.peerId}>
+    <li key={r.person.peerId} className="flex items-center gap-4 pr-8 hover:bg-btn-hover">
       <button
         type="button"
         onClick={() => focus(r)}
@@ -158,7 +239,7 @@ export function PeoplePanel({
         onMouseLeave={() => (lan.highlightPeer = null)}
         onFocus={() => (lan.highlightPeer = r.person.peerId)}
         onBlur={() => (lan.highlightPeer = null)}
-        className="w-full flex items-center gap-8 py-3 px-8 bg-transparent border-0 text-left text-text cursor-pointer hover:bg-btn-hover"
+        className="flex-1 min-w-0 flex items-center gap-8 py-3 pl-8 bg-transparent border-0 text-left text-text cursor-pointer"
       >
         <Face person={r.person} />
         <span className="flex-1 min-w-0 flex flex-col">
@@ -175,6 +256,8 @@ export function PeoplePanel({
         </span>
         <StatusMark status={r.status} />
       </button>
+      {publicViewed && <NetBadge n={netOf(r.person)} />}
+      {publicViewed && canKick && !r.person.self && <KickButton person={r.person} />}
     </li>
   ));
 
@@ -184,13 +267,21 @@ export function PeoplePanel({
     const n = (s.viewed ? live.length : 0) + extras.length;
     return (
       <li key={s.view}>
-        <div className={AREA_HEADING}>
-          {t(heading, { n: String(n), name: s.name || t('office.unnamed') })}
+        <div className={`${AREA_HEADING} flex items-center gap-6`}>
+          <span className="shrink-0">
+            {t(heading, { n: String(n), name: s.name || t('office.unnamed') })}
+          </span>
+          {s.area === 'public' && s.viewed && <RelayChip relay={relay} />}
         </div>
         <ul className="m-0 p-0 list-none">
           {s.viewed && liveRows}
           {extras.map((p) => (
-            <PlainRow key={p.peerId} person={p} />
+            <PlainRow
+              key={p.peerId}
+              person={p}
+              net={s.area === 'public' ? netOf(p) : undefined}
+              kick={s.area === 'public' && s.viewed && canKick && !p.self}
+            />
           ))}
           {n === 0 && (
             <li className="py-3 px-8 text-xs text-text-muted">{t('people.area.empty')}</li>

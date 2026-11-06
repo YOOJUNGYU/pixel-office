@@ -27,7 +27,7 @@ export function effectTriggers(
   const out: EffectTrigger[] = [];
   for (const a of next) {
     const p = prev.get(a.key);
-    if (!p || a.hidden || p.hidden) continue;
+    if (!p || a.hidden || p.hidden || a.quiet || p.quiet) continue;
     const add = (a.diff?.add ?? 0) - (p.diff?.add ?? 0);
     const del = (a.diff?.del ?? 0) - (p.diff?.del ?? 0);
     if (add > 0 || del > 0) {

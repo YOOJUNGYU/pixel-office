@@ -580,6 +580,24 @@ test('bubble text: a run shows the command alone (서버실 says it already), ot
   );
 });
 
+test('room card text of a quiet agent: 작업 중 / Working; idle keeps the idle text', () => {
+  setLang('ko');
+  assert.equal(
+    activityText(agent('a', 'coding', { act: 'edit', target: '', quiet: true })),
+    '작업 중',
+  );
+  assert.equal(
+    activityText(agent('a', 'lounge', { act: 'idle', target: '', quiet: true })),
+    '대기 중',
+  );
+  setLang('en');
+  assert.equal(
+    activityText(agent('a', 'coding', { act: 'edit', target: '', quiet: true })),
+    'Working',
+  );
+  setLang('ko');
+});
+
 test('a key reported twice is kept once (duplicate keys orphan overlay nodes)', () => {
   const { lan } = setup();
   lan.apply([agent('a', 'coding'), agent('a', 'server')]);

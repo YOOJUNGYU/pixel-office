@@ -556,6 +556,16 @@ export const PEOPLE_FACE_CROP = { top: PEOPLE_FACE_TOP, rows: PEOPLE_FACE_ROWS }
 export const PEOPLE_PET_FACE_CROP = { top: PEOPLE_PET_FACE_TOP, rows: PEOPLE_FACE_ROWS };
 /** How long the "no agents" hint stays after clicking an agentless row. */
 export const PEOPLE_HINT_MS = 2_000;
+/** Settings → 관리자 토큰: longest token the server accepts (asyncapi setRelayAdminToken maxLength). */
+export const RELAY_ADMIN_TOKEN_MAX = 256;
+/** Same-network badges in the public area (망 1, 망 2, …), cycled by number. */
+export const NET_BADGE_COLORS: ReadonlyArray<{ bg: string; fg: string }> = [
+  { bg: '#3794ff', fg: '#ffffff' },
+  { bg: '#10a37f', fg: '#ffffff' },
+  { bg: '#cc7a00', fg: '#ffffff' },
+  { bg: '#9b4dca', fg: '#ffffff' },
+  { bg: '#d14249', fg: '#ffffff' },
+];
 /** Top-right stack (update banner, install popup, people panel): room kept clear below it, CSS px. */
 export const TOP_RIGHT_BOTTOM_RESERVE_PX = 64;
 /** Top-right stack: above name tags, bubbles and room plates, below plate popups (46) and modals (50). */

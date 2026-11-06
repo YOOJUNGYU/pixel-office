@@ -1,13 +1,15 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import type { Lang } from '../../../core/src/lan.js';
 import type { AutostartState, OfficesState } from '../../../core/src/messages.js';
+import { RELAY_ADMIN_TOKEN_MAX } from '../constants.js';
 import type { NotifySettings, OfficeReply } from '../hooks/useExtensionMessages.js';
 import { LANG_NAMES, setLang, t, useLang } from '../i18n.js';
 import { OfficeSettings } from '../lan/OfficeSettings.js';
 import type { ThemePref } from '../theme.js';
 import { setThemePref, THEME_PREFS, useThemePref } from '../theme.js';
 import { transport } from '../transport/index.js';
+import { Button } from './ui/Button.js';
 import { Checkbox } from './ui/Checkbox.js';
 import { MenuItem } from './ui/MenuItem.js';
 import { Modal } from './ui/Modal.js';
@@ -28,6 +30,8 @@ interface SettingsModalProps {
   /** OS notifications (kept by the server); hidden until settingsLoaded. */
   notify: NotifySettings | null;
   onNotifyChange: (v: NotifySettings) => void;
+  /** An admin token for the internet public office is stored (never sent back to the page). */
+  relayAdmin: boolean;
   /** Team offices (this PC's browser only); the 오피스 section is hidden when null. */
   offices: Omit<OfficesState, 'type'> | null;
   officeReply: OfficeReply | null;
@@ -46,6 +50,7 @@ export function SettingsModal({
   autostart,
   notify,
   onNotifyChange,
+  relayAdmin,
   offices,
   officeReply,
   onOfficeReplyHandled,
@@ -54,6 +59,7 @@ export function SettingsModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lang = useLang();
   const themePref = useThemePref();
+  const [token, setToken] = useState('');
 
   const languageSelect = (
     <label
@@ -189,6 +195,37 @@ export function SettingsModal({
         </MenuItem>
       </div>
       {replayTour}
+      {/* Write-only: the stored token never comes back, only whether one is set. '' clears it. */}
+      <div className="flex flex-col gap-4 py-4 px-10 text-sm">
+        <label htmlFor="relay-admin-token" className="flex items-center justify-between gap-8">
+          {t('settings.relayAdmin')}
+          <span className={relayAdmin ? 'text-status-success' : 'text-text-muted'}>
+            {t(relayAdmin ? 'settings.relayAdminSet' : 'settings.relayAdminUnset')}
+          </span>
+        </label>
+        <div className="flex gap-4">
+          <input
+            id="relay-admin-token"
+            type="password"
+            autoComplete="off"
+            value={token}
+            maxLength={RELAY_ADMIN_TOKEN_MAX}
+            placeholder={t('settings.relayAdminHint')}
+            onChange={(e) => setToken(e.target.value)}
+            className="flex-1 min-w-0 py-2 px-4 bg-bg border-2 border-border rounded-none text-text"
+          />
+          <Button
+            size="sm"
+            variant="accent"
+            onClick={() => {
+              transport.send({ type: 'setRelayAdminToken', token: token.trim() });
+              setToken('');
+            }}
+          >
+            {t('settings.relayAdminSave')}
+          </Button>
+        </div>
+      </div>
       {offices && (
         <OfficeSettings state={offices} reply={officeReply} onReplyHandled={onOfficeReplyHandled} />
       )}

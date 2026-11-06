@@ -33,7 +33,7 @@ import { defaultZoom, useEditorActions } from './hooks/useEditorActions.js';
 import { useEditorKeyboard } from './hooks/useEditorKeyboard.js';
 import { useExtensionMessages } from './hooks/useExtensionMessages.js';
 import { useIsMobile } from './hooks/useIsMobile.js';
-import { t, useLang } from './i18n.js';
+import { type Key, t, useLang } from './i18n.js';
 import { AvatarAgentList } from './lan/AvatarAgentList.js';
 import { useAvatarKeys } from './lan/avatarKeys.js';
 import { ChatLayer } from './lan/ChatLayer.js';
@@ -136,6 +136,9 @@ function App() {
     officeReply,
     clearOfficeReply,
     savedLayoutRef,
+    relay,
+    relayAdmin,
+    kickResult,
   } = useExtensionMessages(getOfficeState, isEditDirty);
 
   // Overlay geometry: the root div is the canvas container's size.
@@ -294,17 +297,25 @@ function App() {
     handleToggleEditMode,
   ]);
 
-  // The server refused a layout save, or [Save] got no answer: say so for a
-  // moment (the editor keeps the layout). A new object per error restarts the timer.
-  const [saveError, setSaveError] = useState<{ key: 'rejected' | 'timeout' } | null>(null);
+  // A short toast: the server refused a layout save, [Save] got no answer (the editor
+  // keeps the layout), or a relayKick answer. A new object per event restarts the timer.
+  const [toast, setToast] = useState<{ key: Key; ok?: true } | null>(null);
   useEffect(() => {
-    if (layoutSaveRejections > 0) setSaveError({ key: 'rejected' });
+    if (layoutSaveRejections > 0) setToast({ key: 'app.layoutSaveRejected' });
   }, [layoutSaveRejections]);
   useEffect(() => {
-    if (!saveError) return;
-    const timer = setTimeout(() => setSaveError(null), LAYOUT_REJECTED_TOAST_MS);
+    if (!kickResult) return;
+    setToast(
+      kickResult.ok
+        ? { key: 'relay.kickOk', ok: true }
+        : { key: `relay.kickFail.${kickResult.reason ?? 'network'}` },
+    );
+  }, [kickResult]);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), LAYOUT_REJECTED_TOAST_MS);
     return () => clearTimeout(timer);
-  }, [saveError]);
+  }, [toast]);
 
   // First open: a big office (e.g. a 128×128 layout) is zoomed out to fit the
   // window when the default zoom would not show all of it. Once per session, and
@@ -688,12 +699,12 @@ function App() {
             );
           })()}
 
-        {saveError && (
+        {toast && (
           <div
             role="alert"
-            className="absolute left-1/2 -translate-x-1/2 bottom-80 z-20 bg-danger text-white text-sm py-3 px-8 rounded-none border-2 border-border shadow-pixel pointer-events-none whitespace-nowrap"
+            className={`absolute left-1/2 -translate-x-1/2 bottom-80 z-20 ${toast.ok ? 'bg-accent' : 'bg-danger'} text-white text-sm py-3 px-8 rounded-none border-2 border-border shadow-pixel pointer-events-none whitespace-nowrap`}
           >
-            {t(saveError.key === 'rejected' ? 'app.layoutSaveRejected' : 'app.layoutSaveTimeout')}
+            {t(toast.key)}
           </div>
         )}
 
@@ -724,6 +735,8 @@ function App() {
               lan={lan}
               officeState={officeState}
               forceOpen={scene?.people === true}
+              relay={relay}
+              canKick={relayAdmin && !officeReadOnly}
             />
           )}
         </div>
@@ -755,7 +768,7 @@ function App() {
                 editorState={editorState}
                 onSave={() =>
                   editor.handleSave(
-                    () => setSaveError({ key: 'timeout' }),
+                    () => setToast({ key: 'app.layoutSaveTimeout' }),
                     (layout) => (savedLayoutRef.current = layout),
                   )
                 }
@@ -828,6 +841,7 @@ function App() {
           autostart={autostart}
           notify={notify}
           onNotifyChange={setNotify}
+          relayAdmin={relayAdmin}
           offices={offices}
           officeReply={officeReply}
           onOfficeReplyHandled={clearOfficeReply}
