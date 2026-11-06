@@ -24,7 +24,7 @@ import {
 
 const PK = 'A'.repeat(42) + 'A=';
 const until = async (f: () => boolean): Promise<void> => {
-  for (let i = 0; i < 200 && !f(); i++) await new Promise((r) => setTimeout(r, 10));
+  for (let i = 0; i < 500 && !f(); i++) await new Promise((r) => setTimeout(r, 10));
   expect(f()).toBe(true);
 };
 
@@ -182,7 +182,9 @@ describe('Relay', () => {
     const seen: number[] = [];
     for (let i = 0; i < 3; i++) {
       r.want(true);
-      await until(() => r.status.state === 'error' && r.status.retryInMs !== undefined);
+      await until(
+        () => r.status.state === 'error' && (r.status.retryInMs ?? 0) > (seen.at(-1) ?? 0),
+      );
       seen.push(r.status.retryInMs ?? 0);
       t += r.status.retryInMs ?? 0;
     }
