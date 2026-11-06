@@ -61,12 +61,34 @@ Open the office in this PC's browser and an **Install Pixel Office as an app** p
 
 ## 4-1. Public office and team offices
 
-- You start in the 🌐 **public office** with everyone on the network who installed the app. Nothing to set up; what PCs exchange is encrypted automatically (an X25519 key per PC, AES-256-GCM under a key per pair of PCs).
+- You start in the 🌐 **public office** with everyone who installed the app. **On any network** (home, office, cafe) installing the app is enough to join the same public office. Same-network PCs show directly, others through a Cloudflare relay (nothing to install besides Pixel Office; it uses one outbound `wss` connection on 443). Nothing to set up; it connects automatically after the update. What PCs exchange is encrypted automatically (an X25519 key per PC, AES-256-GCM under a key per pair of PCs); the relay only forwards the encrypted content.
+- **Everyone in the public office** sees your account name, nickname, character, chat and your agents' room and kind of activity (what your agents work on, such as files and commands, is not sent: other people's agents always look quiet with no speech bubble, wherever they come from, while your own agents stay fully detailed on your screen). **Settings → Hide my work** reduces yours to room, kind and waiting (!). Team offices and personal mode never go over the internet (a team office is same-network only).
+- **Connection chip**: shown next to the people panel's title while you view the public office.
+  - `🌐 Internet connected`: normal.
+  - `Connecting to the internet…`: connecting.
+  - `Internet: waiting, office full`: the relay's 20 concurrent slots are taken; retries in about 5 minutes.
+  - `Internet paused: daily limit reached`: 90 % of the free server's daily limit is used, so it pauses for the day (reconnects by itself after the 00:00 UTC reset).
+  - `Removed by the admin`: the admin removed you (reconnects after the time shown).
+  - `No internet connection — same network only`: the internet is unreachable (offline, or a corporate proxy/firewall blocks outbound `wss` on 443). Same-network PCs still show. In proxy environments the link may not work; ask IT for an exception rather than working around it.
+  - In every case you **stay in the public office** (never switched to personal) and it reconnects by itself when the condition clears.
+- **Same-network badge**: only when two or more different networks are seen, people on the same network share a `LAN 1` / `LAN 2` badge in the people panel (your network = 1). A company with several exit IPs may appear under different numbers.
+- The shared layout also travels over the internet: anyone in the public office can edit and save, the last save wins.
 - 🔒 **Create a team office** (one team at a time: creating or joining another replaces the current one after a confirmation): **Settings → Offices → Create a team office**, enter a team name, **Create** → **Copy code** of the invite code (`PO2-…`) and send it to your teammates.
 - **Join**: paste it under **Settings → Offices → Join with a code** and press **Join**. Switch offices with the office buttons at the top of the screen.
 - **While you are in a team office you leave the public office** (agents and chat neither sent nor seen). To return, **Leave** it in **Your team offices**. The people panel on the right lists names in all three areas (public, team, personal).
 - Team office traffic is encrypted under a key derived from the invite code. If a code leaks, create a new team office and move.
 - 🏠 **Personal**: press **Personal** in the office buttons at the top for a small office of your own (agents, chat and avatar position never leave the PC; only your name shows in other PCs' people panel under `Personal`). Your team offices are kept: press **Public office** or a team button to return, no code needed. Personal mode has its own layout, saved on this PC only (a public or team office's layout is shared by everyone in it).
+- **Admin kick (admin only)**: with the relay's admin token (`ADMIN_TOKEN`, known only to whoever deployed it) enter it under **Settings → Admin token** (stored only in this PC's settings file, never shown again) and use **[Kick]** on a public-office row in the people panel. Without the app, curl works too (24 h ban by default, `hours` changes it):
+  ```bash
+  R=https://<relay address>   # see relay/README.md
+  T='Authorization: Bearer <ADMIN_TOKEN>'
+  curl -s -H "$T" $R/admin/stats                                          # people, today's usage
+  curl -s -H "$T" -X POST -d '{"id":"<peerId>","hours":24}' $R/admin/kick # kick
+  curl -s -H "$T" $R/admin/bans                                           # ban list
+  curl -s -H "$T" -X DELETE $R/admin/bans/<peerId>                        # lift
+  ```
+  A ban is per peer id, so deleting `profile.json` gets a new id; there are no IP bans (a whole office shares one IP). The relay itself bans for an hour any connection that floods frames.
+- **Known limit**: a malicious relay operator could swap the public key of a first-time pair and read that pair (operator = admin). There is no key fingerprint screen yet.
 - Watching from another PC's browser without the app (remote viewing) was removed in v0.4.0. Install the app on that PC instead.
 - 1.0.24 or older PCs may not appear in your people panel (team and personal names) and you not in theirs.
 - Mixed with 1.0.13 or older: those PCs neither get nor send the shared public/team layout and show their own default. Update every PC.
@@ -75,12 +97,13 @@ Open the office in this PC's browser and an **Install Pixel Office as an app** p
 
 ## 5. Other PCs do not show up
 
+- A PC reached over the internet shows even on another network while the **connection chip** above reads `🌐 Internet connected`. With `No internet connection`, check the internet side (a corporate proxy/firewall blocking outbound `wss` on 443, for example).
 - PCs on the same network appear automatically; no IP needs to be entered. They have to be on the **same network** (same router / subnet); guest Wi-Fi, VPN or other subnets may block discovery.
 - Only for PCs on another floor or network: add the other PC's IP under **Settings → My profile → Advanced: when a PC isn't found automatically → PC IPs to connect directly** (one per line) and save. Listing it on one side is enough to see each other; listing it on both is more reliable.
 - Make sure **both PCs run 0.2.0 or later**: 0.2.0 does not talk to the unencrypted 0.1.0.
 - If either of you is in a **team office** or 🏠 **Personal** mode, you don't see each other's characters or agents in the public office (a team PC still lists public PCs' names in its people panel, but a public PC does not list team PCs). Join the same team office, or both leave your teams.
 - Make sure UDP 47800 is not blocked (the Windows installer adds an inbound UDP 47800 rule; a Mac needs the "Allow" from step 3). TCP 47801 is used only inside your PC and needs no opening.
-- If **corporate security software** (antivirus, EDR, AppLocker, company firewall) blocks it, ask IT for an exception rather than working around it: program `C:\Program Files\PixelOffice\node.exe` / `/Applications/Pixel Office.app`, port UDP 47800 (the only inbound one; the TCP 47801 UI stays on the PC), LAN only.
+- If **corporate security software** (antivirus, EDR, AppLocker, company firewall) blocks it, ask IT for an exception rather than working around it: program `C:\Program Files\PixelOffice\node.exe` / `/Applications/Pixel Office.app`, port UDP 47800 (the only inbound one; the TCP 47801 UI stays on the PC), and an outbound `wss` connection on 443 to the public-office relay (a Cloudflare Workers address; nothing inbound).
 
 Other people's offices are **read-only**: nobody can run or change anything on your PC, or open your UI.
 

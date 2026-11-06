@@ -61,8 +61,12 @@ Once an activity lasts 3 seconds, the agent walks to its room and sits on a free
 
 The people panel on the right has three areas, **Public office / Team / Personal**, so you see by name who is in the areas you are not viewing (only the team you joined; none = no team area).
 
-- 🌐 **Public office** (default): everyone on the network who installed the app.
-- 🔒 **Team office**: only people with the invite code (`PO2-…`). **Settings → Offices**: create (copy the code and send it), join with a code, leave. **One team at a time**: creating or joining another replaces the current one after a confirmation. ⚠️ While you are in a team office you are **out of the public office entirely** (you see its names in the people panel's public area, but you are not listed there).
+- 🌐 **Public office** (default): **anyone who installed the app, on any network** (home, office, cafe) joins the same public office. Same-network PCs see each other directly, other networks through a Cloudflare relay (one outbound `wss` connection on 443). Nothing to set up; it connects automatically after the update.
+  - Everyone in the public office sees your **account name, nickname, character, chat and your agents' room and kind of activity**. Other people's agents always look **quiet, with no speech bubble** (no file names, commands, elapsed time, todo counts, diff or failure marks), wherever they come from; your own agents stay fully detailed on your screen. **Hide my work** reduces yours to room, kind and waiting (!).
+  - The relay holds **20** people at a time. A chip next to the people panel's "Public office" title shows the state: `🌐 Internet connected` · `Connecting to the internet…` · `Internet: waiting, office full` · `Internet paused: daily limit reached` · `Removed by the admin` · `No internet connection — same network only`. In every case you **stay in the public office** (never switched to personal), same-network PCs stay visible, and it reconnects by itself when the condition clears.
+  - When the people panel sees two or more different networks, people on the same network share a `LAN 1` / `LAN 2` badge.
+  - The shared layout also travels over the internet (anyone can save, last save wins).
+- 🔒 **Team office**: only people with the invite code (`PO2-…`), **same network only** (never sent over the internet). **Settings → Offices**: create (copy the code and send it), join with a code, leave. **One team at a time**: creating or joining another replaces the current one after a confirmation. ⚠️ While you are in a team office you are **out of the public office entirely** (you see its names in the people panel's public area, but you are not listed there).
 - 🏠 **Personal**: a small office of your own. Agents, chat and avatar position never leave the PC; only your name card (account, nickname, character look) shows in other PCs' people list under `Personal`. PCs on 1.0.24 or older and you may not list each other. Team memberships are kept, so you go back without a code.
 
 ### Your character and chat
@@ -101,6 +105,7 @@ The people panel on the right has three areas, **Public office / Team / Personal
 
 - PCs exchange **status only** (read-only). Nobody can reach your terminal, agents or settings, and the UI opens only in this PC's browser.
 - Everything between PCs is **encrypted**: the public office uses a per-pair X25519 key agreement + AES-256-GCM, a team office AES-256-GCM with a key derived from its invite code. Codes never go on the network; a known PC whose key changes is ignored (impersonation).
+- The internet relay only **forwards** the encrypted content. It sees peer ids, public keys and recipients, and does not store IPs (it makes only a hashed tag for the same-network badge). Team-office and personal PCs never connect to it.
 - **Always**: file paths, user names, IPs/host names, URL paths, token-like strings and AI reply text never leave the PC; commands are sent as program names only. Your PC account name is the name tag, so it is always shown.
 - **Hide my work** (off by default): others see only which room each of your agents is in, which AI it is, its kind (MAIN/SUB/SHELL) and whether it waits (!), not what it is doing.
 - Claude Code and Codex settings are never touched; only their transcript files are read.
@@ -111,24 +116,29 @@ The people panel on the right has three areas, **Public office / Team / Personal
  [My PC]                                         [Colleague's PC]
  Claude / Codex transcripts ─▶ reporter ─┐    ┌─ reporter ◀─ transcripts
   (~/.claude, ~/.codex, WSL)             │ enc │
-                                         ├◀───▶┤   UDP status every second (no server)
+                                         ├◀───▶┤   UDP status every second (same network)
+                                         └◀ wss ▶ Cloudflare relay ▶ public-office PCs on other networks
  browser ◀── WebSocket ── local server ◀─┘    └▶ local server ── WebSocket ──▶ browser
  (app window) http://localhost:47801                 http://localhost:47801 (app window)
 ```
 
 - The reporter reads sessions changed in the last 30 minutes under `~/.claude/projects` and `~/.codex/sessions` (on Windows also those of running WSL distros). A closed Claude session leaves within seconds (after 30 minutes when its process can't be checked); a finished Codex session after 10 minutes.
-- A PC silent for 5 seconds disappears. Layouts are never sent over the network.
+- On the same network a PC silent for 5 seconds disappears (via the relay it stays until the relay reports it left). The personal layout never leaves the PC; only the public/team shared layout goes to people in that office.
 - Data lives only in `~/.pixel-office/` (files with keys and codes are 0600).
 
-| Port      | Purpose                                      |
-| --------- | -------------------------------------------- |
-| UDP 47800 | Status between PCs (broadcast + IPs you add) |
-| TCP 47801 | Browser UI (`127.0.0.1` only)                |
+| Port      | Purpose                                                         |
+| --------- | --------------------------------------------------------------- |
+| UDP 47800 | Status between PCs (broadcast + IPs you add)                    |
+| TCP 47801 | Browser UI (`127.0.0.1` only)                                   |
+| TCP 443   | **Outbound** `wss` to the public-office relay (nothing inbound) |
 
 ## Known limits
 
 - Broadcasts stay inside one subnet. Across floors or VLANs, add the other PC's IP under **Settings → My profile → Advanced: when a PC isn't found automatically**.
-- The public office can't keep out anyone who installs the app. Use a team office to choose who joins.
+- The public office can't keep out anyone who installs the app (or who just knows the address). Use a team office (same network only) to choose who joins. The admin can remove someone, but a ban is per peer id, so deleting `profile.json` avoids it.
+- If a corporate proxy or firewall blocks outbound `wss` (443), the internet link fails and the chip shows `No internet connection`. Same-network PCs still show. Ask IT for an exception rather than working around it.
+- Free-tier limits: 20 people at once, and the relay stops for the day when usage reaches 90 % of the limit (same network unaffected; resets at 00:00 UTC).
+- A malicious relay operator could swap the public key of a first-time pair and read that pair (operator = the app's admin). There is no key fingerprint screen yet.
 - Codex doesn't record approval requests, so ❗ appears for Codex only when it asks you a question.
 - The redaction may miss a password typed directly into a command or search.
 - Mixed versions hide things from older PCs (0.4.x: PCs with very many agents, pets; ≤ 1.0.0: people's characters and chat; ≤ 1.0.13: the shared layout). Update everyone.
