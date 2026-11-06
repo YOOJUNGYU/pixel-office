@@ -52,6 +52,10 @@ export function switcherItems(state: Omit<OfficesState, 'type'>): SwitcherItem[]
 export const isPersonal = (state: Pick<OfficesState, 'activeView'> | null): boolean =>
   state?.activeView === PERSONAL_VIEW;
 
+/** Activity bubbles wrap to several lines in personal and public views; a team view keeps one clipped line. */
+export const wrapsActivity = (state: Pick<OfficesState, 'activeView'> | null): boolean =>
+  !state || state.activeView === PERSONAL_VIEW || state.activeView === PUBLIC_VIEW;
+
 /** Name of the team this PC is in ('' when unnamed), null when in none: creating or joining
  *  another one leaves it, so the page asks first. */
 export const switchConfirmName = (state: Omit<OfficesState, 'type'>): string | null =>

@@ -41,7 +41,7 @@ import { areaSections } from './lan/directoryModel.js';
 import { InstallPrompt } from './lan/InstallPrompt.js';
 import { LanOverlay } from './lan/LanOverlay.js';
 import { NicknameNotice } from './lan/NicknameNotice.js';
-import { isPersonal } from './lan/offices.js';
+import { isPersonal, wrapsActivity } from './lan/offices.js';
 import { OfficeSwitcher } from './lan/OfficeSwitcher.js';
 import { peopleRows } from './lan/peopleModel.js';
 import { PeoplePanel } from './lan/PeoplePanel.js';
@@ -619,6 +619,7 @@ function App() {
           zoom={editor.zoom}
           panRef={editor.panRef}
           personal={personal}
+          wrap={wrapsActivity(offices)}
         />
 
         <ChatLayer

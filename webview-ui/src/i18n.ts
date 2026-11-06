@@ -532,7 +532,7 @@ const en: Record<Key, string> = {
   'people.status.attention': 'Needs attention',
   'people.status.working': 'Working',
   'people.status.idle': 'Idle',
-  'people.net': 'LAN {n}',
+  'people.net': 'Net {n}',
   'people.netTitle': 'Same number = same network (connected directly)',
   'people.via.lan': 'LAN',
   'people.via.lanTitle': 'Direct over the local network (UDP)',

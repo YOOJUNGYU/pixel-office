@@ -13,6 +13,7 @@ import {
   normalizeCodeInput,
   switchConfirmName,
   switcherItems,
+  wrapsActivity,
 } from '../src/lan/offices.js';
 
 test('code input: upper-case, spaces dropped, dashes kept', () => {
@@ -75,4 +76,10 @@ test('switchConfirmName: the current team or null', () => {
     switchConfirmName({ offices: [{ tag: 't', name: '우리' }], activeView: 't' }),
     '우리',
   );
+});
+
+test('wrapsActivity: personal and public wrap, a team keeps one line', () => {
+  assert.equal(wrapsActivity({ activeView: 'personal' }), true);
+  assert.equal(wrapsActivity({ activeView: 'public' }), true);
+  assert.equal(wrapsActivity({ activeView: 'ABCDEFGHIJK' }), false);
 });

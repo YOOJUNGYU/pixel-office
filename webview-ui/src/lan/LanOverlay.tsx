@@ -20,10 +20,10 @@ import {
   FX_SIDE_OFFSET_X,
   LAN_ACTIVITY_BADGE_GAP_PX,
   LAN_ACTIVITY_LINE_PX,
+  LAN_ACTIVITY_MAX_LINES,
   LAN_ACTIVITY_MAX_WIDTH_PX,
   LAN_ACTIVITY_PAD_X_PX,
   LAN_ACTIVITY_PAD_Y_PX,
-  LAN_ACTIVITY_PERSONAL_LINES,
   LAN_ALERT_COLOR,
   LAN_BUBBLE_HEAD_OFFSET,
   LAN_BUBBLE_MAX_WIDTH_PX,
@@ -180,6 +180,8 @@ interface LanOverlayProps {
   panRef: MutableRefObject<{ x: number; y: number }>;
   /** Personal mode: agents' tags show MAIN/SUB/SHELL + #n only (my name is on my avatar). */
   personal: boolean;
+  /** Not a team office: the activity bubble wraps to several lines (`wrapsActivity`). */
+  wrap: boolean;
 }
 
 /**
@@ -195,6 +197,7 @@ export function LanOverlay({
   zoom,
   panRef,
   personal,
+  wrap,
 }: LanOverlayProps) {
   // Re-render after every canvas frame (the on-demand schedule), never when idle.
   const [, setTick] = useState(0);
@@ -370,7 +373,7 @@ export function LanOverlay({
       elapsed: string;
       /** The bubble's own scale: k, or 1 for the icon-only one. */
       s: number;
-      /** Personal mode: the text wrapped, ≤ LAN_ACTIVITY_PERSONAL_LINES (else one clipped line). */
+      /** Not a team office: the text wrapped, ≤ LAN_ACTIVITY_MAX_LINES (else one clipped line). */
       rows?: string[];
       x: number;
       head: number;
@@ -423,14 +426,14 @@ export function LanOverlay({
         2 * (LAN_ACTIVITY_PAD_X_PX + CHAT_BORDER_PX) +
         LAN_TAG_BADGE_CHROME_PX +
         textWidth(providerName(a), LAN_TAG_BADGE_FONT) +
-        (personal ? LAN_ACTIVITY_BADGE_GAP_PX : 0) +
+        (wrap ? LAN_ACTIVITY_BADGE_GAP_PX : 0) +
         (icon ? ACT_ICON_INLINE_PX + STATUS_PART_GAP_PX : 0) +
         chipW(todoText(a)) +
         chipW(elapsed);
-      const rows = personal
+      const rows = wrap
         ? clampRows(
             wrapLines(text, LAN_ACTIVITY_MAX_WIDTH_PX - chrome, measureTag),
-            LAN_ACTIVITY_PERSONAL_LINES,
+            LAN_ACTIVITY_MAX_LINES,
             LAN_ACTIVITY_MAX_WIDTH_PX - chrome,
             measureTag,
           )

@@ -441,8 +441,8 @@ export const LAN_BUBBLE_MAX_WIDTH_PX = 300;
 export const LAN_BUBBLE_HEAD_OFFSET = 32;
 /** Activity bubble above working agents (tags & bubbles shown): truncated at this width (CSS px). */
 export const LAN_ACTIVITY_MAX_WIDTH_PX = 240;
-/** Personal mode: the activity bubble wraps to at most this many lines (the last one ends in …). */
-export const LAN_ACTIVITY_PERSONAL_LINES = 5;
+/** Personal + public office: the activity bubble wraps to at most this many lines (the last one ends in …); a team office keeps one clipped line. */
+export const LAN_ACTIVITY_MAX_LINES = 5;
 /** Line height of a wrapped activity bubble (CSS px). */
 export const LAN_ACTIVITY_LINE_PX = 16;
 /** Gap between the provider badge and the text (`gap-4`). */
