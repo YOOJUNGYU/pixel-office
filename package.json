@@ -38,7 +38,8 @@
     "format:check": "prettier --check \"server/**/*.ts\" \"core/src/**/*.ts\" \"webview-ui/src/**/*.{ts,tsx,css}\" \"*.{js,mjs}\" \"webview-ui/*.{js,ts}\"",
     "test:webview": "cd webview-ui && npm test",
     "test:server": "cd server && npm test",
-    "test": "npm run test:webview && npm run test:server",
+    "test:relay": "vitest run --root relay",
+    "test": "npm run test:webview && npm run test:server && npm run test:relay",
     "knip": "knip"
   },
   "devDependencies": {
