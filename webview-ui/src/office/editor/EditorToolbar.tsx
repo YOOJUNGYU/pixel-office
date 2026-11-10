@@ -229,9 +229,9 @@ export function EditorToolbar({
   return (
     <div
       data-tour="editor-toolbar"
-      className="absolute bottom-76 left-10 z-10 pixel-panel p-4 flex flex-col-reverse gap-4 max-w-[calc(100vw-20px)]"
+      className="pixel-panel p-4 flex flex-col gap-4 max-w-[calc(100vw-20px)]"
     >
-      {/* Tool row — at the bottom */}
+      {/* Tool row — at the top, its sub-panel opens below it */}
       <div className="flex gap-4 flex-wrap">
         <Button
           variant={isFurnitureActive ? 'active' : 'default'}
@@ -276,9 +276,9 @@ export function EditorToolbar({
         </Button>
       </div>
 
-      {/* Sub-panel: Floor tiles — stacked bottom-to-top via column-reverse */}
+      {/* Sub-panel: Floor tiles — below the tool row */}
       {isFloorActive && (
-        <div className="flex flex-col-reverse gap-4">
+        <div className="flex flex-col gap-4">
           {/* Copy + Color toggle — just above tool row */}
           <div className="flex gap-4 items-center">
             <Button
@@ -328,9 +328,9 @@ export function EditorToolbar({
         </div>
       )}
 
-      {/* Sub-panel: Wall — stacked bottom-to-top via column-reverse */}
+      {/* Sub-panel: Wall — below the tool row */}
       {isWallActive && (
-        <div className="flex flex-col-reverse gap-4">
+        <div className="flex flex-col gap-4">
           {/* Color toggle — just above tool row */}
           <div className="flex gap-4 items-center">
             <Button
@@ -393,9 +393,9 @@ export function EditorToolbar({
 
       <EmptyRoomsWarning labels={emptyRooms} />
 
-      {/* Sub-panel: Furniture — stacked bottom-to-top via column-reverse */}
+      {/* Sub-panel: Furniture — below the tool row */}
       {isFurnitureActive && (
-        <div className="flex flex-col-reverse gap-4">
+        <div className="flex flex-col gap-4">
           {/* Category tabs + contextual Copy button — just above tool row */}
           <div className="flex gap-4 flex-wrap items-center">
             {getActiveCategories().map((cat) => (
@@ -650,7 +650,7 @@ function BackgroundPanel({
   carpetVariantCount: number;
 }) {
   return (
-    <div className="flex flex-col-reverse gap-4">
+    <div className="flex flex-col gap-4">
       <div className="flex gap-4 items-center">
         {BACKGROUND_KINDS.map((kind) => (
           <Button

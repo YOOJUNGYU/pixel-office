@@ -20,6 +20,8 @@ interface ZoomControlsProps {
   showZoom: boolean;
   /** Buttons before the theme toggle in the same row (Layout, Settings). */
   leading?: ReactNode;
+  /** Under the row, left-aligned (the layout editor's action bar and tools). */
+  below?: ReactNode;
 }
 
 const BTN_CLASS =
@@ -71,7 +73,7 @@ function ThemeToggle() {
   );
 }
 
-export function ZoomControls({ zoom, onZoomChange, showZoom, leading }: ZoomControlsProps) {
+export function ZoomControls({ zoom, onZoomChange, showZoom, leading, below }: ZoomControlsProps) {
   useLang();
   const [showLevel, setShowLevel] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
@@ -129,62 +131,65 @@ export function ZoomControls({ zoom, onZoomChange, showZoom, leading }: ZoomCont
       {/* Top-left, one row that never wraps: Layout, Settings, theme toggle, + and −. Above the
           room plates, which can slide under it when zoomed in. */}
       <div
-        className="absolute mobile-safe-top left-8 flex flex-nowrap items-start gap-4"
+        className="absolute mobile-safe-top left-8 flex flex-col items-start gap-4"
         style={{ zIndex: TOP_LEFT_CONTROLS_Z_INDEX }}
       >
-        {leading}
-        <ThemeToggle />
-        {showZoom && (
-          <div data-tour="zoom" className="flex flex-nowrap gap-4">
-            <Button
-              size="icon_lg"
-              onClick={() => onZoomChange(zoom * ZOOM_BUTTON_FACTOR)}
-              disabled={maxDisabled}
-              className={BTN_CLASS}
-              title={t('zoom.in')}
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <line
-                  x1="9"
-                  y1="3"
-                  x2="9"
-                  y2="15"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="3"
-                  y1="9"
-                  x2="15"
-                  y2="9"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </Button>
-            <Button
-              size="icon_lg"
-              onClick={() => onZoomChange(zoom / ZOOM_BUTTON_FACTOR)}
-              disabled={minDisabled}
-              className={BTN_CLASS}
-              title={t('zoom.out')}
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <line
-                  x1="3"
-                  y1="9"
-                  x2="15"
-                  y2="9"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </Button>
-          </div>
-        )}
+        <div className="flex flex-nowrap items-start gap-4">
+          {leading}
+          <ThemeToggle />
+          {showZoom && (
+            <div data-tour="zoom" className="flex flex-nowrap gap-4">
+              <Button
+                size="icon_lg"
+                onClick={() => onZoomChange(zoom * ZOOM_BUTTON_FACTOR)}
+                disabled={maxDisabled}
+                className={BTN_CLASS}
+                title={t('zoom.in')}
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <line
+                    x1="9"
+                    y1="3"
+                    x2="9"
+                    y2="15"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  <line
+                    x1="3"
+                    y1="9"
+                    x2="15"
+                    y2="9"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </Button>
+              <Button
+                size="icon_lg"
+                onClick={() => onZoomChange(zoom / ZOOM_BUTTON_FACTOR)}
+                disabled={minDisabled}
+                className={BTN_CLASS}
+                title={t('zoom.out')}
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <line
+                    x1="3"
+                    y1="9"
+                    x2="15"
+                    y2="9"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </Button>
+            </div>
+          )}
+        </div>
+        {below}
       </div>
     </>
   );

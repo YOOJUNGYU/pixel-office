@@ -9,9 +9,9 @@ import {
   ROOM_ORDER,
 } from '../../core/src/lan.js';
 import type { ProfileMessage } from '../../core/src/messages.js';
-import { BottomToolbar, MenuButtons } from './components/BottomToolbar.js';
 import { ConnectionIndicator } from './components/ConnectionIndicator.js';
 import { EditActionBar } from './components/EditActionBar.js';
+import { MenuButtons } from './components/MenuButtons.js';
 import { SettingsModal } from './components/SettingsModal.js';
 import { ZoomControls } from './components/ZoomControls.js';
 import {
@@ -659,6 +659,63 @@ function App() {
               onToggleSettings={() => setIsSettingsOpen((v) => !v)}
             />
           }
+          below={
+            editor.isEditMode && !isMobile ? (
+              <>
+                <EditActionBar
+                  editor={editor}
+                  editorState={editorState}
+                  onSave={() =>
+                    editor.handleSave(
+                      () => setToast({ key: 'app.layoutSaveTimeout' }),
+                      (layout) => (savedLayoutRef.current = layout),
+                    )
+                  }
+                  onReset={handleEditorReset}
+                  onCancel={cancelEditing}
+                />
+                {(() => {
+                  const selUid = editorState.selectedFurnitureUid;
+                  const selColor = selUid
+                    ? (officeState.getLayout().furniture.find((f) => f.uid === selUid)?.color ??
+                      null)
+                    : null;
+                  return (
+                    <EditorToolbar
+                      activeTool={editorState.activeTool}
+                      selectedTileType={editorState.selectedTileType}
+                      selectedFurnitureType={editorState.placingType}
+                      selectedFurnitureUid={selUid}
+                      selectedFurnitureColor={selColor}
+                      floorColor={editorState.floorColor}
+                      wallColor={editorState.wallColor}
+                      selectedWallSet={editorState.selectedWallSet}
+                      onToolChange={editor.handleToolChange}
+                      onTileTypeChange={editor.handleTileTypeChange}
+                      onFloorColorChange={editor.handleFloorColorChange}
+                      onWallColorChange={editor.handleWallColorChange}
+                      onWallSetChange={editor.handleWallSetChange}
+                      onSelectedFurnitureColorChange={editor.handleSelectedFurnitureColorChange}
+                      pickedFurnitureColor={editorState.pickedFurnitureColor}
+                      onPickedFurnitureColorChange={editor.handlePickedFurnitureColorChange}
+                      onColorPickToggle={editor.handleColorPickToggle}
+                      onFurnitureTypeChange={editor.handleFurnitureTypeChange}
+                      loadedAssets={loadedAssets}
+                      carpetVariant={editor.carpetVariant}
+                      carpetColor={editor.carpetColor}
+                      carpetAccentColor={editor.carpetAccentColor}
+                      onCarpetVariantChange={editor.handleCarpetVariantChange}
+                      onCarpetColorChange={editor.handleCarpetColorChange}
+                      onCarpetAccentColorChange={editor.handleCarpetAccentColorChange}
+                      emptyRooms={emptyRooms}
+                      background={officeState.getLayout().background}
+                      onBackgroundChange={editor.handleBackgroundChange}
+                    />
+                  );
+                })()}
+              </>
+            ) : null
+          }
         />
 
         {/* Vignette overlay */}
@@ -675,46 +732,6 @@ function App() {
             {t('app.rotateHint')}
           </div>
         )}
-
-        {editor.isEditMode &&
-          (() => {
-            const selUid = editorState.selectedFurnitureUid;
-            const selColor = selUid
-              ? (officeState.getLayout().furniture.find((f) => f.uid === selUid)?.color ?? null)
-              : null;
-            return (
-              <EditorToolbar
-                activeTool={editorState.activeTool}
-                selectedTileType={editorState.selectedTileType}
-                selectedFurnitureType={editorState.placingType}
-                selectedFurnitureUid={selUid}
-                selectedFurnitureColor={selColor}
-                floorColor={editorState.floorColor}
-                wallColor={editorState.wallColor}
-                selectedWallSet={editorState.selectedWallSet}
-                onToolChange={editor.handleToolChange}
-                onTileTypeChange={editor.handleTileTypeChange}
-                onFloorColorChange={editor.handleFloorColorChange}
-                onWallColorChange={editor.handleWallColorChange}
-                onWallSetChange={editor.handleWallSetChange}
-                onSelectedFurnitureColorChange={editor.handleSelectedFurnitureColorChange}
-                pickedFurnitureColor={editorState.pickedFurnitureColor}
-                onPickedFurnitureColorChange={editor.handlePickedFurnitureColorChange}
-                onColorPickToggle={editor.handleColorPickToggle}
-                onFurnitureTypeChange={editor.handleFurnitureTypeChange}
-                loadedAssets={loadedAssets}
-                carpetVariant={editor.carpetVariant}
-                carpetColor={editor.carpetColor}
-                carpetAccentColor={editor.carpetAccentColor}
-                onCarpetVariantChange={editor.handleCarpetVariantChange}
-                onCarpetColorChange={editor.handleCarpetColorChange}
-                onCarpetAccentColorChange={editor.handleCarpetAccentColorChange}
-                emptyRooms={emptyRooms}
-                background={officeState.getLayout().background}
-                onBackgroundChange={editor.handleBackgroundChange}
-              />
-            );
-          })()}
 
         {toast && (
           <div
@@ -762,23 +779,6 @@ function App() {
           <div className="absolute mobile-safe-top left-1/2 -translate-x-1/2 z-10 text-sm text-text-muted pointer-events-none select-none whitespace-nowrap">
             {t('app.readOnly')}
           </div>
-        )}
-
-        {!isMobile && editor.isEditMode && (
-          <BottomToolbar>
-            <EditActionBar
-              editor={editor}
-              editorState={editorState}
-              onSave={() =>
-                editor.handleSave(
-                  () => setToast({ key: 'app.layoutSaveTimeout' }),
-                  (layout) => (savedLayoutRef.current = layout),
-                )
-              }
-              onReset={handleEditorReset}
-              onCancel={cancelEditing}
-            />
-          </BottomToolbar>
         )}
 
         <ConnectionIndicator />

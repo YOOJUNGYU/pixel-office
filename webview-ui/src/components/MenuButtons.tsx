@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react';
-
 import { t, useLang } from '../i18n.js';
 import { Button } from './ui/Button.js';
 
@@ -70,14 +68,5 @@ export function MenuButtons({
         </svg>
       </Button>
     </>
-  );
-}
-
-/** Bottom-left while editing: the editor's Reset / Undo / Redo / Save / Cancel. */
-export function BottomToolbar({ children }: { children?: ReactNode }) {
-  return (
-    <div className="absolute left-10 bottom-10 z-20 flex items-stretch gap-4 max-w-[calc(100%-20px)]">
-      {children}
-    </div>
   );
 }

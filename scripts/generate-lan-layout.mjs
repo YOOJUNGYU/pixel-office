@@ -27,18 +27,23 @@ const PERSONAL = process.argv.includes('--personal');
 // walls; the gaps between groups take up the rest (spread evenly, symmetric).
 const V = PERSONAL
   ? {
-      roomH: [12, 12],
+      // [top, bottom]: 14 gives 서버실 two free rows under its tables (and, to keep the zone
+      // divider centred in the gap, two above); the bottom rooms give them back (still 31 rows).
+      roomH: [14, 10],
       corridorH: 2,
-      roomW: [15, 18],
+      // 50×31 ≈ 16:10: the right column (서버실, 대기실) is the wide one.
+      roomW: [15, 32],
       pad: { coding: 1, library: 1, server: 1, lounge: 1 },
       // Compact blocks centred in each room (`gap` between groups, [x, y] or both), lifted
       // `lift` tiles: the back wall's face makes a floor-centred block look low. Wide gaps
       // keep seated agents (and their bubbles) apart.
       lift: 1,
-      coding: { cols: 2, rows: 2, chairs: [0, 2], gap: [3, 2] },
+      // Not lifted (`lift: 0`): the desks sit in the middle of the taller room.
+      coding: { cols: 2, rows: 2, chairs: [0, 2], gap: [3, 2], lift: 0 },
       library: { cols: 2, rows: 1, gap: 3 },
-      // One table per 서버실 work zone (quadrant); one seat pair each keeps 8 seats.
-      server: { cols: 1, rows: 1, gap: [1, 1], zoneGap: [4, 2], seatRows: [0] },
+      // Two tables per 서버실 work zone (quadrant), four PCs each: 8 seats per zone. Not
+      // lifted: the zones stay symmetric about the divider.
+      server: { cols: 2, rows: 1, gap: [1, 1], zoneGap: [6, 2], seatRows: [0, 2], lift: 0 },
       lounge: { cols: 1, rows: 1, gap: 0 },
       extraDoors: false,
       wallDeco: {
@@ -49,24 +54,26 @@ const V = PERSONAL
         ],
         server: [
           ['LARGE_PAINTING', 3],
-          ['CLOCK', 8],
-          ['SMALL_PAINTING', 14],
+          ['CLOCK', 15],
+          ['SMALL_PAINTING', 28],
         ],
       },
     }
   : {
       // [top, bottom]: the top row (코딩실, 서버실) is taller — 서버실 needs room for the gaps
       // between its work zones, 코딩실 one more desk row for its narrower width.
-      roomH: [28, 23], // even: the 서버실 zone divider falls on a floor seam, centred
+      // 28 even: the 서버실 zone divider falls on a floor seam, centred. 16: the whole office
+      // is 83×52 ≈ 16:10, which fits 16:10 and (wider) 16:9 browser windows alike.
+      roomH: [28, 16],
       corridorH: 3,
       roomW: [24, 56],
       pad: { coding: 2, library: 2, server: 2, lounge: 2 },
       coding: { cols: 4, rows: 6, chairs: [0, 1, 2] },
-      library: { cols: 4, rows: 4 },
+      library: { cols: 4, rows: 3 },
       // Per work zone 4×2 tables (8), 1 tile apart; zones `zoneGap` apart (empty floor between).
       server: { cols: 4, rows: 2, gap: [1, 1], zoneGap: [6, 6], seatRows: [0, 2] },
       // A centred block with one gap both ways (spread to the walls it looked scattered).
-      lounge: { cols: 4, rows: 2, gap: 5 },
+      lounge: { cols: 4, rows: 2, gap: [5, 3] },
       extraDoors: true,
       lift: 0,
       wallDeco: {
@@ -202,10 +209,10 @@ function spread(n, size, inner, gap, lift = 0) {
  * `unit` = the group's footprint (w × h) and where its anchor sits inside it (ox, oy);
  * `place(col, row, k)` puts one group at its anchor (k = index in reading order).
  */
-function roomGrid(room, pad, unit, cols, rows, place, gap) {
+function roomGrid(room, pad, unit, cols, rows, place, gap, lift = V.lift) {
   const [gx, gy] = Array.isArray(gap) ? gap : [gap, gap];
   const xs = spread(cols, unit.w, room.w - 2 * pad, gx);
-  const ys = spread(rows, unit.h, room.h - 2 * pad, gy, V.lift);
+  const ys = spread(rows, unit.h, room.h - 2 * pad, gy, lift);
   let k = 0;
   for (const y of ys) {
     for (const x of xs) place(room.x + pad + x + unit.ox, room.y + pad + y + unit.oy, k++);
@@ -227,6 +234,7 @@ roomGrid(
     for (const k of cd.chairs) put('CUSHIONED_CHAIR_BACK', c + k, y + 2);
   },
   cd.gap,
+  cd.lift,
 );
 for (const [type, x] of V.wallDeco.coding) put(type, CODING.x + x, TOP_WALL - 1);
 
@@ -275,7 +283,7 @@ roomGrid(
   const zoneH = sv.rows * unit.h + (sv.rows - 1) * gy;
   const [zgx, zgy] = sv.zoneGap;
   const zxs = spread(2, zoneW, SERVER.w - 2 * pad.server, zgx);
-  const zys = spread(2, zoneH, SERVER.h - 2 * pad.server, zgy, V.lift);
+  const zys = spread(2, zoneH, SERVER.h - 2 * pad.server, zgy, sv.lift ?? V.lift);
   zys.forEach((zy) =>
     zxs.forEach((zx) => {
       for (let r = 0; r < sv.rows; r++) {
