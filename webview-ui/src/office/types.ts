@@ -24,6 +24,7 @@ export type TileType = (typeof TileType)[keyof typeof TileType];
 
 /** Re-export ColorValue for consumers that import color types from office/types */
 export type { ColorValue } from '../components/ui/types.js';
+import type { ServerZone } from '../../../core/src/lan.js';
 import type { ColorValue } from '../components/ui/types.js';
 
 export const CharacterState = {
@@ -264,6 +265,8 @@ export interface Character {
   // -- LAN rooms --
   /** Area label of the agent's room: seats and standing spots stay inside it. */
   homeArea?: string;
+  /** 서버실 work zone it prefers a seat in (set by moveToArea). */
+  homeZone?: ServerZone;
   /** Leader (its parent) this child walks beside, hand in hand; never sits. */
   followId?: number;
   /** Avatar (character id) this agent walks back into before vanishing (it went idle). */

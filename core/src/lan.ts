@@ -10,6 +10,76 @@ export const ROOM_LABELS: Record<Room, string> = {
 /** The four fixed rooms, in layout order. */
 export const ROOM_ORDER: readonly Room[] = ['coding', 'library', 'server', 'lounge'];
 
+/** 서버실 work zones (what kind of shell command), in quadrant order: top-left, top-right,
+ *  bottom-left, bottom-right of the room. Older peers send none (= run). */
+export const SERVER_ZONES = ['test', 'build', 'git', 'run'] as const;
+export type ServerZone = (typeof SERVER_ZONES)[number];
+const ZONE_SET = new Set<string>(SERVER_ZONES);
+
+/** 서버실's bounding box in tiles and its zone midlines — whole tiles, on a floor seam (an odd
+ *  width/height puts the middle column/row right/down) — or null when there are no 서버실 tiles. */
+export interface ServerZoneBox {
+  c0: number;
+  c1: number;
+  r0: number;
+  r1: number;
+  midC: number;
+  midR: number;
+}
+
+const boxCache = new WeakMap<Array<string | null>, ServerZoneBox | null>();
+export function serverZoneBox(layout: {
+  cols: number;
+  areaTiles?: Array<string | null>;
+}): ServerZoneBox | null {
+  const tiles = layout.areaTiles ?? [];
+  const hit = boxCache.get(tiles);
+  if (hit !== undefined) return hit;
+  const label = ROOM_LABELS.server;
+  const { cols } = layout;
+  let [c0, c1, r0, r1] = [Infinity, -1, Infinity, -1];
+  tiles.forEach((l, i) => {
+    if (l !== label) return;
+    const c = i % cols;
+    const r = (i - c) / cols;
+    c0 = Math.min(c0, c);
+    c1 = Math.max(c1, c);
+    r0 = Math.min(r0, r);
+    r1 = Math.max(r1, r);
+  });
+  const box =
+    c1 < 0
+      ? null
+      : { c0, c1, r0, r1, midC: Math.ceil((c0 + c1 + 1) / 2), midR: Math.ceil((r0 + r1 + 1) / 2) };
+  boxCache.set(tiles, box);
+  return box;
+}
+
+const zoneCache = new WeakMap<Array<string | null>, Array<ServerZone | null>>();
+/**
+ * Per tile index, the 서버실 zone of that tile, else null: the room's bounding box split in
+ * half both ways (serverZoneBox). Derived from the room tiles alone, so every layout (edited,
+ * shared, older) has the zones. Cached per areaTiles array.
+ */
+export function serverZoneTiles(layout: {
+  cols: number;
+  areaTiles?: Array<string | null>;
+}): Array<ServerZone | null> {
+  const tiles = layout.areaTiles ?? [];
+  const hit = zoneCache.get(tiles);
+  if (hit) return hit;
+  const box = serverZoneBox(layout);
+  const label = ROOM_LABELS.server;
+  const out = tiles.map((l, i) => {
+    if (l !== label || !box) return null;
+    const c = i % layout.cols;
+    const r = (i - c) / layout.cols;
+    return SERVER_ZONES[(r < box.midR ? 0 : 2) + (c < box.midC ? 0 : 1)];
+  });
+  zoneCache.set(tiles, out);
+  return out;
+}
+
 /** Layout grid limits (editor expansion, layout validation on server and webview). */
 export const MAX_LAYOUT_COLS = 128;
 export const MAX_LAYOUT_ROWS = 128;
@@ -155,6 +225,8 @@ export interface AgentView {
   /** Public-office presence (any path): target, reason and the work signals are left out;
    *  act, room and waiting stay. Older peers ignore it. */
   quiet?: true;
+  /** 서버실 only: which work zone the command belongs to (absent = run; older peers). */
+  zone?: ServerZone;
   /** Children only: talking with its parent right now (handed a task, reporting back, or a
    *  SendMessage to it); viewers show the two face to face. Older peers ignore it. */
   talk?: true;
@@ -493,6 +565,8 @@ function parseView(raw: unknown): AgentView | null {
   if (raw.hidden === true) view.hidden = true;
   if (raw.quiet === true) view.quiet = true;
   if (raw.talk === true) view.talk = true;
+  if (view.room === 'server' && ZONE_SET.has(raw.zone as string))
+    view.zone = raw.zone as ServerZone;
   // Optional fields: a bad one is dropped alone, the view stays.
   const age = int(raw.ageSec, 0, AGE_MAX_SEC);
   if (age !== null) view.ageSec = age;

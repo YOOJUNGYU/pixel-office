@@ -5,6 +5,7 @@ import {
   programName,
   setActivity,
   setIdle,
+  shellZone,
   tick,
   toViews,
 } from '../../src/lan/session.js';
@@ -93,7 +94,7 @@ describe('session state', () => {
 
   it('toViews appends shell views in server room', () => {
     const s = mk();
-    s.shells.set('b1', { target: 'npm run dev', brief: 'npm', since: 0 });
+    s.shells.set('b1', { target: 'npm run dev', brief: 'npm', since: 0, zone: 'run' });
     s.target = 'ssh dev@db01';
     s.brief = 'ssh';
     expect(toViews(s, true).map((x) => x.target)).toEqual(['ssh', 'npm']);
@@ -121,5 +122,38 @@ describe('changed lines', () => {
         '*** Begin Patch\n*** Update File: a.ts\n@@\n-old\n+new\n+more\n--- a\n+++ b\n*** End Patch',
       ),
     ).toEqual({ add: 2, del: 1 });
+  });
+});
+
+describe('shellZone', () => {
+  it.each([
+    ['npx vitest run', 'test'],
+    ['cd web && pnpm test:server 2>&1 | tail -20', 'test'],
+    ['python3 -m pytest -q', 'test'],
+    ['npm run build && npm test', 'test'],
+    ['timeout 300 npm run check-types', 'build'],
+    ['pnpm lint', 'build'],
+    ['tsc --noEmit', 'build'],
+    ['git add -A && git commit -m x', 'git'],
+    ['pnpm lint && git commit -m x', 'git'],
+    ['gh pr create --fill', 'git'],
+    ['npm test && git push', 'git'],
+    ['python3 scripts/gen.py', 'run'],
+    ['node dist/cli.js --port 1', 'run'],
+    ['pnpm install', 'run'],
+    ['echo vitest', 'run'],
+  ])('%s → %s', (cmd, zone) => {
+    expect(shellZone(cmd)).toBe(zone);
+  });
+
+  it('toViews sends the zone only while in 서버실; shells carry their own', () => {
+    const s = mk();
+    s.zone = 'test';
+    expect(toViews(s)[0].zone).toBeUndefined();
+    s.room = 'server';
+    s.shells.set('b1', { target: 'git push', brief: 'git', since: 0, zone: 'git' });
+    const [main, shell] = toViews(s, true);
+    expect(main.zone).toBe('test');
+    expect(shell.zone).toBe('git');
   });
 });

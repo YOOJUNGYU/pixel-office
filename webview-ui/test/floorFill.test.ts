@@ -66,3 +66,20 @@ test('paintTiles never touches walls and one undo restores the layout', () => {
   assert.equal(ed.undoStack.length, 1);
   assert.equal(ed.undoStack[0], before);
 });
+
+test('서버실 click fills only the clicked work zone (a quarter of the room)', () => {
+  // 4×2 server room: test | build on top, git | run below.
+  const l = {
+    version: 1,
+    cols: 4,
+    rows: 2,
+    tiles: new Array(8).fill(F),
+    tileColors: new Array(8).fill(null),
+    furniture: [],
+    areaTiles: new Array(8).fill('서버실'),
+  } as unknown as OfficeLayout;
+  assert.deepEqual(floorFillRegion(l, 0, 0), [0, 1]);
+  assert.deepEqual(floorFillRegion(l, 3, 0), [2, 3]);
+  assert.deepEqual(floorFillRegion(l, 1, 1), [4, 5]);
+  assert.deepEqual(floorFillRegion(l, 2, 1), [6, 7]);
+});

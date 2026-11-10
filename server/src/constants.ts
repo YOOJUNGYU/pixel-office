@@ -60,6 +60,9 @@ export const LINE_CLOCK_SLACK_MS = 60_000;
 export const TALK_PENDING_MS = 15_000;
 /** Bytes replayed from the end of a newly found transcript. */
 export const TAIL_BYTES = 64 * 1024;
+/** How far before the tail a Claude transcript is searched for its last permissionMode (a long
+ *  autonomous turn writes none for MBs; without it every long command looks like a prompt). */
+export const PERMISSION_MODE_SCAN_BYTES = 16 * 1024 * 1024;
 /** Max bytes read to find a Codex rollout's first (session_meta) line. */
 export const CODEX_META_MAX_BYTES = 256 * 1024;
 export const DISCOVER_INTERVAL_MS = 10_000;

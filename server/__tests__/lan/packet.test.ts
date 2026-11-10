@@ -250,3 +250,16 @@ describe('isFailure (failure drop and activity strip)', () => {
     expect(firstProgram('FOO=1 cd /a && /usr/bin/rg x')).toBe('rg');
   });
 });
+
+describe('view zone (서버실 work zone)', () => {
+  const zoneOf = (over: Record<string, unknown>) =>
+    parse(packet({ views: [view(over as Partial<AgentView>)] }))?.views[0]?.zone;
+  it('keeps a known zone in 서버실 only; a bad one is dropped alone', () => {
+    expect(zoneOf({ room: 'server', zone: 'test' })).toBe('test');
+    expect(zoneOf({ room: 'coding', zone: 'test' })).toBeUndefined();
+    expect(zoneOf({ room: 'server', zone: 'deploy' })).toBeUndefined();
+    expect(
+      parse(packet({ views: [view({ room: 'server', zone: 'x' as never })] }))?.views,
+    ).toHaveLength(1);
+  });
+});

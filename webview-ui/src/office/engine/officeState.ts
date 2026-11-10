@@ -1,4 +1,5 @@
-import { ROOM_LABELS, ROOM_ORDER } from '../../../../core/src/lan.js';
+import type { ServerZone } from '../../../../core/src/lan.js';
+import { ROOM_LABELS, ROOM_ORDER, serverZoneTiles } from '../../../../core/src/lan.js';
 import { pickDiversePalette } from '../../../../core/src/paletteUtils.js';
 import {
   AUTO_ON_FACING_DEPTH,
@@ -13,6 +14,7 @@ import {
   FURNITURE_ANIM_INTERVAL_SEC,
   GREETER_ID,
   GREETER_TILE_MARGIN,
+  OTHER_ZONE_PENALTY,
   PC_FAIL_FLASH_SEC,
   PC_GLOW_ALPHAS,
   PC_GLOW_COLORS,
@@ -159,6 +161,8 @@ export class OfficeState {
   greeter: Character | null = null;
   /** Room label → agents shown there (LanAgents, per snapshot); drawn on the room name plates. */
   roomCounts: Map<string, { main: number; extra: number }> | null = null;
+  /** Agents per 서버실 work zone (LanAgents), for the zone plates. */
+  zoneCounts: Map<ServerZone, number> | null = null;
 
   /** World-space point the camera drifts to while the greeter is up
    *  (the bubble overlay recomputes it every frame: the combined center of the
@@ -226,7 +230,7 @@ export class OfficeState {
       this.unstrand(ch);
       if (seatless.includes(ch)) {
         if (ch.homeArea) {
-          this.moveToArea(ch.id, ch.homeArea);
+          this.moveToArea(ch.id, ch.homeArea, undefined, ch.homeZone);
           continue;
         }
         if (toSeat.get(ch)) {
@@ -355,22 +359,33 @@ export class OfficeState {
     return out;
   }
 
-  /** The free seat in `areaLabel` closest (Manhattan) to `anchorId`'s seat, else its tile;
-   *  null = the room is full. */
-  freeSeatNear(areaLabel: string, anchorId: number): string | null {
+  /** The free seat in `areaLabel` closest (Manhattan) to `anchorId`'s seat, else its tile —
+   *  in 서버실 zone `zone` first when it has one free; null = the room is full. */
+  freeSeatNear(areaLabel: string, anchorId: number, zone?: ServerZone): string | null {
     const at = anchorTile(this.characters.get(anchorId), this.seats);
     if (!at) return null;
     let best: string | null = null;
     let bestDist = Infinity;
     for (const [uid, seat] of this.seats) {
       if (seat.assigned || this.seatZone(uid) !== areaLabel) continue;
-      const d = Math.abs(seat.seatCol - at.col) + Math.abs(seat.seatRow - at.row);
+      // Another zone's seat counts only once this zone has none free.
+      const d =
+        Math.abs(seat.seatCol - at.col) +
+        Math.abs(seat.seatRow - at.row) +
+        (zone && this.seatServerZone(uid) !== zone ? OTHER_ZONE_PENALTY : 0);
       if (d < bestDist) {
         best = uid;
         bestDist = d;
       }
     }
     return best;
+  }
+
+  /** The 서버실 zone of a seat's tile, or null (not in 서버실). */
+  seatServerZone(uid: string): ServerZone | null {
+    const seat = this.seats.get(uid);
+    if (!seat) return null;
+    return serverZoneTiles(this.layout)[seat.seatRow * this.layout.cols + seat.seatCol] ?? null;
   }
 
   /** Find the area label assigned to a seat's tile, or null. Public for e2e
@@ -435,11 +450,11 @@ export class OfficeState {
   }
 
   /**
-   * Seat picker. With `areaLabel`: a free seat in that room, else null.
+   * Seat picker. With `areaLabel`: a free seat in that room (in 서버실 zone `zone` first), else null.
    * Without: an unzoned free seat (no area label), else any free seat.
    * Every stage routes through `pickFromSeats` for the PC-bias rule.
    */
-  private findFreeSeat(areaLabel?: string): string | null {
+  private findFreeSeat(areaLabel?: string, zone?: ServerZone): string | null {
     const electronicsTiles = this.buildElectronicsTileSet();
     const freeSeats: string[] = [];
     for (const [uid, seat] of this.seats) {
@@ -449,7 +464,10 @@ export class OfficeState {
 
     if (areaLabel) {
       const inArea = freeSeats.filter((uid) => this.seatZone(uid) === areaLabel);
-      return this.pickFromSeats(inArea, electronicsTiles);
+      const inZone = zone ? inArea.filter((uid) => this.seatServerZone(uid) === zone) : [];
+      return (
+        this.pickFromSeats(inZone, electronicsTiles) ?? this.pickFromSeats(inArea, electronicsTiles)
+      );
     }
 
     // Stage 2 — unzoned seats (no area label, or layout has no areas at all).
@@ -783,14 +801,15 @@ export class OfficeState {
    * Send a character to a room (area): free its seat, take `seatHint` or a free seat there
    * (PC-facing first), else (room full) a free floor tile there, and
    * walk. A character still materializing is placed directly. `homeArea`
-   * keeps it in the room.
+   * keeps it in the room; `zone` (서버실) picks a seat in that work zone first.
    */
-  moveToArea(id: number, areaLabel: string, seatHint?: string): void {
+  moveToArea(id: number, areaLabel: string, seatHint?: string, zone?: ServerZone): void {
     const ch = this.characters.get(id);
     if (!ch) return;
     this.releaseSeat(ch);
     ch.homeArea = areaLabel;
-    const seatId = seatHint ?? this.findFreeSeat(areaLabel);
+    ch.homeZone = zone;
+    const seatId = seatHint ?? this.findFreeSeat(areaLabel, zone);
     const seat = seatId ? this.seats.get(seatId)! : null;
     let target: { col: number; row: number } | null;
     if (seat) {

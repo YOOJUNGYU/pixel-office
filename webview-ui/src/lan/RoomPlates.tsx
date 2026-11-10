@@ -1,7 +1,7 @@
 import { type MutableRefObject, type RefObject, useEffect, useState } from 'react';
 
-import type { OfficeAgent, Room } from '../../../core/src/lan.js';
-import { ROOM_LABELS, ROOM_ORDER } from '../../../core/src/lan.js';
+import type { OfficeAgent, Room, ServerZone } from '../../../core/src/lan.js';
+import { ROOM_LABELS, ROOM_ORDER, serverZoneTiles } from '../../../core/src/lan.js';
 import {
   ACT_ICON_INLINE_PX,
   LAN_ALERT_COLOR,
@@ -14,6 +14,7 @@ import {
   ROOM_PLATE_TIP_Z_INDEX,
   ROOM_PLATE_Z_INDEX,
   ROOM_TIP_WIDTH_PX,
+  ZONE_TIP_WIDTH_PX,
 } from '../constants.js';
 import { areaName, t, useLang } from '../i18n.js';
 import { onFrame } from '../office/engine/gameLoop.js';
@@ -76,6 +77,16 @@ function roomBoxes(areaTiles: Array<string | null>, cols: number): Map<string, R
   return boxes;
 }
 
+/** A 서버실 work zone's plate: in the zone's top-right corner (the free floor above its
+ *  tables, away from the room plate in the room's top-left corner). */
+interface ZonePlate {
+  zone: ServerZone;
+  count: number;
+  /** Screen x of the zone's right edge, y of its top edge. */
+  x: number;
+  y: number;
+}
+
 interface RoomPlatesProps {
   officeState: OfficeState;
   lan: LanAgents;
@@ -106,7 +117,9 @@ export function RoomPlates({
 }: RoomPlatesProps) {
   const lang = useLang();
   const [plates, setPlates] = useState<Plate[]>([]);
+  const [zonePlates, setZonePlates] = useState<ZonePlate[]>([]);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [hoveredZone, setHoveredZone] = useState<ServerZone | null>(null);
   useEffect(() => {
     let key = '';
     const update = () => {
@@ -133,10 +146,22 @@ export function RoomPlates({
           bottom: Math.round(p.toScreenY((b.maxRow + 1) * TILE_SIZE)) - ROOM_PLATE_INSET_PX,
         });
       }
-      const k = JSON.stringify(next);
+      const zones: ZonePlate[] = [];
+      // Rooms are rectangles (tiles come from the default layout): the box spans the zone.
+      for (const [label, b] of roomBoxes(serverZoneTiles(layout), layout.cols)) {
+        const zone = label as ServerZone;
+        zones.push({
+          zone,
+          count: officeState.zoneCounts?.get(zone) ?? 0,
+          x: Math.round(p.toScreenX((b.maxCol + 1) * TILE_SIZE)) - ROOM_PLATE_INSET_PX,
+          y: Math.round(p.toScreenY(b.row * TILE_SIZE)) + ROOM_PLATE_INSET_PX,
+        });
+      }
+      const k = JSON.stringify([next, zones]);
       if (k !== key) {
         key = k;
         setPlates(next);
+        setZonePlates(zones);
       }
     };
     update();
@@ -145,6 +170,42 @@ export function RoomPlates({
 
   return (
     <>
+      {zonePlates.map((z) => (
+        <div
+          key={z.zone}
+          data-zone-plate={z.zone}
+          className="absolute select-none"
+          style={{
+            left: z.x,
+            top: z.y,
+            transform: 'translateX(-100%)',
+            zIndex: hoveredZone === z.zone ? ROOM_PLATE_TIP_Z_INDEX : ROOM_PLATE_Z_INDEX,
+          }}
+          onMouseEnter={() => setHoveredZone(z.zone)}
+          onMouseLeave={() => setHoveredZone((h) => (h === z.zone ? null : h))}
+        >
+          <div className="pixel-panel ml-auto flex items-center gap-4 px-4 text-xs leading-normal whitespace-nowrap cursor-help w-max">
+            <span className="font-bold">{t(`zone.${z.zone}`)}</span>
+            {z.count > 0 && (
+              <span data-zone-count className="px-2 text-2xs bg-accent text-on-accent">
+                {z.count}
+              </span>
+            )}
+          </div>
+          {hoveredZone === z.zone && (
+            <div
+              role="tooltip"
+              data-zone-tip={z.zone}
+              className="pixel-panel absolute right-0 mt-4 flex flex-col gap-4 px-8 py-6"
+              style={{ width: ZONE_TIP_WIDTH_PX }}
+            >
+              <span className="text-sm font-bold">{t(`zone.${z.zone}`)}</span>
+              <span className="text-xs">{t(`zone.role.${z.zone}`)}</span>
+              <span className="text-xs text-text-muted">{t(`zone.legend.${z.zone}`)}</span>
+            </div>
+          )}
+        </div>
+      ))}
       {plates.map((pl, i) => {
         const room = roomOf(pl.label);
         const tip = room && (hovered === pl.label || (forceTip && i === 0));

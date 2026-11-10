@@ -15,7 +15,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { PUBLIC_VIEW } from '../../../core/src/lan.js';
-import { VIEW_TITLE_MAX } from '../../src/constants.js';
+import { TAIL_BYTES, VIEW_TITLE_MAX } from '../../src/constants.js';
 import { createIdentity } from '../../src/lan/crypto.js';
 import type { CheckPids, PidState } from '../../src/lan/liveness.js';
 import {
@@ -396,6 +396,32 @@ describe('Scanner', () => {
     await advance(30_000);
     const sub = scanner.views().find((v) => v.kind === 'subagent');
     expect(sub).toMatchObject({ room: 'server', permission: false });
+  });
+
+  it.each(['auto', 'dontAsk'])(
+    'permission mode %s never guesses an approval prompt (no "waiting" for a long command)',
+    async (mode) => {
+      writeFileSync(
+        join(proj, 'm.jsonl'),
+        `{"type":"permission-mode","permissionMode":"${mode}","sessionId":"m"}\n` +
+          assistant([{ type: 'tool_use', id: 'b', name: 'Bash', input: { command: 'npm test' } }]),
+      );
+      await scanner.discover();
+      await advance(30_000);
+      expect(scanner.views()[0]).toMatchObject({ room: 'server', permission: false });
+    },
+  );
+
+  it('finds the permission mode written long before the replayed tail', async () => {
+    writeFileSync(
+      join(proj, 'm.jsonl'),
+      '{"type":"permission-mode","permissionMode":"auto","sessionId":"m"}\n' +
+        `{"type":"system","content":"${'x'.repeat(TAIL_BYTES * 3)}"}\n` +
+        assistant([{ type: 'tool_use', id: 'b', name: 'Bash', input: { command: 'npm test' } }]),
+    );
+    await scanner.discover();
+    await advance(30_000);
+    expect(scanner.views()[0]).toMatchObject({ room: 'server', permission: false });
   });
 
   it('re-reads roots each discover and drops files under a vanished root', async () => {

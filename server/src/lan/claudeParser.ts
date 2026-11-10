@@ -15,6 +15,7 @@ import {
   setActivity,
   setIdle,
   setThinking,
+  shellZone,
   todoOf,
 } from './session.js';
 
@@ -41,6 +42,12 @@ const turnOf = (s: SessionState): Turn => {
   return t;
 };
 
+/** Permission modes that never stop for an approval prompt (`auto`: a classifier decides,
+ *  `dontAsk`: refused instead of asked) — a silent tool there is just a long one. */
+const NO_PROMPT_MODES = new Set(['bypassPermissions', 'auto', 'dontAsk']);
+export const setPermissionMode = (s: SessionState, mode: string): void => {
+  s.bypass = NO_PROMPT_MODES.has(mode);
+};
 const BG_RE = /Command running in background with ID: ([\w-]+)/;
 const TASK_ID_RE = /<task-id>([^<]+)<\/task-id>/;
 const OUTPUT_RE = /Output is being written to: (.+?\.output)(?=[.\s]|$)/;
@@ -128,6 +135,7 @@ function onAssistant(s: SessionState, content: Block[], now: number): void {
       const clipped = clip(target, 120);
       const briefClipped = clip(brief, 120);
       setActivity(s, room, act, clipped, now, briefClipped);
+      if (room === 'server') s.zone = shellZone(str(input.command));
       if (b.name === 'AskUserQuestion' || b.name === 'ExitPlanMode') s.permission = true;
       s.pendingTool = { name: b.name, since: now, exempt };
       if (b.id)
@@ -164,6 +172,7 @@ function onUser(s: SessionState, content: unknown, now: number, meta: boolean): 
           target: call.target,
           brief: call.brief,
           since: s.lineAt,
+          zone: shellZone(str(call.input.command)),
           command: str(call.input.command),
           output: shellOutput(OUTPUT_RE.exec(text)?.[1], id),
         });
@@ -242,9 +251,7 @@ export function applyClaudeLine(s: SessionState, line: string, now: number): voi
   s.lastLineAt = now;
   s.lineAt = lineTime(rec.timestamp, now);
   // `permission-mode` records and user records carry the current mode
-  if (typeof rec.permissionMode === 'string') {
-    s.bypass = rec.permissionMode === 'bypassPermissions';
-  }
+  if (typeof rec.permissionMode === 'string') setPermissionMode(s, rec.permissionMode);
   // local only (notifications): cwd, titles — see SessionState.local
   if (typeof rec.cwd === 'string') s.local.cwd = rec.cwd;
   if (rec.type === 'custom-title' && typeof rec.customTitle === 'string') {

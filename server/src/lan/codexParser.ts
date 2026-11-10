@@ -12,6 +12,7 @@ import {
   setActivity,
   setIdle,
   setThinking,
+  shellZone,
   todoOf,
 } from './session.js';
 
@@ -92,6 +93,7 @@ function onToolCall(
   stdinId?: string,
 ): void {
   if (d) setActivity(s, d[0], d[1], clip(d[2], 120), now, clip(d[3] ?? d[2], 120));
+  if (d?.[0] === 'server') s.zone = shellZone(d[2]);
   if (name.startsWith('request_user_input')) s.permission = true;
   // ponytail: Codex 승인 대기 미감지, 기록에 승인 이벤트가 생기면 추가
   s.pendingTool = { name, since: now, exempt: true };
@@ -151,6 +153,7 @@ function onItem(s: SessionState, p: Obj, now: number): void {
             target: call?.target ?? s.target,
             brief: call?.brief ?? s.brief,
             since: s.lineAt,
+            zone: shellZone(call?.target ?? s.target),
           });
         }
       }

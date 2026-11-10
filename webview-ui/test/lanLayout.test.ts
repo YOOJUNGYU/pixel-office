@@ -91,6 +91,17 @@ describe.each(VARIANTS)('$file', ({ file, args, size, seats }) => {
     }
   });
 
+  test('every 서버실 work zone has the same number of seats', () => {
+    const counts: Record<string, number> = {};
+    for (const uid of os.seats.keys()) {
+      const zone = os.seatServerZone(uid);
+      if (zone) counts[zone] = (counts[zone] ?? 0) + 1;
+    }
+    const n = counts.test;
+    assert.ok(n > 0, 'test zone has seats');
+    assert.deepEqual(counts, { test: n, build: n, git: n, run: n });
+  });
+
   test('every room is reachable on foot from every other room', () => {
     for (const from of ROOMS) {
       const start = roomTiles(from)[0];

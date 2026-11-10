@@ -214,6 +214,27 @@ test('a full room: the child stands beside the parent, and sits once a seat free
   assert.equal(s1.seatId, free[0]);
 });
 
+test('서버실: an agent sits in its work zone, moves when the zone changes; none sent = run', () => {
+  const { os, lan } = setup();
+  const zoneNow = (key: string) => {
+    const ch = os.characters.get(lan.idFor(key)!)!;
+    return os.seatServerZone(ch.seatId!);
+  };
+  lan.apply([agent('a', 'server', { zone: 'test' }), agent('b', 'server')]);
+  assert.equal(zoneNow('p1:a'), 'test');
+  assert.equal(zoneNow('p1:b'), 'run');
+  lan.apply([agent('a', 'server', { zone: 'git' }), agent('b', 'server')]);
+  assert.equal(zoneNow('p1:a'), 'git');
+  // A child prefers its own zone over the seat next to its parent.
+  lan.apply([agent('a', 'server', { zone: 'git' }), child('s', 'a', 'server', { zone: 'build' })]);
+  assert.equal(zoneNow('p1:s'), 'build');
+  // Zone full: another seat in 서버실.
+  for (const [uid, seat] of os.seats) if (os.seatServerZone(uid) === 'test') seat.assigned = true;
+  lan.apply([agent('a', 'server', { zone: 'git' }), agent('c', 'server', { zone: 'test' })]);
+  const c = os.characters.get(lan.idFor('p1:c')!)!;
+  assert.equal(os.seatZone(c.seatId!), '서버실');
+});
+
 test('a main agent standing in a full room sits once a seat frees up', () => {
   const { os, lan } = setup();
   for (const seat of os.seats.values()) seat.assigned = true;

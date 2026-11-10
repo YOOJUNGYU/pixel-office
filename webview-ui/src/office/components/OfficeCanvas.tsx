@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+import { serverZoneBox } from '../../../../core/src/lan.js';
 import {
   CAMERA_FOLLOW_LERP,
   CAMERA_FOLLOW_SNAP_THRESHOLD,
@@ -255,6 +256,7 @@ export function OfficeCanvas({
           layout.rows,
           layout.carpetTiles,
           layout.background,
+          serverZoneBox(layout),
         );
         offsetRef.current = { x: offsetX, y: offsetY };
 

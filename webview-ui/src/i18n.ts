@@ -51,6 +51,22 @@ const ko = {
   'bubble.permission': '확인 필요',
   'plate.agents': '에이전트 {n}',
   'plate.none': '지금 이 방에 있는 에이전트가 없습니다',
+  'zone.test': '테스트',
+  'zone.build': '빌드',
+  'zone.git': 'Git',
+  'zone.run': '실행',
+  'zone.role.test':
+    '테스트를 돌리는 에이전트가 앉는 곳입니다. 코드가 의도대로 동작하는지 확인하는 중이에요.',
+  'zone.role.build':
+    '빌드·타입 검사·린트를 하는 에이전트가 앉는 곳입니다. 코드가 컴파일되고 규칙에 맞는지 확인하는 중이에요.',
+  'zone.role.git':
+    '버전 관리 작업을 하는 에이전트가 앉는 곳입니다. 변경을 커밋·푸시하거나 PR을 만드는 중이에요.',
+  'zone.role.run':
+    '그 밖의 명령을 실행하는 에이전트가 앉는 곳입니다. 스크립트, 패키지 설치, 개발 서버 등이에요.',
+  'zone.legend.test': 'vitest·jest·pytest·npm test 같은 테스트 명령',
+  'zone.legend.build': '빌드·타입 검사·린트 (tsc, npm run build/lint, make…)',
+  'zone.legend.git': 'git·gh 명령 (커밋, 푸시, PR)',
+  'zone.legend.run': '그 밖의 명령 — 스크립트, 설치, 서버',
   'transcript.close': '닫기',
   'transcript.dialog': '세션 상세',
   'transcript.status.thinking': '생각 중…',
@@ -473,6 +489,21 @@ const en: Record<Key, string> = {
   'bubble.permission': 'Needs attention',
   'plate.agents': 'Agents {n}',
   'plate.none': 'No agents in this room right now',
+  'zone.test': 'Test',
+  'zone.build': 'Build',
+  'zone.git': 'Git',
+  'zone.run': 'Run',
+  'zone.role.test': 'Where agents running tests sit: checking that the code does what it should.',
+  'zone.role.build':
+    'Where agents building, type-checking or linting sit: checking that the code compiles and follows the rules.',
+  'zone.role.git':
+    'Where agents doing version control sit: committing, pushing or opening pull requests.',
+  'zone.role.run':
+    'Where agents running any other command sit: scripts, package installs, dev servers.',
+  'zone.legend.test': 'Test commands — vitest, jest, pytest, npm test…',
+  'zone.legend.build': 'Build, type checks, lint — tsc, npm run build/lint, make…',
+  'zone.legend.git': 'git and gh commands — commit, push, PRs',
+  'zone.legend.run': 'Every other command — scripts, installs, servers',
   'transcript.close': 'Close',
   'transcript.dialog': 'Session details',
   'transcript.status.thinking': 'Thinking…',

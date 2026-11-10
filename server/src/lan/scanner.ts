@@ -12,6 +12,7 @@ import {
   CODEX_INDEX_MAX_BYTES,
   CODEX_META_MAX_BYTES,
   DISCOVER_INTERVAL_MS,
+  PERMISSION_MODE_SCAN_BYTES,
   POLL_INTERVAL_MS,
   SESSION_TTL_MS,
   TAIL_BYTES,
@@ -19,7 +20,7 @@ import {
   TALK_PENDING_MS,
   VIEW_TITLE_MAX,
 } from '../constants.js';
-import { applyClaudeLine, hostPath } from './claudeParser.js';
+import { applyClaudeLine, hostPath, setPermissionMode } from './claudeParser.js';
 import { applyCodexLine, codexSessionMeta, parseCodexIndex } from './codexParser.js';
 import type { CheckPids, RegEntry } from './liveness.js';
 import { checkPids, domainOf, readRegistry } from './liveness.js';
@@ -87,6 +88,26 @@ async function readRange(fh: FileHandle, from: number, to: number): Promise<Buff
   const buf = Buffer.alloc(to - from);
   const { bytesRead } = await fh.read(buf, 0, buf.length, from);
   return buf.subarray(0, bytesRead);
+}
+
+const MODE_RE = /"permissionMode":"(\w+)"/g;
+
+/** The last `permissionMode` value before byte `end` (searched back in TAIL_BYTES chunks, at most
+ *  PERMISSION_MODE_SCAN_BYTES), or null. */
+async function lastPermissionMode(file: string, end: number): Promise<string | null> {
+  const fh = await open(file, 'r');
+  try {
+    const stop = Math.max(0, end - PERMISSION_MODE_SCAN_BYTES);
+    for (let to = end; to > stop; to -= TAIL_BYTES) {
+      // Overlap a little so a match cut by the chunk edge is still found.
+      const chunk = (await readRange(fh, Math.max(stop, to - TAIL_BYTES), to + 64)).toString();
+      const all = [...chunk.matchAll(MODE_RE)];
+      if (all.length) return all[all.length - 1][1];
+    }
+    return null;
+  } finally {
+    await fh.close();
+  }
 }
 
 async function firstLine(file: string): Promise<string> {
@@ -514,6 +535,11 @@ export class Scanner {
     if (c.provider === 'codex') s.local.cwd = codexCwd;
     if (s.kind === 'main') s.num = this.freeNum();
     const start = Math.max(0, st.size - TAIL_BYTES);
+    // The mode line may be far before the tail: the approval guess needs it (applyClaudeLine).
+    if (c.provider === 'claude' && start > 0) {
+      const mode = await lastPermissionMode(c.file, start);
+      if (mode) setPermissionMode(s, mode);
+    }
     const t: Tracked = {
       s,
       apply: c.provider === 'claude' ? applyClaudeLine : applyCodexLine,

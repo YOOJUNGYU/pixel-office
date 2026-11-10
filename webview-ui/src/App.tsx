@@ -9,11 +9,10 @@ import {
   ROOM_ORDER,
 } from '../../core/src/lan.js';
 import type { ProfileMessage } from '../../core/src/messages.js';
-import { BottomToolbar } from './components/BottomToolbar.js';
+import { BottomToolbar, MenuButtons } from './components/BottomToolbar.js';
 import { ConnectionIndicator } from './components/ConnectionIndicator.js';
 import { EditActionBar } from './components/EditActionBar.js';
 import { SettingsModal } from './components/SettingsModal.js';
-import { Button } from './components/ui/Button.js';
 import { ZoomControls } from './components/ZoomControls.js';
 import {
   DEFAULT_LAYOUT_ASSET,
@@ -639,10 +638,27 @@ function App() {
           onDelete={() => transport.send({ type: 'deleteChat' })}
         />
 
+        {/* A read-only office gets no layout button and only the language setting: everything
+          else would be refused by the server anyway. The layout editor stays desktop-only (its
+          tools are drag/hover-driven). */}
         <ZoomControls
           zoom={editor.zoom}
           onZoomChange={editor.handleZoomChange}
           showZoom={!isMobile}
+          leading={
+            <MenuButtons
+              isEditMode={editor.isEditMode}
+              onToggleEditMode={
+                officeReadOnly || isMobile
+                  ? null
+                  : editor.isEditMode
+                    ? cancelEditing
+                    : editor.handleToggleEditMode
+              }
+              isSettingsOpen={settingsOpen}
+              onToggleSettings={() => setIsSettingsOpen((v) => !v)}
+            />
+          }
         />
 
         {/* Vignette overlay */}
@@ -748,52 +764,21 @@ function App() {
           </div>
         )}
 
-        {/* A read-only office gets no layout button and only the language
-          setting: everything else would be refused by the server anyway. */}
-        {!isMobile && (
-          <BottomToolbar
-            isEditMode={editor.isEditMode}
-            onToggleEditMode={
-              officeReadOnly
-                ? null
-                : editor.isEditMode
-                  ? cancelEditing
-                  : editor.handleToggleEditMode
-            }
-            isSettingsOpen={settingsOpen}
-            onToggleSettings={() => setIsSettingsOpen((v) => !v)}
-          >
-            {editor.isEditMode && (
-              <EditActionBar
-                editor={editor}
-                editorState={editorState}
-                onSave={() =>
-                  editor.handleSave(
-                    () => setToast({ key: 'app.layoutSaveTimeout' }),
-                    (layout) => (savedLayoutRef.current = layout),
-                  )
-                }
-                onReset={handleEditorReset}
-                onCancel={cancelEditing}
-              />
-            )}
+        {!isMobile && editor.isEditMode && (
+          <BottomToolbar>
+            <EditActionBar
+              editor={editor}
+              editorState={editorState}
+              onSave={() =>
+                editor.handleSave(
+                  () => setToast({ key: 'app.layoutSaveTimeout' }),
+                  (layout) => (savedLayoutRef.current = layout),
+                )
+              }
+              onReset={handleEditorReset}
+              onCancel={cancelEditing}
+            />
           </BottomToolbar>
-        )}
-
-        {/* Mobile: Settings floats top-left (the layout editor stays desktop-
-          only — its tools are drag/hover-driven). */}
-        {isMobile && (
-          <div className="absolute mobile-safe-top left-8 z-20">
-            <Button
-              size="sm"
-              variant={settingsOpen ? 'active' : 'default'}
-              className="border-border! shadow-pixel"
-              onClick={() => setIsSettingsOpen((v) => !v)}
-              data-tour="settings-button"
-            >
-              {t('toolbar.settings')}
-            </Button>
-          </div>
         )}
 
         <ConnectionIndicator />

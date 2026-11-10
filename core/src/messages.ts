@@ -192,6 +192,7 @@ export interface OfficeAgentMessage {
   reason: string;
   hidden?: boolean;
   quiet?: boolean;
+  zone?: AgentServerZone;
   talk?: boolean;
   ageSec?: number;
   todo?: AgentTodo;
@@ -222,6 +223,8 @@ export type AgentAct =
   | 'ask'
   | 'image'
   | 'tool';
+
+export type AgentServerZone = 'test' | 'build' | 'git' | 'run';
 
 export interface AgentTodo {
   done: number;

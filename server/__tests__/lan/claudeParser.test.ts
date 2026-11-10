@@ -102,8 +102,8 @@ describe('applyClaudeLine', () => {
   it('KillShell / TaskStop remove the shell, keep activity', () => {
     const s = mk();
     s.shells
-      .set('b1', { target: 'x', brief: 'x', since: 0 })
-      .set('b2', { target: 'y', brief: 'y', since: 0 });
+      .set('b1', { target: 'x', brief: 'x', since: 0, zone: 'run' })
+      .set('b2', { target: 'y', brief: 'y', since: 0, zone: 'run' });
     s.target = 'keep';
     applyClaudeLine(s, assistant(toolUse('KillShell', { shell_id: 'b1' })), 0);
     applyClaudeLine(s, assistant(toolUse('TaskStop', { task_id: 'b2' })), 0);

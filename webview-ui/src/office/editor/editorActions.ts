@@ -1,3 +1,4 @@
+import { serverZoneTiles } from '../../../../core/src/lan.js';
 import type { ColorValue } from '../../components/ui/types.js';
 import { DEFAULT_NEUTRAL_COLOR } from '../../constants.js';
 import { getCatalogEntry, getRotatedType, getToggledType } from '../layout/furnitureCatalog.js';
@@ -53,7 +54,7 @@ export function paintTile(
 
 /**
  * Tile indices the floor tool fills for a click on (col, row): the whole room
- * when the tile carries a room label, else the 4-connected region of unlabelled
+ * when the tile carries a room label (in 서버실: the clicked work zone only), else the 4-connected region of unlabelled
  * floor around it. Walls / VOID / out of grid → []. Never includes walls or VOID.
  */
 export function floorFillRegion(layout: OfficeLayout, col: number, row: number): number[] {
@@ -64,7 +65,14 @@ export function floorFillRegion(layout: OfficeLayout, col: number, row: number):
   const start = row * cols + col;
   const label = labelOf(start);
   const floor = (i: number) => tiles[i] !== TileType.VOID && tiles[i] !== TileType.WALL;
-  if (label) return tiles.flatMap((_, i) => (labelOf(i) === label && floor(i) ? [i] : []));
+  if (label) {
+    // 서버실 is painted per work zone (each quadrant its own floor).
+    const zones = serverZoneTiles(layout);
+    const zone = zones[start];
+    return tiles.flatMap((_, i) =>
+      labelOf(i) === label && zones[i] === zone && floor(i) ? [i] : [],
+    );
+  }
   const seen = new Set<number>([start]);
   const stack = [start];
   while (stack.length) {

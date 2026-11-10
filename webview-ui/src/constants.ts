@@ -178,6 +178,16 @@ export const KEY_CARPET_PICK = 'p';
 // ── Areas (the four fixed rooms) ─────────────────────────────
 /** Room overlay colors of the bundled default layout: a layout missing a room gets these. */
 export const ROOM_AREA_COLORS: Readonly<Record<Room, string>> = ROOM_DEFAULT_COLORS;
+/** 서버실 zones: extra tiles a seat in another zone counts as when picking the seat closest
+ *  to a parent — more than any room is wide, so the own zone always wins while it has room. */
+export const OTHER_ZONE_PENALTY = 1000;
+/** 서버실 work zone divider: a `ZONE_DIVIDER_PX`-wide line with a 1 px edge on each side in a
+ *  contrasting colour, so it reads on any floor colour; per theme (canvas). */
+export const ZONE_DIVIDER_PX = 2;
+export const ZONE_DIVIDER_COLORS = {
+  dark: { line: '#e2e8f0b3', edge: '#0f172a99' },
+  light: { line: '#334155b3', edge: '#ffffffb3' },
+} as const;
 
 // ── VisualColorPicker (HSV wheel + brightness for carpets) ───
 export const VISUAL_COLOR_PICKER_SV_SIZE_PX = 180;
@@ -497,6 +507,10 @@ export const ROOM_PLATE_INSET_PX = 4;
 export const ROOM_PLATE_Z_INDEX = 43;
 /** A plate's hover popup (what sends an agent there + its agents' cards): above the tags and chat. */
 export const ROOM_PLATE_TIP_Z_INDEX = 46;
+/** The top-left button row (Layout, Settings, theme, zoom): above room plates and their popups. */
+export const TOP_LEFT_CONTROLS_Z_INDEX = 47;
+/** 서버실 work zone plate's hover tooltip width (px). */
+export const ZONE_TIP_WIDTH_PX = 240;
 /** The popup's width (CSS px); it never reaches past the room's right or bottom edge (then scrolls). */
 export const ROOM_TIP_WIDTH_PX = 300;
 

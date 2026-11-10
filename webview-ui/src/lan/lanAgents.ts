@@ -1,4 +1,4 @@
-import type { AvatarDir, OfficeAgent, Room } from '../../../core/src/lan.js';
+import type { AvatarDir, OfficeAgent, Room, ServerZone } from '../../../core/src/lan.js';
 import { parseAvatar, ROOM_LABELS } from '../../../core/src/lan.js';
 import type { OfficePersonMessage, TagColors } from '../../../core/src/messages.js';
 import { FX_DURATION_MS, FX_MAX, LAN_KIND_BADGES, LAN_ROOM_TOOL } from '../constants.js';
@@ -112,6 +112,20 @@ export function roomCounts(agents: readonly OfficeAgent[]): Map<string, RoomCoun
     else c.extra++;
   }
   return counts;
+}
+
+/** The 서버실 work zone an agent sits in (none sent = run: older peers); undefined elsewhere. */
+export const zoneOf = (a: OfficeAgent): ServerZone | undefined =>
+  a.room === 'server' ? (a.zone ?? 'run') : undefined;
+
+/** Agents per 서버실 zone (mains and children together); zones with none are absent. */
+export function zoneCounts(agents: readonly OfficeAgent[]): Map<ServerZone, number> {
+  const out = new Map<ServerZone, number>();
+  for (const a of agents) {
+    const z = zoneOf(a);
+    if (z) out.set(z, (out.get(z) ?? 0) + 1);
+  }
+  return out;
 }
 
 /** The count chip beside a room plate ("에이전트 5": mains and children together); null when empty. */
@@ -369,6 +383,7 @@ export class LanAgents {
     const byKey = new Map<string, OfficeAgent>();
     for (const a of agents) byKey.set(a.key, a);
     os.roomCounts = roomCounts(agents);
+    os.zoneCounts = zoneCounts(agents);
     // Parents first: a child picks the seat closest to where its parent sits now.
     const depth = (a: OfficeAgent, n = 0): number => {
       const p = a.parentKey !== undefined ? byKey.get(a.parentKey) : undefined;
@@ -388,25 +403,37 @@ export class LanAgents {
         const ch = os.characters.get(id);
         const label = ROOM_LABELS[a.room];
         // Already seated here (since the last snapshot): stay put.
-        if (ch && ch.followId === undefined && ch.homeArea === label && ch.seatId) continue;
+        if (
+          ch &&
+          ch.followId === undefined &&
+          ch.homeArea === label &&
+          ch.homeZone === zoneOf(a) &&
+          ch.seatId
+        )
+          continue;
         const parentId = this.ids.get(parent.key)!;
-        const seat = os.freeSeatNear(label, parentId);
+        const seat = os.freeSeatNear(label, parentId, zoneOf(a));
         if (seat === null) {
           os.setFollowTarget(id, parentId);
           continue;
         }
         os.setFollowTarget(id, null);
-        this.enterRoom(id, a.room, seat);
+        this.enterRoom(id, a, seat);
         continue;
       }
       os.setFollowTarget(id, null);
       const ch = os.characters.get(id);
-      if (ch && (prevByKey.get(a.key)?.room !== a.room || ch.homeArea === undefined)) {
-        this.enterRoom(id, a.room);
+      if (
+        ch &&
+        (prevByKey.get(a.key)?.room !== a.room ||
+          ch.homeArea === undefined ||
+          ch.homeZone !== zoneOf(a))
+      ) {
+        this.enterRoom(id, a);
       } else if (ch && !ch.seatId) {
         // Standing because the room was full: take the seat that freed up closest to it.
-        const seat = os.freeSeatNear(ROOM_LABELS[a.room], id);
-        if (seat !== null) this.enterRoom(id, a.room, seat);
+        const seat = os.freeSeatNear(ROOM_LABELS[a.room], id, zoneOf(a));
+        if (seat !== null) this.enterRoom(id, a, seat);
       }
     }
     // Each working character's PC screen follows its act (code / terminal / document).
@@ -428,12 +455,12 @@ export class LanAgents {
   }
 
   /** Lounge idles (seated, or standing still when the room is full); every other room works at a desk. */
-  private enterRoom(id: number, room: Room, seat?: string): void {
-    const tool = LAN_ROOM_TOOL[room];
+  private enterRoom(id: number, a: OfficeAgent, seat?: string): void {
+    const tool = LAN_ROOM_TOOL[a.room];
     // Before moveToArea: deactivating clears the path it is about to set.
     this.os.setAgentActive(id, tool !== null);
     this.os.setAgentTool(id, tool);
-    this.os.moveToArea(id, ROOM_LABELS[room], seat);
+    this.os.moveToArea(id, ROOM_LABELS[a.room], seat, zoneOf(a));
   }
 
   /** PCs (peerId) with an agent folded into their avatar that waits for an answer. */

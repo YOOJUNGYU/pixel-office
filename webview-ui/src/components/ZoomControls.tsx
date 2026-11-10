@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import {
+  TOP_LEFT_CONTROLS_Z_INDEX,
   ZOOM_BUTTON_FACTOR,
   ZOOM_LEVEL_FADE_DELAY_MS,
   ZOOM_LEVEL_FADE_DURATION_SEC,
@@ -17,6 +18,8 @@ interface ZoomControlsProps {
   onZoomChange: (zoom: number) => void;
   /** The +/− row (hidden on mobile, where pinch zooms); the theme toggle always shows. */
   showZoom: boolean;
+  /** Buttons before the theme toggle in the same row (Layout, Settings). */
+  leading?: ReactNode;
 }
 
 const BTN_CLASS =
@@ -68,7 +71,7 @@ function ThemeToggle() {
   );
 }
 
-export function ZoomControls({ zoom, onZoomChange, showZoom }: ZoomControlsProps) {
+export function ZoomControls({ zoom, onZoomChange, showZoom, leading }: ZoomControlsProps) {
   useLang();
   const [showLevel, setShowLevel] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
@@ -123,11 +126,16 @@ export function ZoomControls({ zoom, onZoomChange, showZoom }: ZoomControlsProps
         </div>
       )}
 
-      {/* Top-left: theme toggle, + and − in one row */}
-      <div className="absolute top-8 left-8 z-10 flex items-start gap-4">
+      {/* Top-left, one row that never wraps: Layout, Settings, theme toggle, + and −. Above the
+          room plates, which can slide under it when zoomed in. */}
+      <div
+        className="absolute mobile-safe-top left-8 flex flex-nowrap items-start gap-4"
+        style={{ zIndex: TOP_LEFT_CONTROLS_Z_INDEX }}
+      >
+        {leading}
         <ThemeToggle />
         {showZoom && (
-          <div data-tour="zoom" className="flex gap-4">
+          <div data-tour="zoom" className="flex flex-nowrap gap-4">
             <Button
               size="icon_lg"
               onClick={() => onZoomChange(zoom * ZOOM_BUTTON_FACTOR)}

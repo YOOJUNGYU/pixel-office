@@ -5,6 +5,7 @@ import type {
   AgentView,
   Provider,
   Room,
+  ServerZone,
 } from '../../../core/src/lan.js';
 import { AGE_MAX_SEC, DIFF_MAX, TODO_MAX } from '../../../core/src/lan.js';
 import {
@@ -25,6 +26,8 @@ export interface SessionState {
   parentId?: string;
   /** displayed room */
   room: Room;
+  /** 서버실 zone of the latest shell command (sent while the room is 서버실). */
+  zone: ServerZone;
   candidate: Room;
   candidateSince: number;
   act: Act;
@@ -33,7 +36,7 @@ export interface SessionState {
   brief: string;
   reason: string;
   permission: boolean;
-  /** Claude permission mode is bypassPermissions: approval prompts cannot happen */
+  /** Claude permission mode never prompts (bypassPermissions, auto, dontAsk): no approval guess */
   bypass: boolean;
   lastLineAt: number;
   /** The current line's own timestamp (ms epoch; read time when it has none or a bad one). */
@@ -59,7 +62,14 @@ export interface SessionState {
    *  only the transcript panel reads them, never views()/packets. */
   shells: Map<
     string,
-    { target: string; brief: string; since: number; command?: string; output?: string }
+    {
+      target: string;
+      brief: string;
+      since: number;
+      zone: ServerZone;
+      command?: string;
+      output?: string;
+    }
   >;
   /** LOCAL ONLY (notifications on this PC): never copied into an AgentView, so never sent. */
   local: LocalInfo;
@@ -92,6 +102,7 @@ export function newSession(
     num: 0,
     parentId,
     room: 'lounge',
+    zone: 'run',
     candidate: 'lounge',
     candidateSince: now,
     act: 'idle',
@@ -163,6 +174,33 @@ export function classifyShell(cmd: string): Room {
     (s) => LIBRARY_CMD.test(s) && !s.replace(HARMLESS_REDIRECT, '').includes('>'),
   );
   return segs.length && reads ? 'library' : 'server';
+}
+
+const PKG = String.raw`(?:npm|pnpm|yarn|bun|deno)\s+(?:run\s+)?`;
+const TEST_CMD = new RegExp(
+  String.raw`\b(?:vitest|jest|pytest|mocha|rspec|phpunit|playwright\s+test|unittest)\b|` +
+    String.raw`\b(?:cargo|go|dotnet|mvn|gradle|bun|deno)\s+test\b|${PKG}test(?::[\w:-]+)?\b`,
+);
+const BUILD_CMD = new RegExp(
+  String.raw`\b(?:tsc|esbuild|webpack|rollup|make|cmake|eslint|prettier|ruff|biome|gradle|mvn)\b|` +
+    String.raw`\b(?:vite|cargo|go|dotnet)\s+build\b|` +
+    String.raw`${PKG}(?:build|lint|format|compile|typecheck|check-types)(?::[\w:-]+)?\b`,
+);
+const GIT_CMD = /(?:^|\s)(?:git|gh)\s/;
+
+/**
+ * 서버실 zone of a command: the last segment (`cd` and plain readers skipped) that is a test,
+ * build or git command decides (`npm run build && npm test` = test, `pnpm lint && git commit`
+ * = git); none = run.
+ */
+export function shellZone(cmd: string): ServerZone {
+  const segs = shellSegments(cmd).filter((s) => !/^cd\b/.test(s) && !LIBRARY_CMD.test(s));
+  for (const s of segs.reverse()) {
+    if (TEST_CMD.test(s)) return 'test';
+    if (BUILD_CMD.test(s)) return 'build';
+    if (GIT_CMD.test(` ${s}`)) return 'git';
+  }
+  return 'run';
 }
 
 /** Program name of a shell command: first token after `KEY=value` assignments, basename. */
@@ -319,6 +357,7 @@ export function toViews(s: SessionState, brief = false, now = 0): AgentView[] {
     target: brief ? s.brief : s.target,
     reason: s.reason,
   };
+  if (s.room === 'server') self.zone = s.zone;
   if (s.kind === 'subagent') self.parentId = s.parentId;
   if (s.kind === 'subagent' && now < s.talkUntil) self.talk = true;
   if (s.act !== 'idle') self.ageSec = ageOf(s.actSince, now);
@@ -334,6 +373,7 @@ export function toViews(s: SessionState, brief = false, now = 0): AgentView[] {
     num: 0,
     parentId: s.id,
     room: 'server',
+    zone: sh.zone,
     permission: false,
     act: 'run',
     target: brief ? sh.brief : sh.target,

@@ -1026,6 +1026,8 @@ components:
         quiet:
           type: boolean
           description: Public-office presence from a peer (UDP or relay) — no target/reason or work signals; act, room and waiting stay.
+        zone:
+          $ref: '#/components/schemas/AgentServerZone'
         talk:
           type: boolean
           description: Children only, true for a few seconds while it talks with its parent (task handed over, result reported, SendMessage).
@@ -1174,6 +1176,11 @@ components:
     AgentRoom:
       type: string
       enum: [coding, library, server, lounge]
+
+    AgentServerZone:
+      description: 서버실 only, the work zone of the shell command (absent = run; older peers send none).
+      type: string
+      enum: [test, build, git, run]
 
     UpdateState:
       type: string

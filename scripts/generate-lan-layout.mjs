@@ -14,9 +14,9 @@
 const WALL = 0;
 const VOID = 255;
 const FLOOR_1 = 1;
+const FLOOR_3 = 3;
 const FLOOR_4 = 4;
 const FLOOR_7 = 7;
-const FLOOR_9 = 9;
 
 // Two variants from one generator:
 //   (default)    83×54 shared office   → default-layout-1.json
@@ -27,7 +27,7 @@ const PERSONAL = process.argv.includes('--personal');
 // walls; the gaps between groups take up the rest (spread evenly, symmetric).
 const V = PERSONAL
   ? {
-      roomH: 12,
+      roomH: [12, 12],
       corridorH: 2,
       roomW: [15, 18],
       pad: { coding: 1, library: 1, server: 1, lounge: 1 },
@@ -37,7 +37,8 @@ const V = PERSONAL
       lift: 1,
       coding: { cols: 2, rows: 2, chairs: [0, 2], gap: [3, 2] },
       library: { cols: 2, rows: 1, gap: 3 },
-      server: { cols: 2, rows: 1, gap: 4 },
+      // One table per 서버실 work zone (quadrant); one seat pair each keeps 8 seats.
+      server: { cols: 1, rows: 1, gap: [1, 1], zoneGap: [4, 2], seatRows: [0] },
       lounge: { cols: 1, rows: 1, gap: 0 },
       extraDoors: false,
       wallDeco: {
@@ -54,27 +55,30 @@ const V = PERSONAL
       },
     }
   : {
-      roomH: 23,
+      // [top, bottom]: the top row (코딩실, 서버실) is taller — 서버실 needs room for the gaps
+      // between its work zones, 코딩실 one more desk row for its narrower width.
+      roomH: [28, 23], // even: the 서버실 zone divider falls on a floor seam, centred
       corridorH: 3,
-      roomW: [29, 51],
+      roomW: [24, 56],
       pad: { coding: 2, library: 2, server: 2, lounge: 2 },
-      coding: { cols: 5, rows: 5, chairs: [0, 1, 2] },
+      coding: { cols: 4, rows: 6, chairs: [0, 1, 2] },
       library: { cols: 4, rows: 4 },
-      server: { cols: 8, rows: 4 },
+      // Per work zone 4×2 tables (8), 1 tile apart; zones `zoneGap` apart (empty floor between).
+      server: { cols: 4, rows: 2, gap: [1, 1], zoneGap: [6, 6], seatRows: [0, 2] },
       // A centred block with one gap both ways (spread to the walls it looked scattered).
       lounge: { cols: 4, rows: 2, gap: 5 },
       extraDoors: true,
       lift: 0,
       wallDeco: {
         coding: [
-          ['WHITEBOARD', 3],
-          ['CLOCK', 13],
-          ['WHITEBOARD', 22],
+          ['WHITEBOARD', 2],
+          ['CLOCK', 11],
+          ['WHITEBOARD', 19],
         ],
         server: [
           ['LARGE_PAINTING', 4],
-          ['CLOCK', 25],
-          ['SMALL_PAINTING', 45],
+          ['CLOCK', 27],
+          ['SMALL_PAINTING', 50],
         ],
       },
     };
@@ -83,28 +87,30 @@ const V = PERSONAL
 // Two rows of two rooms around a corridor; every room of a column has the same size.
 const TOP_WALL = 1;
 const TOP_Y = 2; // first interior row of the top rooms
-const ROOM_H = V.roomH;
-const MID_WALL = TOP_Y + ROOM_H;
+const [TOP_H, BOTTOM_H] = V.roomH;
+const MID_WALL = TOP_Y + TOP_H;
 const CORRIDOR_Y = MID_WALL + 1;
 const CORRIDOR_H = V.corridorH;
 const BOTTOM_WALL = CORRIDOR_Y + CORRIDOR_H;
 const BOTTOM_Y = BOTTOM_WALL + 1;
-const ROWS = BOTTOM_Y + ROOM_H + 1;
+const ROWS = BOTTOM_Y + BOTTOM_H + 1;
 const [LEFT_W, RIGHT_W] = V.roomW;
 const RIGHT_X = LEFT_W + 2;
 const COLS = RIGHT_X + RIGHT_W + 1;
 
-const box = (label, color, x, w, y) => ({ label, color, x, w, y, h: ROOM_H });
-const CODING = box('코딩실', '#48dbfb', 1, LEFT_W, TOP_Y);
-const SERVER = box('서버실', '#ff6b6b', RIGHT_X, RIGHT_W, TOP_Y);
-const LIBRARY = box('자료실', '#1dd1a1', 1, LEFT_W, BOTTOM_Y);
-const LOUNGE = box('대기실', '#feca57', RIGHT_X, RIGHT_W, BOTTOM_Y);
+const box = (label, color, x, w, y, h) => ({ label, color, x, w, y, h });
+const CODING = box('코딩실', '#48dbfb', 1, LEFT_W, TOP_Y, TOP_H);
+const SERVER = box('서버실', '#ff6b6b', RIGHT_X, RIGHT_W, TOP_Y, TOP_H);
+const LIBRARY = box('자료실', '#1dd1a1', 1, LEFT_W, BOTTOM_Y, BOTTOM_H);
+const LOUNGE = box('대기실', '#feca57', RIGHT_X, RIGHT_W, BOTTOM_Y, BOTTOM_H);
 
 // Floor pattern + colour per zone (ColorValue {h,s,b,c}, same as the editor writes).
 const FLOOR = {
   coding: { tile: FLOOR_7, color: { h: 214, s: 30, b: -60, c: -40 } },
   library: { tile: FLOOR_1, color: { h: 30, s: 45, b: -35, c: -60 } },
-  server: { tile: FLOOR_9, color: { h: 200, s: 10, b: -25, c: -40 } },
+  // 서버실: large panels (a raised floor), one colour; the work zones are told apart by the
+  // divider lines the renderer draws (and can each be repainted with the floor tool).
+  server: { tile: FLOOR_3, color: { h: 210, s: 18, b: -30, c: -30 } },
   lounge: { tile: FLOOR_4, color: { h: 25, s: 48, b: -20, c: -70 } },
   corridor: { tile: FLOOR_1, color: { h: 209, s: 0, b: -20, c: -60 } },
 };
@@ -156,8 +162,8 @@ for (const x of thirds(CODING.x, CODING.w)) door(x, MID_WALL, 2, 1); // 코딩�
 for (const x of thirds(LIBRARY.x, LIBRARY.w)) door(x, BOTTOM_WALL, 2, 1); // 복도 ↔ 자료실
 door(mid(SERVER), MID_WALL, 2, 1);
 door(mid(LOUNGE), BOTTOM_WALL, 2, 1);
-for (const y of thirds(TOP_Y, ROOM_H)) door(RIGHT_X - 1, y, 1, 2); // 코딩실 ↔ 서버실
-for (const y of thirds(BOTTOM_Y, ROOM_H)) door(RIGHT_X - 1, y, 1, 2); // 자료실 ↔ 대기실
+for (const y of thirds(TOP_Y, TOP_H)) door(RIGHT_X - 1, y, 1, 2); // 코딩실 ↔ 서버실
+for (const y of thirds(BOTTOM_Y, BOTTOM_H)) door(RIGHT_X - 1, y, 1, 2); // 자료실 ↔ 대기실
 if (V.extraDoors) {
   // The wide right-hand rooms get two more doors each.
   for (const x of [
@@ -259,24 +265,35 @@ roomGrid(
   lb.gap,
 );
 
-// ── 서버실: workstation tables, a PC on every seat, wooden chairs both sides (group 5×4) ──
-roomGrid(
-  SERVER,
-  pad.server,
-  { w: 5, h: 4, ox: 1, oy: 0 },
-  sv.cols,
-  sv.rows,
-  (c, y) => {
-    put('TABLE_FRONT', c, y);
-    for (const dy of [0, 2]) {
-      put('PC_SIDE', c, y + dy);
-      put('PC_SIDE:left', c + 2, y + dy);
-      put('WOODEN_CHAIR_SIDE', c - 1, y + dy);
-      put('WOODEN_CHAIR_SIDE:left', c + 3, y + dy);
-    }
-  },
-  sv.gap,
-);
+// ── 서버실: four work zones (quadrants), each a block of workstation tables (group 5×4: a PC
+// on every seat, wooden chairs both sides); empty floor between
+// the zones so they read as separate areas. ──
+{
+  const unit = { w: 5, h: 4, ox: 1, oy: 0 };
+  const [gx, gy] = sv.gap;
+  const zoneW = sv.cols * unit.w + (sv.cols - 1) * gx;
+  const zoneH = sv.rows * unit.h + (sv.rows - 1) * gy;
+  const [zgx, zgy] = sv.zoneGap;
+  const zxs = spread(2, zoneW, SERVER.w - 2 * pad.server, zgx);
+  const zys = spread(2, zoneH, SERVER.h - 2 * pad.server, zgy, V.lift);
+  zys.forEach((zy) =>
+    zxs.forEach((zx) => {
+      for (let r = 0; r < sv.rows; r++) {
+        for (let k = 0; k < sv.cols; k++) {
+          const c = SERVER.x + pad.server + zx + k * (unit.w + gx) + unit.ox;
+          const y = SERVER.y + pad.server + zy + r * (unit.h + gy) + unit.oy;
+          put('TABLE_FRONT', c, y);
+          for (const dy of sv.seatRows) {
+            put('PC_SIDE', c, y + dy);
+            put('PC_SIDE:left', c + 2, y + dy);
+            put('WOODEN_CHAIR_SIDE', c - 1, y + dy);
+            put('WOODEN_CHAIR_SIDE:left', c + 3, y + dy);
+          }
+        }
+      }
+    }),
+  );
+}
 for (const [type, x] of V.wallDeco.server) put(type, SERVER.x + x, TOP_WALL - 1);
 
 // ── 대기실: sofa lounges around a coffee table, 8 seats each (group 4×4); open floor between ──
