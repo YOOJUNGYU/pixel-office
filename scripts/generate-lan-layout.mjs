@@ -52,10 +52,11 @@ const V = PERSONAL
           ['CLOCK', 7],
           ['WHITEBOARD', 11],
         ],
+        // 32 wide: the whiteboard is the centre (15–16), the paintings mirror each other.
         server: [
           ['LARGE_PAINTING', 3],
-          ['CLOCK', 15],
-          ['SMALL_PAINTING', 28],
+          ['WHITEBOARD', 15],
+          ['LARGE_PAINTING', 27],
         ],
       },
     }
@@ -77,15 +78,20 @@ const V = PERSONAL
       extraDoors: true,
       lift: 0,
       wallDeco: {
+        // Mirror-symmetric about each wall's centre (24 wide: 11–12; 56 wide: 27–28).
         coding: [
           ['WHITEBOARD', 2],
-          ['CLOCK', 11],
-          ['WHITEBOARD', 19],
+          ['SMALL_PAINTING', 7],
+          ['LARGE_PAINTING', 11],
+          ['CLOCK', 16],
+          ['WHITEBOARD', 20],
         ],
         server: [
-          ['LARGE_PAINTING', 4],
-          ['CLOCK', 27],
-          ['SMALL_PAINTING', 50],
+          ['LARGE_PAINTING', 6],
+          ['SMALL_PAINTING', 17],
+          ['WHITEBOARD', 27],
+          ['SMALL_PAINTING_2', 38],
+          ['LARGE_PAINTING', 48],
         ],
       },
     };
@@ -241,20 +247,36 @@ for (const [type, x] of V.wallDeco.coding) put(type, CODING.x + x, TOP_WALL - 1)
 // ── 자료실: bookshelves on the top wall, reading tables with 4 chairs (group 4×3) ──
 // The shelves sit as in the top rooms (the lower tile on the wall, the upper one over the
 // corridor's last row), leaving the doors to the corridor open.
-const libraryDoors = thirds(LIBRARY.x, LIBRARY.w);
 const shelfRow = LIBRARY.y - 2;
-if (PERSONAL) {
-  for (let x = LIBRARY.x; x + 1 < LIBRARY.x + LIBRARY.w; x += 2) {
-    if (libraryDoors.some((d) => x + 1 >= d && x <= d + 1)) continue;
-    put('DOUBLE_BOOKSHELF', x, shelfRow);
+/** The wall segments between a room's top-wall doors: [first, last] tile, inclusive. */
+function wallSegments(room, doors) {
+  const out = [];
+  let x = room.x;
+  for (const d of [...doors].sort((a, b) => a - b)) {
+    out.push([x, d - 1]);
+    x = d + 2;
   }
-} else {
-  // Left wall: 4 shelves from the corner; middle wall: a clock alone in its centre;
-  // right wall: 4 shelves into the corner (one tile free by the door).
-  const [d1, d2] = libraryDoors;
-  for (let k = 0; k < 4; k++) put('DOUBLE_BOOKSHELF', LIBRARY.x + 2 * k, shelfRow);
-  put('CLOCK', Math.floor((d1 + 2 + d2 - 1) / 2), shelfRow);
-  for (let k = 4; k >= 1; k--) put('DOUBLE_BOOKSHELF', LIBRARY.x + LIBRARY.w - 2 * k, shelfRow);
+  out.push([x, room.x + room.w - 1]);
+  return out;
+}
+// The two corner segments are lined with shelves from the corner (the odd tile left by the
+// door); the middle segment gets the centred wall decor.
+const [libLeft, libMid, libRight] = wallSegments(LIBRARY, thirds(LIBRARY.x, LIBRARY.w));
+const shelves = (n) => Math.floor(n / 2);
+for (let k = 0; k < shelves(libLeft[1] - libLeft[0] + 1); k++) {
+  put('DOUBLE_BOOKSHELF', libLeft[0] + 2 * k, shelfRow);
+}
+for (let k = 1; k <= shelves(libRight[1] - libRight[0] + 1); k++) {
+  put('DOUBLE_BOOKSHELF', libRight[1] + 1 - 2 * k, shelfRow);
+}
+const midW = libMid[1] - libMid[0] + 1;
+if (midW % 2 === 1) put('CLOCK', libMid[0] + (midW - 1) / 2, shelfRow);
+else {
+  put('LARGE_PAINTING', libMid[0] + midW / 2 - 1, shelfRow);
+  if (midW >= 6) {
+    put('HANGING_PLANT', libMid[0], shelfRow);
+    put('HANGING_PLANT', libMid[1], shelfRow);
+  }
 }
 const readingTable = (c, y) => {
   put('SMALL_TABLE_FRONT', c, y);
@@ -321,6 +343,40 @@ roomGrid(
   },
   lg.gap,
 );
+
+// ── Plants: the free floor corners (inside the `pad` border, away from the doors) ──
+/** A large (2×3) plant in both bottom corners of `room`. */
+const cornerPlants = (room) => {
+  put('LARGE_PLANT', room.x, room.y + room.h - 3);
+  put('LARGE_PLANT', room.x + room.w - 2, room.y + room.h - 3);
+};
+cornerPlants(CODING);
+cornerPlants(LIBRARY);
+// 대기실: a large plant in every corner, a cactus and a pot mid-way along the side walls,
+// pictures and a clock on its top wall (mirror-symmetric about the middle door).
+cornerPlants(LOUNGE);
+for (const x of [LOUNGE.x, LOUNGE.x + LOUNGE.w - 2]) put('LARGE_PLANT', x, LOUNGE.y);
+if (LOUNGE.h >= 12) {
+  const midY = LOUNGE.y + Math.floor(LOUNGE.h / 2) - 1;
+  put('CACTUS', LOUNGE.x, midY);
+  put('CACTUS', LOUNGE.x + LOUNGE.w - 1, midY);
+}
+{
+  const segs = wallSegments(LOUNGE, [
+    mid(LOUNGE),
+    ...(V.extraDoors
+      ? [RIGHT_X + Math.floor(RIGHT_W / 4), RIGHT_X + Math.floor((3 * RIGHT_W) / 4) - 1]
+      : []),
+  ]);
+  const c = (seg, w) => Math.floor((seg[0] + seg[1] + 1 - w) / 2);
+  const [first, last] = [segs[0], segs[segs.length - 1]];
+  put('LARGE_PAINTING', c(first, 2), LOUNGE.y - 2);
+  put('LARGE_PAINTING', c(last, 2), LOUNGE.y - 2);
+  if (segs.length === 4) {
+    put('CLOCK', segs[1][1] - 2, LOUNGE.y - 2);
+    put('SMALL_PAINTING_2', segs[2][0] + 2, LOUNGE.y - 2);
+  }
+}
 
 const layout = {
   version: 1,

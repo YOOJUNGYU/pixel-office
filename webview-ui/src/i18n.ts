@@ -63,10 +63,11 @@ const ko = {
     '버전 관리 작업을 하는 에이전트가 앉는 곳입니다. 변경을 커밋·푸시하거나 PR을 만드는 중이에요.',
   'zone.role.run':
     '그 밖의 명령을 실행하는 에이전트가 앉는 곳입니다. 스크립트, 패키지 설치, 개발 서버 등이에요.',
-  'zone.legend.test': 'vitest·jest·pytest·npm test 같은 테스트 명령',
-  'zone.legend.build': '빌드·타입 검사·린트 (tsc, npm run build/lint, make…)',
-  'zone.legend.git': 'git·gh 명령 (커밋, 푸시, PR)',
-  'zone.legend.run': '그 밖의 명령 — 스크립트, 설치, 서버',
+  'zone.legend.test': '테스트·검증 (vitest, pytest, npm test, e2e/verify, curl·브라우저 확인…)',
+  'zone.legend.build':
+    '빌드·린트·설치·코드 생성 (tsc, npm run build/lint, npm install, prisma, 파일 정리…)',
+  'zone.legend.git': 'git·gh 명령 (커밋, 푸시, PR, 워크트리)',
+  'zone.legend.run': '그 밖의 명령 — 스크립트, 서버',
   'transcript.close': '닫기',
   'transcript.dialog': '세션 상세',
   'transcript.status.thinking': '생각 중…',
@@ -500,10 +501,12 @@ const en: Record<Key, string> = {
     'Where agents doing version control sit: committing, pushing or opening pull requests.',
   'zone.role.run':
     'Where agents running any other command sit: scripts, package installs, dev servers.',
-  'zone.legend.test': 'Test commands — vitest, jest, pytest, npm test…',
-  'zone.legend.build': 'Build, type checks, lint — tsc, npm run build/lint, make…',
-  'zone.legend.git': 'git and gh commands — commit, push, PRs',
-  'zone.legend.run': 'Every other command — scripts, installs, servers',
+  'zone.legend.test':
+    'Tests and checks — vitest, pytest, npm test, e2e/verify, curl, browser checks…',
+  'zone.legend.build':
+    'Build, lint, installs, codegen — tsc, npm run build/lint, npm install, prisma, file moves…',
+  'zone.legend.git': 'git and gh commands — commit, push, PRs, worktrees',
+  'zone.legend.run': 'Every other command — scripts, servers',
   'transcript.close': 'Close',
   'transcript.dialog': 'Session details',
   'transcript.status.thinking': 'Thinking…',

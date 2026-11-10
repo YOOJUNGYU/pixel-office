@@ -140,8 +140,16 @@ describe('shellZone', () => {
     ['npm test && git push', 'git'],
     ['python3 scripts/gen.py', 'run'],
     ['node dist/cli.js --port 1', 'run'],
-    ['pnpm install', 'run'],
     ['echo vitest', 'run'],
+    // ambiguous ones are spread over the other zones
+    ['pnpm install', 'build'],
+    ['npx prisma generate', 'build'],
+    ['mkdir -p out && cp a b', 'build'],
+    ['timeout 590 harness verify --workspace x', 'test'],
+    ['curl -s localhost:3000/api/health', 'test'],
+    ['agent-browser screenshot a.png', 'test'],
+    ['pnpm wt pr --commit "feat: x"', 'git'],
+    ['FOO=1 command eslint src', 'build'],
   ])('%s → %s', (cmd, zone) => {
     expect(shellZone(cmd)).toBe(zone);
   });

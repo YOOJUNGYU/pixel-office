@@ -233,6 +233,8 @@ describe('classifyShell', () => {
       'cd /r && grep -n "a|b" x.ts | head -40',
       'ls; sed -n 1,9p a 2>/dev/null',
       'cat a 2>&1 | wc -l',
+      'command grep -rn x src | head',
+      'timeout 5 cat a',
     ])
       expect(classifyShell(c)).toBe('library');
     for (const c of [

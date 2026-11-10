@@ -161,7 +161,17 @@ function shellSegments(cmd: string): string[] {
     } else cur += c;
   }
   out.push(cur.trim());
-  return out.filter(Boolean);
+  return out.map(bare).filter(Boolean);
+}
+
+/** Wrappers that only run the real command: `command grep` = `grep`, `timeout 60 npm test` =
+ *  `npm test`, `FOO=1 node x` = `node x`. */
+const WRAPPER =
+  /^(?:(?:command|builtin|exec|time|nice|nohup|sudo|env)\s+|timeout\s+(?:-\S+\s+)*\d\S*\s+|\w+=\S*\s+)/;
+function bare(seg: string): string {
+  let s = seg;
+  for (let t = s.replace(WRAPPER, ''); t !== s; t = s.replace(WRAPPER, '')) s = t;
+  return s;
 }
 
 /**
@@ -177,16 +187,23 @@ export function classifyShell(cmd: string): Room {
 }
 
 const PKG = String.raw`(?:npm|pnpm|yarn|bun|deno)\s+(?:run\s+)?`;
+// Ambiguous commands are spread on purpose (so 실행 is not where nearly everything lands):
+// checks against a running thing (verify/e2e/smoke, curl, browser drivers) count as tests;
+// installs, code generation, migrations and file shuffling as building; worktrees and PRs
+// as git.
 const TEST_CMD = new RegExp(
-  String.raw`\b(?:vitest|jest|pytest|mocha|rspec|phpunit|playwright\s+test|unittest)\b|` +
+  String.raw`\b(?:vitest|jest|pytest|mocha|rspec|phpunit|playwright|unittest|agent-browser|curl|wget|httpie?)\b|` +
+    String.raw`\b(?:verify|e2e|smoke|gate)\b|\bnode\s+--test\b|` +
     String.raw`\b(?:cargo|go|dotnet|mvn|gradle|bun|deno)\s+test\b|${PKG}test(?::[\w:-]+)?\b`,
 );
 const BUILD_CMD = new RegExp(
-  String.raw`\b(?:tsc|esbuild|webpack|rollup|make|cmake|eslint|prettier|ruff|biome|gradle|mvn)\b|` +
+  String.raw`\b(?:tsc|esbuild|webpack|rollup|make|cmake|eslint|prettier|ruff|biome|gradle|mvn|prisma|docker)\b|` +
     String.raw`\b(?:vite|cargo|go|dotnet)\s+build\b|` +
-    String.raw`${PKG}(?:build|lint|format|compile|typecheck|check-types)(?::[\w:-]+)?\b`,
+    String.raw`${PKG}(?:build|lint|format|compile|typecheck|check-types|generate|codegen|migrate)(?::[\w:-]+)?\b|` +
+    String.raw`\b(?:npm|pnpm|yarn|bun|pip3?|uv|cargo)\s+(?:install|i|ci|add|sync)\b|` +
+    String.raw`^(?:mkdir|rm|cp|mv|touch|chmod|ln|tar|unzip|zip|rsync)\b`,
 );
-const GIT_CMD = /(?:^|\s)(?:git|gh)\s/;
+const GIT_CMD = /(?:^|\s)(?:git|gh)\s|\b(?:wt|worktree)\s|\bpr\b/;
 
 /**
  * 서버실 zone of a command: the last segment (`cd` and plain readers skipped) that is a test,
