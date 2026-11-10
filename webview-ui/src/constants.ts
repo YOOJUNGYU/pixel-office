@@ -181,12 +181,14 @@ export const ROOM_AREA_COLORS: Readonly<Record<Room, string>> = ROOM_DEFAULT_COL
 /** 서버실 zones: extra tiles a seat in another zone counts as when picking the seat closest
  *  to a parent — more than any room is wide, so the own zone always wins while it has room. */
 export const OTHER_ZONE_PENALTY = 1000;
-/** 서버실 work zone divider: a `ZONE_DIVIDER_PX`-wide line with a 1 px edge on each side in a
- *  contrasting colour, so it reads on any floor colour; per theme (canvas). */
-export const ZONE_DIVIDER_PX = 2;
-export const ZONE_DIVIDER_COLORS = {
-  dark: { line: '#e2e8f0b3', edge: '#0f172a99' },
-  light: { line: '#334155b3', edge: '#ffffffb3' },
+/** 서버실 work zone dividers = floor marking tape along the midlines, in sprite pixels (scaled
+ *  with the render zoom, so it stays pixel-crisp): `width` wide, one `dash` per tile centred on
+ *  it (the rest of the tile is a gap), a `mark`-sized square where the two lines cross; `shade` =
+ *  a 1 px darker edge on the tape's lower/right side. Per theme (canvas). */
+export const ZONE_TAPE = { width: 2, dash: 10, mark: 4 } as const;
+export const ZONE_TAPE_COLORS = {
+  dark: { tape: '#c9a24a', shade: '#7a5f2a' },
+  light: { tape: '#d9a93c', shade: '#a67c26' },
 } as const;
 
 // ── VisualColorPicker (HSV wheel + brightness for carpets) ───

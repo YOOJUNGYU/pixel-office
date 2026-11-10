@@ -35,8 +35,8 @@ import {
   TALK_BOB_PX,
   VOID_TILE_DASH_PATTERN,
   VOID_TILE_OUTLINE_COLORS,
-  ZONE_DIVIDER_COLORS,
-  ZONE_DIVIDER_PX,
+  ZONE_TAPE,
+  ZONE_TAPE_COLORS,
 } from '../../constants.js';
 import { getTheme } from '../../theme.js';
 import type { BackgroundFill } from '../background.js';
@@ -599,30 +599,49 @@ export function renderScene(
 
 // ── 서버실 work zone dividers ───────────────────────────────────
 
-/** The lines between the 서버실 work zones (its midlines, on the floor below furniture): drawn
- *  from the room's box, not stored in the layout, so no floor edit can move or hide them. */
+/** Floor marking tape between the 서버실 work zones (its midlines, on the floor below
+ *  furniture): one dash per tile along the seam, only where the two tiles on each side of it
+ *  are floor (never over a wall, nor through a doorway up to 2 tiles wide), plus a square where the lines cross. Drawn from the
+ *  room's box, not stored in the layout, so no floor edit can move or hide it. */
 function renderZoneDividers(
   ctx: CanvasRenderingContext2D,
   box: ServerZoneBox,
+  tileMap: TileTypeVal[][],
   offsetX: number,
   offsetY: number,
   zoom: number,
 ): void {
-  const px = (tiles: number) => Math.round(tiles * TILE_SIZE * zoom);
-  const colors = ZONE_DIVIDER_COLORS[getTheme() === 'light' ? 'light' : 'dark'];
-  const x = offsetX + px(box.midC);
-  const y = offsetY + px(box.midR);
-  const [left, top] = [offsetX + px(box.c0), offsetY + px(box.r0)];
-  const [width, height] = [px(box.c1 + 1 - box.c0), px(box.r1 + 1 - box.r0)];
-  // edge (line + 1 px each side), then the line over it
-  for (const [color, w] of [
-    [colors.edge, (ZONE_DIVIDER_PX + 2) * zoom],
-    [colors.line, ZONE_DIVIDER_PX * zoom],
-  ] as const) {
-    ctx.fillStyle = color;
-    ctx.fillRect(x - w / 2, top, w, height);
-    ctx.fillRect(left, y - w / 2, width, w);
+  const colors = ZONE_TAPE_COLORS[getTheme() === 'light' ? 'light' : 'dark'];
+  const isFloor = (c: number, r: number) => {
+    const t = tileMap[r]?.[c];
+    return t !== undefined && t !== TileType.WALL && t !== TileType.VOID;
+  };
+  const w = ZONE_TAPE.width * zoom;
+  const dash = ZONE_TAPE.dash * zoom;
+  const tile = TILE_SIZE * zoom;
+  const lead = (tile - dash) / 2;
+  const x = offsetX + box.midC * tile;
+  const y = offsetY + box.midR * tile;
+  // tape rect + its 1 px shade on the lower/right edge
+  const tape = (rx: number, ry: number, rw: number, rh: number) => {
+    ctx.fillStyle = colors.shade;
+    ctx.fillRect(rx, ry, rw + zoom, rh + zoom);
+    ctx.fillStyle = colors.tape;
+    ctx.fillRect(rx, ry, rw, rh);
+  };
+  for (let r = box.r0; r <= box.r1; r++) {
+    if (r === box.midR - 1 || r === box.midR) continue; // the crossing mark covers these
+    // the row below too: a wall's face covers the floor row above it, except in a doorway
+    if ([-2, -1, 0, 1].every((d) => isFloor(box.midC + d, r) && isFloor(box.midC + d, r + 1)))
+      tape(x - w / 2, offsetY + r * tile + lead, w, dash);
   }
+  for (let c = box.c0; c <= box.c1; c++) {
+    if (c === box.midC - 1 || c === box.midC) continue;
+    if ([-2, -1, 0, 1].every((d) => isFloor(c, box.midR + d)))
+      tape(offsetX + c * tile + lead, y - w / 2, dash, w);
+  }
+  const m = ZONE_TAPE.mark * zoom;
+  if (isFloor(box.midC, box.midR)) tape(x - m / 2, y - m / 2, m, m);
 }
 
 // ── Seat indicators ─────────────────────────────────────────────
@@ -977,7 +996,7 @@ export function renderFrame(
   renderBackground(ctx, backgroundFill, canvasWidth, canvasHeight, offsetX, offsetY, zoom);
   // Floor + wall base + carpets (below seat indicators / furniture / characters)
   renderFloorLayer(ctx, tileMap, tileColors, carpetTiles, cols, rows, offsetX, offsetY, zoom);
-  if (serverZones) renderZoneDividers(ctx, serverZones, offsetX, offsetY, zoom);
+  if (serverZones) renderZoneDividers(ctx, serverZones, tileMap, offsetX, offsetY, zoom);
 
   // Seat indicators (below furniture/characters, on top of floor)
   if (selection) {
