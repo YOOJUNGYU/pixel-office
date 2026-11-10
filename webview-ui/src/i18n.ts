@@ -369,7 +369,8 @@ const ko = {
   'tour.roomLibrary.bodyDemo':
     '파일을 읽거나 검색하고, 웹을 찾아볼 때는 자료실로 갑니다. 지금 캐릭터 하나가 걸어가는 게 보이죠?',
   'tour.roomServer.title': '서버실',
-  'tour.roomServer.body': '명령을 실행하거나 테스트·빌드를 돌릴 때는 서버실에서 일합니다.',
+  'tour.roomServer.body':
+    '명령을 실행할 때는 서버실에서 일합니다. 서버실은 테스트 · 빌드 · Git · 실행 네 구역으로 나뉘어, 명령 종류에 맞는 구역에 앉습니다.\n구역 명패에 마우스를 올리면 그 구역에 어떤 명령이 오는지 보입니다.',
   'tour.roomLounge.title': '대기실',
   'tour.roomLounge.body':
     '대기실은 사람 캐릭터의 공간입니다. 할 일이나 확인을 기다리는 에이전트는 대기실로 돌아와 그 PC 의 사람 캐릭터에 합쳐지고, 확인이 필요하면 사람 머리 위에 빨간 ! 가 뜹니다.\n방 이동은 3초 정도 상태가 이어져야 일어나서, 잠깐씩 바뀌는 작업에 캐릭터가 왔다 갔다 하지 않습니다.',
@@ -381,7 +382,7 @@ const ko = {
     '캐릭터에 마우스를 올리면 어느 방에서 무엇을 하는지, 그리고 이유가 보입니다.\n머리 위 빨간 ! 는 사용자의 확인(권한 승인이나 답변)을 기다린다는 뜻입니다.',
   'tour.family.title': '서브에이전트와 셸',
   'tour.family.body':
-    '에이전트가 만든 서브에이전트와 셸은 같은 방에 있는 부모와 손을 잡고 다닙니다.\n다른 방에서 일하는 아이는 그 방에서 따로 일합니다.',
+    '에이전트가 만든 서브에이전트와 셸은 부모와 같은 방이면 부모 가까운 빈자리에 앉고(방이 꽉 차면 손을 잡고 다님), 다른 방이면 그 방에서 따로 일합니다.\n일을 넘기거나 결과를 보고할 때는 부모와 마주 서서 잠깐 이야기합니다.',
   'tour.map.title': '지도 움직이기',
   'tour.map.body':
     '드래그로 지도를 옮기고, 휠로 커서 위치를 중심으로 확대·축소합니다. 왼쪽 위 + / − 버튼도 됩니다.\n지금 직접 해 보세요 — 다음으로 넘어가면 원래 화면으로 돌아옵니다.',
@@ -419,7 +420,7 @@ const ko = {
   'tour.layoutButton.body': '사무실 배치를 직접 꾸밀 수 있습니다. 편집기를 열어 볼게요.',
   'tour.floor.title': '바닥',
   'tour.floor.body':
-    '바닥 무늬를 고르고 색을 정한 뒤, 바닥 도구로 방을 클릭하면 방 전체가 한 번에 칠해집니다. 복도는 이어진 바닥만 칠해집니다. [복사] 로 이미 칠해진 바닥을 집어 올 수도 있습니다.',
+    '바닥 무늬를 고르고 색을 정한 뒤, 바닥 도구로 방을 클릭하면 방 전체가 한 번에 칠해집니다(서버실은 구역 하나씩). 복도는 이어진 바닥만 칠해집니다. [복사] 로 이미 칠해진 바닥을 집어 올 수도 있습니다.',
   'tour.walls.title': '벽',
   'tour.walls.body': '벽은 고정되어 있어 색만 바꿀 수 있습니다.',
   'tour.furniture.title': '가구',
@@ -806,7 +807,8 @@ const en: Record<Key, string> = {
   'tour.roomLibrary.bodyDemo':
     'Reading, searching files or browsing the web takes them to the library. See the character walking over?',
   'tour.roomServer.title': 'Server room',
-  'tour.roomServer.body': 'Running commands, tests or builds happens in the server room.',
+  'tour.roomServer.body':
+    'Running commands happens in the server room. It is split into four zones — Test · Build · Git · Run — and an agent sits in the zone of its command.\nHover a zone plate to see which commands go there.',
   'tour.roomLounge.title': 'Lounge',
   'tour.roomLounge.body':
     "The lounge is for people's characters. An idle agent, or one waiting for you, comes back here and merges into its PC's character; a red ! over the person means it needs you.\nA move only happens after the new activity lasts about 3 seconds, so characters do not bounce around on quick tasks.",
@@ -818,7 +820,7 @@ const en: Record<Key, string> = {
     'Hover a character to see its room, what it is doing and why.\nA red ! over its head means it is waiting for you (a permission or an answer).',
   'tour.family.title': 'Subagents and shells',
   'tour.family.body':
-    'Subagents and shells an agent starts walk hand in hand with it while they are in the same room.\nOne working in another room acts on its own there.',
+    'Subagents and shells an agent starts sit at the free seat closest to it in the same room (in a full room they hold its hand); one working in another room acts on its own there.\nWhen work is handed over or reported back, the two stand face to face and talk for a moment.',
   'tour.map.title': 'Moving the map',
   'tour.map.body':
     'Drag to pan, scroll to zoom at the cursor, or use the + / − buttons at the top left.\nTry it now — the view goes back when you continue.',
@@ -856,7 +858,7 @@ const en: Record<Key, string> = {
   'tour.layoutButton.body': 'Arrange the office yourself. Let’s open the editor.',
   'tour.floor.title': 'Floor',
   'tour.floor.body':
-    'Pick a floor pattern and a color, then click a room with the floor tool: the whole room is painted at once (in the corridor, the connected floor). [Copy] picks up an already painted floor.',
+    'Pick a floor pattern and a color, then click a room with the floor tool: the whole room is painted at once (one zone at a time in the server room; in the corridor, the connected floor). [Copy] picks up an already painted floor.',
   'tour.walls.title': 'Walls',
   'tour.walls.body': 'Walls are fixed; only their color can be changed.',
   'tour.furniture.title': 'Furniture',

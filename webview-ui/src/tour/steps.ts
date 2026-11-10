@@ -96,7 +96,7 @@ export const STEPS: Step[] = [
   { id: 'roomLounge', targets: [{ room: 'lounge' }], scene: { walk: 'lounge' } },
   {
     id: 'roomLegend',
-    targets: [{ dom: 'room-plate' }, { dom: 'tags-toggle' }],
+    targets: [{ dom: 'room-plate' }],
     scene: { legend: true },
   },
   { id: 'tag', targets: [{ agent: 'tag' }] },

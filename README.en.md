@@ -46,17 +46,19 @@ PCs not showing up, uninstalling: see the **[install guide](docs/INSTALL.en.md)*
 
 Once an activity lasts 3 seconds, the agent walks to its room and sits on a free seat. Hover a room plate for its description and the agents there; `Agents N` on the plate counts the agents in the room (subagents and shells included), none on the lounge.
 
+The server room is split into four zones by divider lines, and an agent sits in the zone of its command (another free server-room seat when that zone is full): top left **Test** (vitest, pytest, npm test, e2e/verify, curl, browser checks), top right **Build** (tsc, build, lint, installs, codegen, docker, file moves), bottom left **Git** (git, gh, worktrees), bottom right **Run** (every other command). Each zone has a plate with a count at its top right; hover it for what the zone is for.
+
 | Room           | Activity                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------ |
 | 🖥️ Coding Room | Editing files (Claude `Edit`/`Write`, Codex `apply_patch`)                                       |
 | 📚 Library     | Reading files, searching code or the web (incl. Codex read commands like `rg`, `cat`, `git log`) |
-| 🗄️ Server Room | Running commands (`Bash`, Codex shell), background shells                                        |
+| 🗄️ Server Room | Running commands (`Bash`, Codex shell), background shells — test, build, Git and run zones       |
 | 🛋️ Lounge      | Waiting for input or approval, turn finished — merged into its PC's person character             |
 
 - **Name tags**: one line — a **MAIN** / **SUB** / **SHELL** badge, `#number`, the nickname (else the PC account). People's own characters always show their tag, in the colours each person picks in their profile (yours with a yellow frame).
 - **Bubble**: every working agent shows a Claude / Codex badge, the session title (your own agents only) and what it is doing over its head (up to 5 lines in the public and personal offices); hover for the full text. A **red !** overhead = waiting for you (over the person's character when the agent has merged into it in the lounge).
 - A working agent's bubble shows an icon for what it does, task progress (3/7) and how long the current step has run (orange when long); a failed tool shows a drop beside its head for a moment. Zoomed out, the bubble is the icon alone (shrinking with the characters). My own agents' name tags end with their context use (`29%`, this PC only). The hover bubble, room cards and the session window also show the lines the session changed (`+120 −30`). Edit/read icons take the file's language colour (ts blue, py yellow, …). An agent's PC screen follows what it does too (edit = green code, run = a black terminal, reading/searching = a white page). Working PCs glow in their screen's colour (server-room PCs, monitor and tower), edits float up as `+12 −3`, a failed tool flashes the PC red with a puff of smoke, and finishing a task list or a turn sets off confetti (all from real changes in the session records). While a command runs in the server room, its PCs' LEDs blink.
-- **Subagents and shells** hold their parent's hand in the same room, and work on their own in another.
+- **Subagents and shells** in their parent's room sit at the free seat closest to it (in a full room they hold its hand), and work on their own in another room. When the parent hands work to a subagent or messages it, and when the subagent reports back, the two stand face to face and talk for a moment.
 - **Map**: drag to pan, wheel to zoom (or + / − at the top left).
 
 ![Hover bubble](docs/images/hover-en.png)
@@ -96,7 +98,7 @@ The people panel on the right has three areas, **Public office / Team / Personal
 
 - **Profile**: character (6 humans or the pets Claudio · Gitcat), colour, nickname, your character's name tag colours. Your PC account name always comes first and cannot be changed. Nicknames are unique (whoever set it later gets a mark like `· a1b2`).
 - **Language · theme**: 한국어/English and dark/light/system, per viewer. The sun/moon button at the top left switches instantly.
-- **Layout editor**: floors (one click paints a whole room), walls, furniture, the background outside. The four rooms and the office size are fixed (default office 83×54; top: coding room · server room, bottom: library · lounge).
+- **Layout editor** (the Layout button at the top left; its tools open below it): floors (one click paints a whole room, one zone at a time in the server room), walls, furniture, the background outside. The four rooms and the office size are fixed (default office 83×52, personal 50×31; top: coding room · server room, bottom: library · lounge).
   - Edits stay on this screen until **[Save]**. Buttons: **[Reset]** (the default layout, applied on save) · **[Undo]** (Ctrl+Z) · **[Redo]** (Ctrl+Y) · **[Save]** (save, share and close) · **[Cancel]** (drop every change and close; Esc too).
   - **Public and team offices**: anyone can edit; a save is shared with everyone in that office (public = the LAN plus the internet relay, team = members on the same network, encrypted). Concurrent edits: **the last save wins**. PCs on 1.0.13 or older do not get it, and the per-PC layout saved before (`layout.json`) is no longer used (import it to share it).
   - **🏠 Personal**: saved on this PC only.
