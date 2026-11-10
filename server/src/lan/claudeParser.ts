@@ -115,7 +115,7 @@ function describe(name: string, i: Input): [Room, Act, string, boolean, string?]
   return ['library', 'tool', name, false];
 }
 
-function onAssistant(s: SessionState, content: Block[], now: number): void {
+function onAssistant(s: SessionState, content: Block[], now: number, more = false): void {
   let sawTool = false;
   for (const b of content) {
     if (b?.type === 'text' && str(b.text).trim()) {
@@ -142,7 +142,9 @@ function onAssistant(s: SessionState, content: Block[], now: number): void {
         turnOf(s).tools.set(b.id, { name: b.name, input, target: clipped, brief: briefClipped });
     }
   }
-  if (!sawTool && content.some((b) => b?.type === 'text')) s.textOnlyAt = now;
+  // A text the model follows with a tool (`stop_reason: 'tool_use'`; Claude Desktop writes no
+  // turn_duration, so a long think after it looked like the turn's end) is never the reply.
+  if (!sawTool && !more && content.some((b) => b?.type === 'text')) s.textOnlyAt = now;
 }
 
 /** Background tasks that finished (`<task-notification>`s, several may come batched) leave. */
@@ -232,7 +234,7 @@ export function applyClaudeLine(s: SessionState, line: string, now: number): voi
   let rec: {
     type?: string;
     subtype?: string;
-    message?: { content?: unknown; usage?: Record<string, unknown> };
+    message?: { content?: unknown; usage?: Record<string, unknown>; stop_reason?: unknown };
     permissionMode?: unknown;
     isMeta?: unknown;
     cwd?: unknown;
@@ -266,7 +268,8 @@ export function applyClaudeLine(s: SessionState, line: string, now: number): voi
   }
   const content = rec.message?.content;
   if (rec.type === 'assistant') noteUsage(s, rec.message?.usage);
-  if (rec.type === 'assistant' && Array.isArray(content)) onAssistant(s, content, now);
+  if (rec.type === 'assistant' && Array.isArray(content))
+    onAssistant(s, content, now, rec.message?.stop_reason === 'tool_use');
   else if (rec.type === 'user') onUser(s, content, now, rec.isMeta === true);
   else if (rec.type === 'system' && rec.subtype === 'turn_duration') setIdle(s, now);
 }

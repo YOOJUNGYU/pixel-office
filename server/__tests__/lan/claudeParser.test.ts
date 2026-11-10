@@ -166,6 +166,22 @@ describe('applyClaudeLine', () => {
     expect(s).toMatchObject({ room: 'lounge', act: 'idle', turnEnded: true, pendingTool: null });
   });
 
+  it('a text followed by a tool (stop_reason tool_use) never ends the turn (Claude Desktop)', () => {
+    const s = mk();
+    const line = (stop: string) =>
+      JSON.stringify({
+        type: 'assistant',
+        message: { content: [{ type: 'text', text: '쓰겠습니다' }], stop_reason: stop },
+      });
+    applyClaudeLine(s, JSON.stringify({ type: 'user', message: { content: '해줘' } }), 0);
+    applyClaudeLine(s, line('tool_use'), 0);
+    tick(s, 60_000);
+    expect(s.act).not.toBe('idle');
+    applyClaudeLine(s, line('end_turn'), 60_000);
+    tick(s, 70_000);
+    expect(s.act).toBe('idle');
+  });
+
   it('AskUserQuestion -> immediate permission', () => {
     const s = mk();
     applyClaudeLine(s, assistant(toolUse('AskUserQuestion', { questions: [] })), 0);
