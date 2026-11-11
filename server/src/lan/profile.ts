@@ -225,6 +225,8 @@ export function saveProfile(p: Profile, dir: string = defaultDir()): void {
 /**
  * Missing or broken fields -> defaults (a valid peerId and key pair are kept);
  * a v0.1.0 file gets a key pair and the public office. Changes are persisted.
+ * A first install (no profile.json yet) starts in personal mode; after that the
+ * stored activeView (the last office type used) wins.
  */
 export function loadProfile(dir: string = defaultDir()): Profile {
   const raw = readJsonObject(path.join(dir, PROFILE_FILE_NAME));
@@ -251,7 +253,7 @@ export function loadProfile(dir: string = defaultDir()): Profile {
   const activeView =
     raw.activeView === PERSONAL_VIEW || offices.some((o) => o.tag === raw.activeView)
       ? (raw.activeView as string)
-      : (offices[0]?.tag ?? PUBLIC_VIEW);
+      : (offices[0]?.tag ?? (raw.peerId === undefined ? PERSONAL_VIEW : PUBLIC_VIEW));
   const profile: Profile = {
     peerId,
     ...editable,

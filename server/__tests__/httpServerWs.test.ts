@@ -245,7 +245,10 @@ describe('/ws LAN office', () => {
 
   beforeEach(async () => {
     tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-ws-lan-'));
-    lan = new LanService(loadProfile(), { views: () => [localView] });
+    lan = new LanService(
+      { ...loadProfile(), activeView: PUBLIC_VIEW },
+      { views: () => [localView] },
+    );
     server = new PixelAgentsServer();
     ({ port } = await server.start({ logger: false, lan }));
   });

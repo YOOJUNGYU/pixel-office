@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PUBLIC_VIEW } from '../../../core/src/lan.js';
+import { PERSONAL_VIEW, PUBLIC_VIEW } from '../../../core/src/lan.js';
 import { ACCOUNT_FALLBACK, MAX_KNOWN_PEERS } from '../../src/constants.js';
 import { createIdentity, newInviteCode, publicKeyOf } from '../../src/lan/crypto.js';
 import {
@@ -30,7 +30,10 @@ describe('loadProfile', () => {
   it('creates defaults, then keeps the same peerId (file mode 0600)', () => {
     const a = loadProfile(dir);
     expect(a).toMatchObject({ nickname: '', palette: 0, manualPeers: [] });
+    expect(a.activeView).toBe(PERSONAL_VIEW); // first install starts personal
     expect(loadProfile(dir).peerId).toBe(a.peerId);
+    saveProfile({ ...a, activeView: PUBLIC_VIEW }, dir);
+    expect(loadProfile(dir).activeView).toBe(PUBLIC_VIEW); // then the last one used
     if (process.platform !== 'win32') {
       expect(fs.statSync(path.join(dir, 'profile.json')).mode & 0o777).toBe(0o600);
     }
