@@ -291,3 +291,11 @@ export const RELAY_PING_MS = 30_000;
 export const RELAY_PONG_TIMEOUT_MS = 2 * RELAY_PING_MS;
 /** A socket not open after this long is abandoned (blackholed host). */
 export const RELAY_CONNECT_TIMEOUT_MS = 15_000;
+
+/** Token usage: burn rate is averaged over this window. */
+export const USAGE_RATE_WINDOW_MS = 120_000;
+/** Token usage: a tool result of at least this many tokens (chars / USAGE_CHARS_PER_TOKEN) is "big". */
+export const USAGE_BIG_RESULT_TOKENS = 50_000;
+export const USAGE_CHARS_PER_TOKEN = 4;
+/** Token usage: Claude message ids kept per file whatever their age (snapshots of one message). */
+export const USAGE_MSG_KEEP = 64;
