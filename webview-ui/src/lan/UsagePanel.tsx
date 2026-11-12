@@ -96,6 +96,7 @@ export function UsagePanel({ onClose }: { onClose: () => void }) {
     <div
       ref={box.ref}
       data-usage-panel
+      data-tour="usage-panel"
       className="relative flex flex-col pixel-panel text-text"
       style={{ width: box.size.w, height: box.size.h }}
       onWheel={(e) => e.stopPropagation()}

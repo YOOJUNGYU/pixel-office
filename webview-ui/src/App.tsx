@@ -465,6 +465,7 @@ function App() {
   }, [stepId, handleZoomChange, panRef]);
 
   const settingsOpen = touring ? scene?.settings === true : isSettingsOpen;
+  const usageOpen = touring ? scene?.usage === true : isUsageOpen;
   const profileOpen = touring ? scene?.profile === true : isProfileOpen;
 
   const handleExportLayout = useCallback(() => {
@@ -660,7 +661,7 @@ function App() {
               isSettingsOpen={settingsOpen}
               onToggleSettings={() => setIsSettingsOpen((v) => !v)}
               onToggleUsage={officeReadOnly || isMobile ? null : () => setIsUsageOpen((v) => !v)}
-              isUsageOpen={isUsageOpen}
+              isUsageOpen={usageOpen}
             />
           }
           below={
@@ -718,7 +719,7 @@ function App() {
                   );
                 })()}
               </>
-            ) : isUsageOpen && !officeReadOnly && !isMobile ? (
+            ) : usageOpen && !officeReadOnly && !isMobile ? (
               <UsagePanel onClose={() => setIsUsageOpen(false)} />
             ) : null
           }

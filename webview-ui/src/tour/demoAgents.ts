@@ -92,11 +92,14 @@ export function demoAgents(texts: DemoTexts, walkerRoom: Room = 'lounge'): Offic
     reason: texts.editReason,
     ageSec: 180,
     todo: { done: 3, total: 7 },
+    // the token signals step: 2× (≥ 1M tokens) in the red flame (≥ 75k/min)
+    usage: { tokens: 1_420_000, rate: 92_000, model: 'claude-opus-5-5', sum: 1_910_000 },
   });
   const reader = main(b, 'library', {
     act: 'read',
     target: 'docs/api.md',
     reason: texts.readReason,
+    usage: { tokens: 120_000, rate: 46_000, model: 'claude-sonnet-5-5' }, // gold flame
   });
   const runner = main(c, 'server', {
     provider: 'codex',
@@ -104,6 +107,7 @@ export function demoAgents(texts: DemoTexts, walkerRoom: Room = 'lounge'): Offic
     target: 'npm test',
     ageSec: 12 * 60, // long enough to show the warning colour
     fail: true,
+    usage: { tokens: 460_000, rate: 21_000, model: 'gpt-5-codex' }, // 1.5×, blue ring
   });
   const waiting = walkerRoom === 'lounge';
   const waiter = main(d, walkerRoom, {

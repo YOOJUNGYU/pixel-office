@@ -409,6 +409,9 @@ const ko = {
   'tour.family.title': '서브에이전트와 셸',
   'tour.family.body':
     '에이전트가 만든 서브에이전트와 셸은 부모와 같은 방이면 부모 가까운 빈자리에 앉고(방이 꽉 차면 손을 잡고 다님), 다른 방이면 그 방에서 따로 일합니다.\n일을 넘기거나 결과를 보고할 때는 부모와 마주 서서 잠깐 이야기합니다.',
+  'tour.signals.title': '내 에이전트의 토큰',
+  'tour.signals.body':
+    '내 에이전트는 토큰을 많이 쓸수록 커지고(30만·100만 토큰에서 1.5배·2배), 빨리 쓸수록 테두리가 파랑 → 노랑 불꽃 → 빨강 불꽃 오라로 바뀝니다(분당 1.5만·4만·7.5만). 이름표 끝 칩은 그 세션의 토큰(자식까지 합치면 Σ), 말풍선 배지 색은 모델(Opus 보라·Sonnet 파랑·Haiku 초록), 큰 도구 결과(5만 토큰 이상)는 📦 로 떠오릅니다. 다른 사람에게는 보이지 않습니다.',
   'tour.map.title': '지도 움직이기',
   'tour.map.body':
     '드래그로 지도를 옮기고, 휠로 커서 위치를 중심으로 확대·축소합니다. 왼쪽 위 + / − 버튼도 됩니다.\n지금 직접 해 보세요 — 다음으로 넘어가면 원래 화면으로 돌아옵니다.',
@@ -426,6 +429,9 @@ const ko = {
   'tour.transcript.title': '세션 상세',
   'tour.transcript.body':
     '내 에이전트 캐릭터를 누르면 그 세션의 대화 전체가 새 창으로 열립니다(대기실의 에이전트는 내 캐릭터를 눌러 고름).',
+  'tour.usage.title': '토큰 사용량',
+  'tour.usage.body':
+    '📊 버튼은 토큰 사용량 패널을 엽니다. 위는 지금(오늘 합계와 일하는 내 에이전트별 토큰·모델·분당 소모량), 아래는 7일·30일·전체 기록(일별 막대, 캐시 읽기, 프로젝트·모델 비중, 비싼 세션 Top 10 — 누르면 대화가 열림)입니다. 오른쪽·아래 테두리와 모서리를 끌어 크기를 바꿉니다. 이 PC 에서만 보입니다.',
   'tour.settingsButton.title': '설정',
   'tour.settingsButton.body': '언어, 테마, 프로필, 팀 오피스 같은 설정은 모두 여기에 있습니다.',
   'tour.language.title': '언어 · 테마',
@@ -873,6 +879,9 @@ const en: Record<Key, string> = {
   'tour.family.title': 'Subagents and shells',
   'tour.family.body':
     'Subagents and shells an agent starts sit at the free seat closest to it in the same room (in a full room they hold its hand); one working in another room acts on its own there.\nWhen work is handed over or reported back, the two stand face to face and talk for a moment.',
+  'tour.signals.title': "Your agents' tokens",
+  'tour.signals.body':
+    "Your agents grow as they use more tokens (1.5× at 300k, 2× at 1M) and their outline turns from blue to a gold flame to a red flame aura the faster they burn them (15k, 40k, 75k per minute). The chip at the end of the name tag is the session's tokens (Σ with its subagents), the bubble badge's colour is the model (Opus purple, Sonnet blue, Haiku green), and a big tool result (50k tokens or more) rises as 📦. Nobody else sees these.",
   'tour.map.title': 'Moving the map',
   'tour.map.body':
     'Drag to pan, scroll to zoom at the cursor, or use the + / − buttons at the top left.\nTry it now — the view goes back when you continue.',
@@ -890,6 +899,9 @@ const en: Record<Key, string> = {
   'tour.transcript.title': 'Session details',
   'tour.transcript.body':
     "Click one of your agent characters to open that session's whole conversation in a new window (agents in the lounge: click your own character).",
+  'tour.usage.title': 'Token usage',
+  'tour.usage.body':
+    "The 📊 button opens the token usage panel. On top, now: today's total and each of your working agents' tokens, model and tokens per minute. Below, 7 days, 30 days or all: daily bars, cache reads, projects and models, the 10 costliest sessions (click one to open its conversation). Drag the right or bottom edge or the corner to resize it. Only on this PC.",
   'tour.settingsButton.title': 'Settings',
   'tour.settingsButton.body': 'Language, theme, profile, team offices and more live here.',
   'tour.language.title': 'Language & theme',

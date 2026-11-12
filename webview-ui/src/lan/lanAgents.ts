@@ -443,8 +443,9 @@ export class LanAgents {
       const ch = cid !== undefined ? os.characters.get(cid) : undefined;
       if (!ch) continue;
       ch.screen = screenKind(a);
-      // My agents grow with their tokens and burn by their rate (local only, never a peer's).
-      const mine = this.isMine(a) && a.usage !== undefined;
+      // My agents grow with their tokens and burn by their rate (local only, never a peer's);
+      // the tour's demo characters too, to show it.
+      const mine = (this.isMine(a) || isDemoKey(a.key)) && a.usage !== undefined;
       const scale = mine ? sizeTier(a.usage) : 1;
       const burn = mine ? burnTier(a.usage) : 0;
       ch.usageScale = scale === 1 ? undefined : scale;

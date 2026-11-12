@@ -36,6 +36,8 @@ export interface Scene {
   people?: boolean;
   /** The first room plate's tooltip shown without a hover. */
   legend?: boolean;
+  /** The 📊 usage panel open. */
+  usage?: boolean;
 }
 
 /** Things a step needs on this screen; steps whose needs are unmet are dropped. */
@@ -68,11 +70,13 @@ export type StepId =
   | 'tag'
   | 'bubble'
   | 'family'
+  | 'signals'
   | 'map'
   | 'switcher'
   | 'people'
   | 'chat'
   | 'transcript'
+  | 'usage'
   | 'settingsButton'
   | 'language'
   | 'profile'
@@ -110,6 +114,8 @@ export const STEPS: Step[] = [
     targets: [{ agent: 'child' }],
     requires: ['family'],
   },
+  // My agents' token signals (size, burn border, chips, model badge, 📦): the demo coder.
+  { id: 'signals', targets: [{ agent: 'tag' }] },
   {
     id: 'map',
     targets: [{ map: true }, { dom: 'zoom' }],
@@ -121,6 +127,12 @@ export const STEPS: Step[] = [
   { id: 'chat', targets: [], requires: ['chat'] },
   // Session details of my agents (popout windows): a centred explanation.
   { id: 'transcript', targets: [], requires: ['chat'] },
+  {
+    id: 'usage',
+    targets: [{ dom: 'usage-button' }, { dom: 'usage-panel' }],
+    scene: { usage: true },
+    requires: ['chat'],
+  },
   { id: 'settingsButton', targets: [{ dom: 'settings-button' }] },
   {
     id: 'language',

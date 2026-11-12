@@ -123,6 +123,9 @@ test('visibleSteps: full tour on a desktop owner, fewer steps on smaller screens
   );
   // The people step is always there, right after the switcher.
   const full = visibleSteps(all);
+  // Token usage: the character signals right after the bubble steps, the 📊 panel after details.
+  assert.equal(full[full.indexOf('family') + 1], 'signals');
+  assert.equal(full[full.indexOf('transcript') + 1], 'usage');
   assert.equal(full[full.indexOf('switcher') + 1], 'people');
   assert.ok(visibleSteps(new Set()).includes('people'));
   // Phone (no editor) without team offices: no editor, switcher or office steps.
@@ -137,6 +140,7 @@ test('visibleSteps: full tour on a desktop owner, fewer steps on smaller screens
     'family',
     'chat',
     'transcript',
+    'usage',
   ]) {
     assert.ok(!phone.includes(id as never), id);
   }
@@ -170,6 +174,10 @@ test('demoAgents: prefixed keys, rooms, a same-room child, a ❗ agent', () => {
   assert.equal(byKey.get(DEMO_KEYS.runner)!.room, 'server');
   assert.equal(byKey.get(DEMO_KEYS.waiter)!.room, 'lounge');
   assert.ok(byKey.get(DEMO_KEYS.waiter)!.permission);
+  // The token signals step: a 2× coder in the red flame, a blue-ringed runner.
+  assert.ok(byKey.get(DEMO_KEYS.coder)!.usage!.tokens >= 1_000_000);
+  assert.ok(byKey.get(DEMO_KEYS.coder)!.usage!.rate >= 75_000);
+  assert.ok(byKey.get(DEMO_KEYS.runner)!.usage!.rate >= 15_000);
   // The coder stands alone in 코딩실 (the name-tag step's target).
   assert.deepEqual(
     agents.filter((a) => a.room === 'coding').map((a) => a.key),
