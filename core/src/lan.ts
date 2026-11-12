@@ -244,6 +244,15 @@ export interface AgentView {
   /** THIS PC's browser only (never on the wire, not parsed from peers): the session's title
    *  (≤ 60 code points) for the bubble header. */
   title?: string;
+  /** THIS PC's browser only (never on the wire, not parsed from peers): token usage. */
+  usage?: AgentUsage;
+}
+export interface AgentUsage {
+  tokens: number; // this file's billable total
+  rate: number; // billable per minute, last USAGE_RATE_WINDOW_MS
+  model?: string; // last assistant model id
+  sum?: number; // main only, when it has children: own + all children billable
+  big?: { n: number; last: number }; // count of results >= threshold so far, size of the last
 }
 export interface AgentDiff {
   add: number;

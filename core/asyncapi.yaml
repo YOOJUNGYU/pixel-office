@@ -111,6 +111,9 @@ components:
         - $ref: '#/components/schemas/TranscriptAppend'
         - $ref: '#/components/schemas/TranscriptContext'
         - $ref: '#/components/schemas/TranscriptError'
+        # Local token usage (loopback browser only)
+        - $ref: '#/components/schemas/UsageNow'
+        - $ref: '#/components/schemas/UsageLoaded'
       discriminator: type
 
     ClientMessage:
@@ -138,6 +141,7 @@ components:
         - $ref: '#/components/schemas/LoadTranscriptBefore'
         - $ref: '#/components/schemas/CloseTranscript'
         - $ref: '#/components/schemas/SetRelayAdminToken'
+        - $ref: '#/components/schemas/OpenUsage'
         - $ref: '#/components/schemas/RelayKick'
       discriminator: type
 
@@ -628,6 +632,132 @@ components:
           minimum: 1
           description: The model's context window (Claude 200k, or 1M once more than 200k is in use).
 
+    UsageNow:
+      description: Billable tokens used today on this PC, to the requesting socket only. This PC only, never sent to peers.
+      type: object
+      additionalProperties: false
+      required: [type, today, scanning]
+      properties:
+        type:
+          const: usageNow
+        today:
+          type: integer
+          minimum: 0
+        scanning:
+          type: boolean
+          description: The history scan is still running.
+
+    UsageRange:
+      type: string
+      enum: ['7d', '30d', 'all']
+
+    UsageTotals:
+      type: object
+      additionalProperties: false
+      required: [billable, input, output, cacheCreate, cacheRead, sessions]
+      properties:
+        billable: {type: integer, minimum: 0}
+        input: {type: integer, minimum: 0}
+        output: {type: integer, minimum: 0}
+        cacheCreate: {type: integer, minimum: 0}
+        cacheRead: {type: integer, minimum: 0}
+        sessions: {type: integer, minimum: 0}
+
+    UsageDay:
+      type: object
+      additionalProperties: false
+      required: [day, input, output, cacheCreate, cacheRead]
+      properties:
+        day:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: Local date YYYY-MM-DD.
+        input: {type: integer, minimum: 0}
+        output: {type: integer, minimum: 0}
+        cacheCreate: {type: integer, minimum: 0}
+        cacheRead: {type: integer, minimum: 0}
+
+    UsageProject:
+      type: object
+      additionalProperties: false
+      required: [name, billable]
+      properties:
+        name: {type: string}
+        billable: {type: integer, minimum: 0}
+
+    UsageModel:
+      type: object
+      additionalProperties: false
+      required: [model, billable]
+      properties:
+        model: {type: string}
+        billable: {type: integer, minimum: 0}
+
+    UsageProvider:
+      type: object
+      additionalProperties: false
+      required: [provider, billable]
+      properties:
+        provider: {type: string}
+        billable: {type: integer, minimum: 0}
+
+    UsageTopSession:
+      type: object
+      additionalProperties: false
+      required: [key, provider, title, folder, lastTs, billable, exists]
+      properties:
+        key: {type: string}
+        provider: {type: string}
+        title: {type: string}
+        folder: {type: string}
+        lastTs:
+          type: number
+          description: Epoch ms of the session's last activity.
+        billable: {type: integer, minimum: 0}
+        exists:
+          type: boolean
+          description: The transcript file still exists.
+
+    UsageLoaded:
+      description: >-
+        Token usage history for `range`, to the requesting socket only (answer
+        to openUsage). This PC only, never sent to peers. `projects` has at
+        most 8 entries, `top` at most 10.
+      type: object
+      additionalProperties: false
+      required: [type, range, scanning, totals, days, projects, models, providers, top]
+      properties:
+        type:
+          const: usageLoaded
+        range:
+          $ref: '#/components/schemas/UsageRange'
+        scanning:
+          type: boolean
+        totals:
+          $ref: '#/components/schemas/UsageTotals'
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsageDay'
+        projects:
+          type: array
+          maxItems: 8
+          items:
+            $ref: '#/components/schemas/UsageProject'
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsageModel'
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsageProvider'
+        top:
+          type: array
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/UsageTopSession'
+
     TranscriptError:
       description: >-
         openTranscript failed (`notFound` = no such agent of this PC,
@@ -1048,6 +1178,8 @@ components:
           type: string
           maxLength: 60
           description: The session's title for this PC's own agents (the local snapshot only; never sent to peers).
+        usage:
+          $ref: '#/components/schemas/AgentUsage'
         peer:
           $ref: '#/components/schemas/PeerInfoMessage'
 
@@ -1063,6 +1195,44 @@ components:
         window:
           type: integer
           minimum: 1
+
+    AgentUsage:
+      description: Token usage of this PC's own agent. THIS PC's browser only; never sent to peers.
+      type: object
+      additionalProperties: false
+      required: [tokens, rate]
+      properties:
+        tokens:
+          type: integer
+          minimum: 0
+          description: This file's billable total.
+        rate:
+          type: integer
+          minimum: 0
+          description: Billable tokens per minute over the recent window.
+        model:
+          type: string
+          description: Last assistant model id.
+        sum:
+          type: integer
+          minimum: 0
+          description: Main agent with children only - own plus all children billable.
+        big:
+          $ref: '#/components/schemas/AgentUsageBig'
+
+    AgentUsageBig:
+      type: object
+      additionalProperties: false
+      required: [n, last]
+      properties:
+        n:
+          type: integer
+          minimum: 0
+          description: Count of big tool results so far.
+        last:
+          type: integer
+          minimum: 0
+          description: Size (tokens) of the last big result.
 
     AgentDiff:
       description: Lines added / removed by the session's edits so far (counts only, from what was read of its transcript).
@@ -1567,6 +1737,19 @@ components:
           const: openTranscript
         id:
           type: string
+
+    OpenUsage:
+      description: >-
+        Show the token usage history for `range` (loopback browser only).
+        Answered with usageLoaded.
+      type: object
+      additionalProperties: false
+      required: [type, range]
+      properties:
+        type:
+          const: openUsage
+        range:
+          $ref: '#/components/schemas/UsageRange'
 
     LoadTranscriptBefore:
       description: >-

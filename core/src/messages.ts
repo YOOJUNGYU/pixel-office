@@ -37,7 +37,9 @@ export type ServerMessage =
   | TranscriptEarlier
   | TranscriptAppend
   | TranscriptContext
-  | TranscriptError;
+  | TranscriptError
+  | UsageNow
+  | UsageLoaded;
 
 export type ClientMessage =
   | WebviewReady
@@ -63,6 +65,7 @@ export type ClientMessage =
   | LoadTranscriptBefore
   | CloseTranscript
   | SetRelayAdminToken
+  | OpenUsage
   | RelayKick;
 
 export interface LayoutLoaded {
@@ -200,6 +203,7 @@ export interface OfficeAgentMessage {
   diff?: AgentDiff;
   ctx?: AgentContext;
   title?: string;
+  usage?: AgentUsage;
   peer: PeerInfoMessage;
 }
 
@@ -239,6 +243,19 @@ export interface AgentDiff {
 export interface AgentContext {
   used: number;
   window: number;
+}
+
+export interface AgentUsage {
+  tokens: number;
+  rate: number;
+  model?: string;
+  sum?: number;
+  big?: AgentUsageBig;
+}
+
+export interface AgentUsageBig {
+  n: number;
+  last: number;
 }
 
 export interface PeerInfoMessage {
@@ -470,6 +487,68 @@ export interface TranscriptError {
 
 export type TranscriptErrorReason = 'notFound' | 'unreadable' | 'ended';
 
+export interface UsageNow {
+  type: 'usageNow';
+  today: number;
+  scanning: boolean;
+}
+
+export interface UsageLoaded {
+  type: 'usageLoaded';
+  range: UsageRange;
+  scanning: boolean;
+  totals: UsageTotals;
+  days: UsageDay[];
+  projects: UsageProject[];
+  models: UsageModel[];
+  providers: UsageProvider[];
+  top: UsageTopSession[];
+}
+
+export type UsageRange = '7d' | '30d' | 'all';
+
+export interface UsageTotals {
+  billable: number;
+  input: number;
+  output: number;
+  cacheCreate: number;
+  cacheRead: number;
+  sessions: number;
+}
+
+export interface UsageDay {
+  day: string;
+  input: number;
+  output: number;
+  cacheCreate: number;
+  cacheRead: number;
+}
+
+export interface UsageProject {
+  name: string;
+  billable: number;
+}
+
+export interface UsageModel {
+  model: string;
+  billable: number;
+}
+
+export interface UsageProvider {
+  provider: string;
+  billable: number;
+}
+
+export interface UsageTopSession {
+  key: string;
+  provider: string;
+  title: string;
+  folder: string;
+  lastTs: number;
+  billable: number;
+  exists: boolean;
+}
+
 export interface WebviewReady {
   type: 'webviewReady';
 }
@@ -584,6 +663,11 @@ export interface CloseTranscript {
 export interface SetRelayAdminToken {
   type: 'setRelayAdminToken';
   token: string;
+}
+
+export interface OpenUsage {
+  type: 'openUsage';
+  range: UsageRange;
 }
 
 export interface RelayKick {

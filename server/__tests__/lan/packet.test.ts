@@ -64,9 +64,18 @@ describe('parsePeerPacket', () => {
     expect(one({})).toEqual(view());
   });
 
-  it('local-only fields (title, ctx) are never read from a peer', () => {
+  it('local-only fields (title, ctx, usage) are never read from a peer', () => {
     const got = parse(
-      packet({ views: [{ ...view(), title: 'peer title', ctx: { used: 1, window: 2 } }] }),
+      packet({
+        views: [
+          {
+            ...view(),
+            title: 'peer title',
+            ctx: { used: 1, window: 2 },
+            usage: { tokens: 5, rate: 0 },
+          },
+        ],
+      }),
     )?.views[0];
     expect(got).toEqual(view());
   });
