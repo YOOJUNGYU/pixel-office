@@ -250,7 +250,7 @@ export const PC_TINT_LIFT = 0.35;
 export const PC_TINT_AMOUNTS = [0.3, 0.45, 0.6, 0.72, 0.6, 0.45] as const;
 /** One-shot effects over agents (lan/effects.ts): how long each plays, and at most this many
  *  at once (a burst of snapshots never floods the screen). */
-export const FX_DURATION_MS = { plus: 1600, confetti: 1800, smoke: 1600 } as const;
+export const FX_DURATION_MS = { plus: 1600, confetti: 1800, smoke: 1600, box: 1600 } as const;
 export const FX_MAX = 40;
 /** "+12" / "−3" text over the map (with a dark pixel shadow, --fx-shadow). */
 export const FX_PLUS_COLOR = '#5cff9d';
@@ -665,3 +665,33 @@ export const USAGE_MODEL_COLORS = { opus: '#7c5cff', sonnet: '#4a9eff', haiku: '
 export const USAGE_BURN_COLORS = { 1: '#4aa8ff' } as const;
 export const USAGE_FLAME_GOLD = ['#c08a10', '#e8b020', '#ffd23a', '#ffe88a', '#fffbe0'] as const;
 export const USAGE_FLAME_FIRE = ['#c8101a', '#ff3b1a', '#ff8a1a', '#ffd23a', '#fff6c0'] as const;
+/** Usage window (📊 popout): default size, the remembered range, its token colours (per theme, index.css). */
+export const USAGE_WINDOW_W_PX = 720;
+export const USAGE_WINDOW_H_PX = 820;
+export const USAGE_RANGE_KEY = 'pixel-office.usage.range';
+export const USAGE_TOKEN_COLORS = {
+  input: 'var(--usage-input)',
+  output: 'var(--usage-output)',
+  cacheCreate: 'var(--usage-cache-create)',
+  cacheRead: 'var(--usage-cache-read)',
+} as const;
+/** Burn-rate dot of a now-panel row, by burn tier (0 = calm). */
+export const USAGE_BURN_DOT = [
+  'var(--color-text-muted)',
+  USAGE_BURN_COLORS[1],
+  USAGE_FLAME_GOLD[2],
+  USAGE_FLAME_FIRE[1],
+] as const;
+/** Share-bar segments (projects/models/providers) cycle through these. */
+export const USAGE_SHARE_COLORS = [
+  'var(--usage-share-1)',
+  'var(--usage-share-2)',
+  'var(--usage-share-3)',
+  'var(--usage-share-4)',
+  'var(--usage-share-5)',
+] as const;
+/** SVG chart sizes (viewBox px, scaled to the window width). */
+export const USAGE_CHART_W = 640;
+export const USAGE_DAILY_H = 120;
+export const USAGE_CACHE_H = 60;
+export const USAGE_SHARE_H = 14;

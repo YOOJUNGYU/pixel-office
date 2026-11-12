@@ -9,6 +9,8 @@ interface MenuButtonsProps {
   onToggleEditMode: (() => void) | null;
   isSettingsOpen: boolean;
   onToggleSettings: () => void;
+  /** null hides the usage button (read-only viewers, mobile). */
+  onOpenUsage: (() => void) | null;
 }
 
 /** Layout and Settings as icon buttons: the first two of the top-left row (ZoomControls). */
@@ -17,6 +19,7 @@ export function MenuButtons({
   onToggleEditMode,
   isSettingsOpen,
   onToggleSettings,
+  onOpenUsage,
 }: MenuButtonsProps) {
   useLang();
   return (
@@ -67,6 +70,31 @@ export function MenuButtons({
           <circle cx="9" cy="9" r="5" stroke="currentColor" strokeWidth="1.5" />
         </svg>
       </Button>
+      {onOpenUsage && (
+        <Button
+          size="icon_lg"
+          onClick={onOpenUsage}
+          data-tour="usage-button"
+          className={BTN_CLASS}
+          title={t('usage.window')}
+          aria-label={t('usage.window')}
+        >
+          {/* Bar chart */}
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 18 18"
+            fill="currentColor"
+            aria-hidden
+            shapeRendering="crispEdges"
+          >
+            <rect x="2" y="9" width="3" height="6" />
+            <rect x="7.5" y="4" width="3" height="11" />
+            <rect x="13" y="7" width="3" height="8" />
+            <rect x="1" y="15" width="16" height="2" />
+          </svg>
+        </Button>
+      )}
     </>
   );
 }

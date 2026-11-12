@@ -95,6 +95,16 @@
   --transcript-status-working: #3fd07a;
   --transcript-status-waiting: #ffb547;
   /* Session window activity strip (one cell per minute). */
+  --usage-input: #4a9eff;
+  --usage-output: #ffb547;
+  --usage-cache-create: #b39dff;
+  --usage-cache-read: #3fb68b;
+  --usage-share-1: #7c5cff;
+  --usage-share-2: #4a9eff;
+  --usage-share-3: #3fb68b;
+  --usage-share-4: #ffb547;
+  --usage-share-5: #8a8fb3;
+  --usage-now-border: #3fb68b;
   --strip-fail: #ff5c6a;
   --strip-edit: #3fd07a;
   --strip-run: #ffb547;
@@ -185,6 +195,16 @@
   --transcript-status-thinking: #6a3fd6;
   --transcript-status-working: #176b3a;
   --transcript-status-waiting: #8a5200;
+  --usage-input: #2f6fd0;
+  --usage-output: #c27a00;
+  --usage-cache-create: #6a3fd6;
+  --usage-cache-read: #1f8a4c;
+  --usage-share-1: #6a3fd6;
+  --usage-share-2: #2f6fd0;
+  --usage-share-3: #1f8a4c;
+  --usage-share-4: #c27a00;
+  --usage-share-5: #7a7f9a;
+  --usage-now-border: #1f8a4c;
   --strip-fail: #d12e3c;
   --strip-edit: #1f8a4c;
   --strip-run: #c27a00;

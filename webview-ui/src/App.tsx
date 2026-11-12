@@ -46,7 +46,7 @@ import { peopleRows } from './lan/peopleModel.js';
 import { PeoplePanel } from './lan/PeoplePanel.js';
 import { ProfileModal } from './lan/ProfileModal.js';
 import { RoomPlates } from './lan/RoomPlates.js';
-import { openPopout, usePopoutIds } from './lan/transcriptWindows.js';
+import { openPopout, openUsageWindow, usePopoutIds } from './lan/transcriptWindows.js';
 import { UpdateBanner } from './lan/UpdateBanner.js';
 import { OfficeCanvas } from './office/components/OfficeCanvas.js';
 import { EditorState } from './office/editor/editorState.js';
@@ -657,6 +657,7 @@ function App() {
               }
               isSettingsOpen={settingsOpen}
               onToggleSettings={() => setIsSettingsOpen((v) => !v)}
+              onOpenUsage={officeReadOnly || isMobile ? null : openUsageWindow}
             />
           }
           below={
