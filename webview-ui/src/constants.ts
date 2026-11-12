@@ -655,3 +655,13 @@ export const AVATAR_LIST_WIDTH_PX = 260;
 export const AVATAR_LIST_GAP_PX = 12;
 /** Like a plate popup: above tags, bubbles, plates and the transcript panel (45). */
 export const AVATAR_LIST_Z_INDEX = 46;
+
+/** Token usage: a file's billable size tiers (1.5x from the first, 2x from the second). */
+export const USAGE_SIZE_TIERS = [300_000, 1_000_000] as const;
+/** Burn rate (tokens/min) at which the blue, yellow and red effects start. */
+export const USAGE_BURN_TIERS = [15_000, 40_000, 75_000] as const;
+export const USAGE_MODEL_COLORS = { opus: '#7c5cff', sonnet: '#4a9eff', haiku: '#3fb68b' } as const;
+/** Burn tier 1 only; tiers 2/3 use the flame palettes. */
+export const USAGE_BURN_COLORS = { 1: '#4aa8ff' } as const;
+export const USAGE_FLAME_GOLD = ['#c08a10', '#e8b020', '#ffd23a', '#ffe88a', '#fffbe0'] as const;
+export const USAGE_FLAME_FIRE = ['#c8101a', '#ff3b1a', '#ff8a1a', '#ffd23a', '#fff6c0'] as const;
