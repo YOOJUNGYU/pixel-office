@@ -14,6 +14,7 @@ import {
 } from '../constants.js';
 import { codexSessionMeta } from './codexParser.js';
 import type { Roots } from './roots.js';
+import type { TranscriptSource } from './scanner.js';
 import { folderOf } from './session.js';
 import { addDays, dayKey, dayRange, dayStart } from './usageDays.js';
 import { billable, type FileFold, foldLine, newFold, rateOf, type Tally } from './usageLine.js';
@@ -482,4 +483,19 @@ export class UsageIndex {
     } else if (!s.folder && f.cwd) s.folder = folderOf(f.cwd);
     return any;
   }
+}
+
+/** Transcript source for the popout: `usage:<key>` = a finished session out of the index (the
+ *  key is only looked up, never used as a path); any other id goes to the live scanner. */
+export function usageTranscriptSource(
+  scanner: { transcriptOf(id: string): TranscriptSource | undefined },
+  usage: Pick<UsageIndex, 'fileOf'>,
+): { transcriptOf(id: string): TranscriptSource | undefined } {
+  return {
+    transcriptOf: (id) => {
+      if (!id.startsWith('usage:')) return scanner.transcriptOf(id);
+      const f = usage.fileOf(id.slice('usage:'.length));
+      return f && { ...f, kind: 'main', num: 0 };
+    },
+  };
 }

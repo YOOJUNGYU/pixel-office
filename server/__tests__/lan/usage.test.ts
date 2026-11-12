@@ -5,7 +5,8 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { USAGE_FILE } from '../../src/constants.js';
-import { UsageIndex } from '../../src/lan/usage.js';
+import { TranscriptService } from '../../src/lan/transcript.js';
+import { UsageIndex, usageTranscriptSource } from '../../src/lan/usage.js';
 import { dayRange } from '../../src/lan/usageDays.js';
 
 const NOW = new Date(2026, 10, 12, 12, 0, 0).getTime();
@@ -242,5 +243,43 @@ describe('UsageIndex', () => {
     // the multi-byte model name straddles a boundary for at least one of the sizes
     expect(Buffer.byteLength(text)).toBeGreaterThan(text.length);
     expect(whole.models.some((m) => m.model === 'claude-é한')).toBe(true);
+  });
+});
+
+describe('usageTranscriptSource', () => {
+  const run = async (
+    id: string,
+    scanner: { transcriptOf: (id: string) => undefined },
+    u: UsageIndex,
+  ) => {
+    const svc = new TranscriptService(usageTranscriptSource(scanner, u));
+    const got: Record<string, unknown>[] = [];
+    await svc.open({}, id, (m) => got.push(m));
+    svc.stop();
+    return got.map((m) => m.type);
+  };
+  const none = { transcriptOf: () => undefined };
+
+  it('known key loads; unknown key, path-like key and a deleted file are errors', async () => {
+    const u = mk();
+    await u.scanAll();
+    expect(await run(`usage:${uuid}`, none, u)).toContain('transcriptLoaded');
+    expect(await run('usage:nope', none, u)).toEqual(['transcriptError']);
+    expect(await run('usage:../../etc/passwd', none, u)).toEqual(['transcriptError']);
+    fs.rmSync(main());
+    expect(await run(`usage:${uuid}`, none, u)).toEqual(['transcriptError']);
+  });
+
+  it('a non-usage id goes to the scanner', async () => {
+    const seen: string[] = [];
+    const scanner = {
+      transcriptOf: (id: string) => {
+        seen.push(id);
+        return undefined;
+      },
+    };
+    const u = mk();
+    await run('live-1', scanner, u);
+    expect(seen).toEqual(['live-1']);
   });
 });

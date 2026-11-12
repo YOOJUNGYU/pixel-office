@@ -56,7 +56,7 @@ import {
   Updater,
   writeReopenMarker,
 } from './lan/updater.js';
-import { UsageIndex } from './lan/usage.js';
+import { UsageIndex, usageTranscriptSource } from './lan/usage.js';
 import { PixelAgentsServer } from './server.js';
 
 // ── Argument parsing ──────────────────────────────────────────
@@ -201,14 +201,7 @@ export async function main(boot = true): Promise<void> {
     void usage.scanAll().catch((err) => console.error('[Pixel Office] usage scan failed:', err));
   void scanner.ready.then(usageScan);
   setInterval(usageScan, USAGE_RESCAN_MS).unref();
-  // `usage:<key>` = a finished session out of the usage index (key looked up, never a path).
-  const transcripts = new TranscriptService({
-    transcriptOf: (id) => {
-      if (!id.startsWith('usage:')) return scanner.transcriptOf(id);
-      const f = usage.fileOf(id.slice('usage:'.length));
-      return f && { ...f, kind: 'main', num: 0 };
-    },
-  });
+  const transcripts = new TranscriptService(usageTranscriptSource(scanner, usage));
   const lan = new LanService(loadProfile(), scanner);
   const pins = new KnownPeers();
   const udpPort = Number(process.env[UDP_PORT_ENV]) || LAN_UDP_PORT;

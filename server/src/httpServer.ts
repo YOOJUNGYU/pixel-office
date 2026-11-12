@@ -327,9 +327,10 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     socket.on('message', (data: Buffer | string) => {
       try {
         const msg = JSON.parse(data.toString()) as Record<string, unknown>;
-        if (msg.type === 'openUsage' && USAGE_RANGES.includes(msg.range as UsageRange)) {
-          usageRanges.set(socket, msg.range as UsageRange);
-          sendUsage(socket, msg.range as UsageRange);
+        const range = msg.range as UsageRange;
+        if (msg.type === 'openUsage' && USAGE_RANGES.includes(range)) {
+          usageRanges.set(socket, range);
+          sendUsage(socket, range);
         }
         if (options.transcripts)
           handleTranscriptMessage(msg, (m) => safeSend(socket, m), options.transcripts, socket);
