@@ -46,8 +46,9 @@ import { peopleRows } from './lan/peopleModel.js';
 import { PeoplePanel } from './lan/PeoplePanel.js';
 import { ProfileModal } from './lan/ProfileModal.js';
 import { RoomPlates } from './lan/RoomPlates.js';
-import { openPopout, openUsageWindow, usePopoutIds } from './lan/transcriptWindows.js';
+import { openPopout, usePopoutIds } from './lan/transcriptWindows.js';
 import { UpdateBanner } from './lan/UpdateBanner.js';
+import { UsagePanel } from './lan/UsagePanel.js';
 import { OfficeCanvas } from './office/components/OfficeCanvas.js';
 import { EditorState } from './office/editor/editorState.js';
 import { EditorToolbar } from './office/editor/EditorToolbar.js';
@@ -143,6 +144,7 @@ function App() {
   // Overlay geometry: the root div is the canvas container's size.
   const containerRef = useRef<HTMLDivElement>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isUsageOpen, setIsUsageOpen] = useState(false);
   const lang = useLang();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const firstRun = !!profile?.canEdit && profile.firstRun;
@@ -657,7 +659,8 @@ function App() {
               }
               isSettingsOpen={settingsOpen}
               onToggleSettings={() => setIsSettingsOpen((v) => !v)}
-              onOpenUsage={officeReadOnly || isMobile ? null : openUsageWindow}
+              onToggleUsage={officeReadOnly || isMobile ? null : () => setIsUsageOpen((v) => !v)}
+              isUsageOpen={isUsageOpen}
             />
           }
           below={
@@ -715,6 +718,8 @@ function App() {
                   );
                 })()}
               </>
+            ) : isUsageOpen && !officeReadOnly && !isMobile ? (
+              <UsagePanel onClose={() => setIsUsageOpen(false)} />
             ) : null
           }
         />

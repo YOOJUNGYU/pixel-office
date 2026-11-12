@@ -10,7 +10,8 @@ interface MenuButtonsProps {
   isSettingsOpen: boolean;
   onToggleSettings: () => void;
   /** null hides the usage button (read-only viewers, mobile). */
-  onOpenUsage: (() => void) | null;
+  onToggleUsage: (() => void) | null;
+  isUsageOpen: boolean;
 }
 
 /** Layout and Settings as icon buttons: the first two of the top-left row (ZoomControls). */
@@ -19,7 +20,8 @@ export function MenuButtons({
   onToggleEditMode,
   isSettingsOpen,
   onToggleSettings,
-  onOpenUsage,
+  onToggleUsage,
+  isUsageOpen,
 }: MenuButtonsProps) {
   useLang();
   return (
@@ -70,10 +72,12 @@ export function MenuButtons({
           <circle cx="9" cy="9" r="5" stroke="currentColor" strokeWidth="1.5" />
         </svg>
       </Button>
-      {onOpenUsage && (
+      {onToggleUsage && (
         <Button
           size="icon_lg"
-          onClick={onOpenUsage}
+          variant={isUsageOpen ? 'active' : 'default'}
+          onClick={onToggleUsage}
+          aria-pressed={isUsageOpen}
           data-tour="usage-button"
           className={BTN_CLASS}
           title={t('usage.window')}

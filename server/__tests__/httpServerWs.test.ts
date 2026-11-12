@@ -393,7 +393,7 @@ describe('/ws LAN office', () => {
   });
 });
 
-describe('/ws/transcript usage', () => {
+describe('/ws usage panel', () => {
   let server: InstanceType<typeof PixelAgentsServer>;
   let port: number;
   let file: string;
@@ -430,15 +430,15 @@ describe('/ws/transcript usage', () => {
     fs.rmSync(tmpBase, { recursive: true, force: true });
   });
 
-  const popout = async (): Promise<WebSocket> => {
+  const page = async (path = '/ws'): Promise<WebSocket> => {
     const host = `localhost:${port.toString()}`;
-    const r = await connect(port, { Host: host, Origin: `http://${host}` }, '/ws/transcript');
+    const r = await connect(port, { Host: host, Origin: `http://${host}` }, path);
     sockets.push(r.socket);
     return r.socket;
   };
 
   it('openUsage → usageLoaded with that range, usageNow on the tick, re-sent on change', async () => {
-    const s = await popout();
+    const s = await page();
     const loaded = waitForMessage(s, 'usageLoaded');
     s.send(JSON.stringify({ type: 'openUsage', range: '7d' }));
     expect(await loaded).toMatchObject({ range: '7d' });
@@ -452,17 +452,27 @@ describe('/ws/transcript usage', () => {
     expect(await again).toMatchObject({ range: '7d' });
   });
 
-  it('a bad range is ignored; a socket that never opened usage gets nothing', async () => {
-    const s = await popout();
-    const opened = await popout();
-    opened.send(JSON.stringify({ type: 'openUsage', range: '30d' }));
+  it('a bad range is ignored; closeUsage stops the usage messages', async () => {
+    const s = await page();
     const none = waitForMessage(s, 'usageLoaded', 500);
     s.send(JSON.stringify({ type: 'openUsage', range: '1y' }));
     expect(await none).toBeNull();
-    // The tick reaches the socket that opened usage, never the other.
-    const idle = waitForMessage(s, 'usageNow', 2_500);
-    expect(await waitForMessage(opened, 'usageNow', 2_500)).not.toBeNull();
-    expect(await idle).toBeNull();
+    s.send(JSON.stringify({ type: 'openUsage', range: '30d' }));
+    expect(await waitForMessage(s, 'usageNow', 2_500)).not.toBeNull();
+    s.send(JSON.stringify({ type: 'closeUsage' }));
+    await new Promise((r) => setTimeout(r, 200)); // a tick already on the wire may still land
+    const after = waitForMessage(s, 'usageNow', 2_500);
+    const later = waitForMessage(s, 'usageLoaded', 500);
+    changed?.();
+    expect(await later).toBeNull();
+    expect(await after).toBeNull();
+  });
+
+  it('popout transcript sockets do not serve usage', async () => {
+    const p = await page('/ws/transcript');
+    const none = waitForMessage(p, 'usageLoaded', 500);
+    p.send(JSON.stringify({ type: 'openUsage', range: '7d' }));
+    expect(await none).toBeNull();
   });
 
   it('a foreign Origin is refused on /ws/transcript', async () => {

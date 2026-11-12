@@ -142,6 +142,7 @@ components:
         - $ref: '#/components/schemas/CloseTranscript'
         - $ref: '#/components/schemas/SetRelayAdminToken'
         - $ref: '#/components/schemas/OpenUsage'
+        - $ref: '#/components/schemas/CloseUsage'
         - $ref: '#/components/schemas/RelayKick'
       discriminator: type
 
@@ -1750,6 +1751,17 @@ components:
           const: openUsage
         range:
           $ref: '#/components/schemas/UsageRange'
+
+    CloseUsage:
+      description: >-
+        The usage panel closed: stop sending usageNow / usageLoaded to this
+        socket (loopback browser only).
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: closeUsage
 
     LoadTranscriptBefore:
       description: >-

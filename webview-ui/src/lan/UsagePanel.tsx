@@ -1,5 +1,6 @@
-// The 📊 popout window: my live agents' usage now (top), my token history below. LOCAL ONLY:
-// everything here comes from this PC's server over the popout socket (/ws/transcript).
+// The 📊 usage panel under the top-left buttons: my live agents' usage now (top), my token
+// history below; resized from its right edge, bottom edge and bottom-right corner. LOCAL ONLY:
+// everything here comes from this PC's server over the page's own socket (openUsage).
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -12,17 +13,21 @@ import {
   USAGE_CACHE_H,
   USAGE_DAILY_H,
   USAGE_MODEL_COLORS,
+  USAGE_PANEL_CORNER_PX,
+  USAGE_PANEL_EDGE_PX,
+  USAGE_PANEL_MARGIN_PX,
   USAGE_RANGE_KEY,
   USAGE_SHARE_COLORS,
   USAGE_TOKEN_COLORS,
 } from '../constants.js';
 import { t, useLang } from '../i18n.js';
-import { useThemePref } from '../theme.js';
 import { transport } from '../transport/index.js';
 import { providerName, tagBadge } from './lanAgents.js';
 import { openPopout } from './transcriptWindows.js';
 import { DayBars, HBars, ShareBar, Swatch } from './UsageCharts.js';
 import { hitRate } from './usageCharts.js';
+import type { Grip as GripKind, Size } from './usagePanelSize.js';
+import { clampSize, dragSize, storedSize, storeSize } from './usagePanelSize.js';
 import { burnTier, modelFamily, modelLabel, tokensText } from './usageSignals.js';
 
 const RANGES: UsageRange[] = ['7d', '30d', 'all'];
@@ -41,18 +46,14 @@ const modelColor = (model: string, i: number): string => {
   return f ? USAGE_MODEL_COLORS[f] : USAGE_SHARE_COLORS[i % USAGE_SHARE_COLORS.length];
 };
 
-export function UsageWindow() {
+export function UsagePanel({ onClose }: { onClose: () => void }) {
   useLang();
-  useThemePref(); // follows the office window's theme (storage event in theme.ts)
   const [range, setRange] = useState<UsageRange>(storedRange);
   const rangeRef = useRef(range);
   const [now, setNow] = useState<{ today: number; scanning?: boolean }>({ today: 0 });
   const [data, setData] = useState<UsageLoaded | null>(null);
   const [agents, setAgents] = useState<OfficeAgent[]>([]);
-
-  useEffect(() => {
-    document.title = t('usage.window');
-  });
+  const box = useResizable();
 
   useEffect(
     () =>
@@ -70,6 +71,7 @@ export function UsageWindow() {
 
   // (Re)open on every range change and every (re)connect; a send before the first connect
   // would be queued AND re-sent by the state handler, so only send while connected here.
+  // Closing the panel stops the server's usage messages to this page.
   useEffect(() => {
     rangeRef.current = range;
     try {
@@ -79,42 +81,163 @@ export function UsageWindow() {
     }
     if (transport.state === 'connected') transport.send({ type: 'openUsage', range });
   }, [range]);
-  useEffect(
-    () =>
-      transport.onStateChange((s) => {
-        if (s === 'connected') transport.send({ type: 'openUsage', range: rangeRef.current });
-      }),
-    [],
-  );
+  useEffect(() => {
+    const off = transport.onStateChange((s) => {
+      if (s === 'connected') transport.send({ type: 'openUsage', range: rangeRef.current });
+    });
+    return () => {
+      off();
+      if (transport.state === 'connected') transport.send({ type: 'closeUsage' });
+    };
+  }, []);
 
   const scanning = now.scanning ?? !!data?.scanning; // usageNow is the fresher word once seen
   return (
-    <div className="fixed inset-0 bg-bg text-text overflow-y-auto pixel-scrollbar">
-      <div className="flex flex-col gap-10 p-12">
-        <NowPanel agents={agents} today={now.today} scanning={scanning} />
-
-        <div className="flex items-center gap-8">
-          <div className="flex gap-2" role="tablist">
-            {RANGES.map((r) => (
-              <button
-                key={r}
-                role="tab"
-                aria-selected={r === range}
-                onClick={() => setRange(r)}
-                className={`border-2 rounded-none px-8 py-2 text-sm cursor-pointer ${
-                  r === range
-                    ? 'bg-active-bg border-accent'
-                    : 'bg-btn-bg border-transparent hover:bg-btn-hover'
-                }`}
-              >
-                {t(`usage.range.${r}`)}
-              </button>
-            ))}
-          </div>
+    <div
+      ref={box.ref}
+      data-usage-panel
+      className="relative flex flex-col pixel-panel text-text"
+      style={{ width: box.size.w, height: box.size.h }}
+      onWheel={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center gap-8 shrink-0 px-12 pt-8 pb-6 border-b-2 border-border">
+        <h2 className="m-0 text-sm font-bold">{t('usage.window')}</h2>
+        <div className="flex gap-2" role="tablist">
+          {RANGES.map((r) => (
+            <button
+              key={r}
+              role="tab"
+              aria-selected={r === range}
+              onClick={() => setRange(r)}
+              className={`border-2 rounded-none px-8 py-1 text-xs cursor-pointer ${
+                r === range
+                  ? 'bg-active-bg border-accent'
+                  : 'bg-btn-bg border-transparent hover:bg-btn-hover'
+              }`}
+            >
+              {t(`usage.range.${r}`)}
+            </button>
+          ))}
         </div>
-
-        {data && <History data={data} />}
+        <button
+          onClick={onClose}
+          title={t('usage.close')}
+          aria-label={t('usage.close')}
+          className="ml-auto w-24 h-24 shrink-0 bg-transparent border-0 text-text-muted hover:text-text cursor-pointer text-lg leading-none"
+        >
+          ×
+        </button>
       </div>
+      <div className="flex-1 min-h-0 overflow-y-auto pixel-scrollbar">
+        <div className="flex flex-col gap-10 p-12">
+          <NowPanel agents={agents} today={now.today} scanning={scanning} />
+          {data && <History data={data} />}
+        </div>
+      </div>
+      <Grip which="right" box={box} />
+      <Grip which="bottom" box={box} />
+      <Grip which="corner" box={box} />
+    </div>
+  );
+}
+
+interface Box {
+  ref: React.RefObject<HTMLDivElement | null>;
+  size: Size;
+  start: (which: GripKind, e: React.PointerEvent) => void;
+}
+
+/** The panel's size: remembered per viewer, kept inside the viewport (also when it shrinks). */
+function useResizable(): Box {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [size, setSize] = useState<Size>(storedSize);
+  const room = (): Size => {
+    const r = ref.current?.getBoundingClientRect();
+    return {
+      w: window.innerWidth - (r?.left ?? 0) - USAGE_PANEL_MARGIN_PX,
+      h: window.innerHeight - (r?.top ?? 0) - USAGE_PANEL_MARGIN_PX,
+    };
+  };
+  useEffect(() => {
+    const fit = () => setSize((s) => clampSize(s, room()));
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, []);
+  const start = (which: GripKind, e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = e.currentTarget as HTMLElement;
+    el.setPointerCapture(e.pointerId);
+    const from = { x: e.clientX, y: e.clientY };
+    const base = size;
+    const max = room();
+    let last = base;
+    const move = (ev: PointerEvent) => {
+      last = dragSize(base, which, ev.clientX - from.x, ev.clientY - from.y, max);
+      setSize(last);
+    };
+    const up = () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      storeSize(last);
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  };
+  return { ref, size, start };
+}
+
+const GRIP_STYLE: Record<GripKind, React.CSSProperties> = {
+  right: {
+    top: 0,
+    right: -USAGE_PANEL_EDGE_PX / 2,
+    width: USAGE_PANEL_EDGE_PX,
+    bottom: USAGE_PANEL_CORNER_PX,
+    cursor: 'ew-resize',
+  },
+  bottom: {
+    left: 0,
+    bottom: -USAGE_PANEL_EDGE_PX / 2,
+    height: USAGE_PANEL_EDGE_PX,
+    right: USAGE_PANEL_CORNER_PX,
+    cursor: 'ns-resize',
+  },
+  corner: {
+    right: -USAGE_PANEL_EDGE_PX / 2,
+    bottom: -USAGE_PANEL_EDGE_PX / 2,
+    width: USAGE_PANEL_CORNER_PX,
+    height: USAGE_PANEL_CORNER_PX,
+    cursor: 'nwse-resize',
+  },
+};
+
+/** A resize handle on the right edge, the bottom edge or the bottom-right corner. */
+function Grip({ which, box }: { which: GripKind; box: Box }) {
+  return (
+    <div
+      data-usage-grip={which}
+      className="absolute touch-none"
+      style={GRIP_STYLE[which]}
+      onPointerDown={(e) => box.start(which, e)}
+    >
+      {which === 'corner' && (
+        // Two pixel steps in the corner, so the diagonal grip can be found
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          aria-hidden
+          className="absolute right-4 bottom-4 text-text-muted"
+          shapeRendering="crispEdges"
+        >
+          <rect x="6" y="2" width="2" height="2" fill="currentColor" />
+          <rect x="2" y="6" width="2" height="2" fill="currentColor" />
+          <rect x="6" y="6" width="2" height="2" fill="currentColor" />
+        </svg>
+      )}
     </div>
   );
 }
@@ -225,7 +348,7 @@ function History({ data }: { data: UsageLoaded }) {
   const dayKeys = ['input', 'output', 'cacheCreate'] as const;
   return (
     <>
-      <div className="grid grid-cols-4 gap-8">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-8">
         {kpis.map(([label, value]) => (
           <div key={label} className="pixel-panel px-8 py-6">
             <div className="text-2xs text-text-muted">{label}</div>
@@ -259,7 +382,7 @@ function History({ data }: { data: UsageLoaded }) {
         </Section>
       )}
 
-      <div className="grid grid-cols-2 gap-8">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-8">
         <Section title={t('usage.models')}>
           <ShareBar
             rows={data.models.map((m) => ({

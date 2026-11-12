@@ -6,10 +6,11 @@ function createTransport(): MessageTransport {
   // Connect via WebSocket to the same host serving the SPA. Whether this
   // session may change anything is decided server-side (httpServer.isLoopback).
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  // A popout window (?transcript=<id>, or the usage window ?usage) has its own socket: the
-  // page's /ws keeps one UI at a time and would close the office window.
-  const q = new URLSearchParams(window.location.search);
-  const route = q.has('transcript') || q.has('usage') ? '/ws/transcript' : '/ws';
+  // A popout transcript window (?transcript=<id>) has its own socket: the page's /ws keeps
+  // one UI at a time and would close the office window.
+  const route = new URLSearchParams(window.location.search).has('transcript')
+    ? '/ws/transcript'
+    : '/ws';
   const wsUrl = `${protocol}//${window.location.host}${route}`;
   const ws = new WebSocketTransport(wsUrl);
   // Vite dev only: there is no server to connect to, so `browserMock` injects

@@ -63,7 +63,7 @@ export interface HttpServerOptions {
   autostart?: ClientMessageContext['autostart'];
   /** This PC's agent transcripts, per socket (closed with it). */
   transcripts?: TranscriptService;
-  /** Token usage (local only): the popout usage window's data. */
+  /** Token usage (local only): the page's usage panel data. */
   usage?: UsageIndex;
   /** `GET /api/health?waiting`: a page showing "server is off" is polling (it reloads by itself). */
   onWaitingPage?: () => void;
@@ -183,10 +183,24 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
   /** Popout transcript windows (/ws/transcript): never replace the page, get only their
    *  transcripts and the snapshot tick (for the agent's status line). */
   const popouts = new Set<WsLike>();
-  /** Popouts that opened the usage window → the range each one shows. */
+  /** Pages whose usage panel is open → the range each one shows. */
   const usageRanges = new Map<WsLike, UsageRange>();
   const sendUsage = (c: WsLike, range: UsageRange): void => {
     if (options.usage) safeSend(c, { type: 'usageLoaded', ...options.usage.report(range) });
+  };
+  /** openUsage / closeUsage (the page's usage panel); true when `msg` was one of them. */
+  const onUsageMessage = (socket: WsLike, msg: Record<string, unknown>): boolean => {
+    if (msg.type === 'closeUsage') {
+      usageRanges.delete(socket);
+      return true;
+    }
+    if (msg.type !== 'openUsage') return false;
+    const range = msg.range as UsageRange;
+    if (USAGE_RANGES.includes(range)) {
+      usageRanges.set(socket, range);
+      sendUsage(socket, range);
+    }
+    return true;
   };
   if (options.usage)
     options.usage.onChanged = () => {
@@ -281,6 +295,7 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     clients.add(socket);
     socket.on('close', () => {
       clients.delete(socket);
+      usageRanges.delete(socket);
       options.transcripts?.close(socket);
     });
     // Every connection learns the server version at once, a reconnect too (no new
@@ -290,6 +305,7 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     socket.on('message', (data: Buffer | string) => {
       try {
         const msg = JSON.parse(data.toString()) as Record<string, unknown>;
+        if (onUsageMessage(socket, msg)) return;
         handleClientMessage(msg, (m) => safeSend(socket, m), {
           adapter: options.adapter,
           cache: options.assetCache ?? null,
@@ -319,7 +335,6 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     popouts.add(socket);
     socket.on('close', () => {
       popouts.delete(socket);
-      usageRanges.delete(socket);
       options.transcripts?.close(socket);
     });
     safeSend(socket, { type: 'officeAccess', readOnly: false, version: APP_VERSION });
@@ -327,11 +342,6 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     socket.on('message', (data: Buffer | string) => {
       try {
         const msg = JSON.parse(data.toString()) as Record<string, unknown>;
-        const range = msg.range as UsageRange;
-        if (msg.type === 'openUsage' && USAGE_RANGES.includes(range)) {
-          usageRanges.set(socket, range);
-          sendUsage(socket, range);
-        }
         if (options.transcripts)
           handleTranscriptMessage(msg, (m) => safeSend(socket, m), options.transcripts, socket);
       } catch {

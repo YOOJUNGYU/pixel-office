@@ -665,9 +665,17 @@ export const USAGE_MODEL_COLORS = { opus: '#7c5cff', sonnet: '#4a9eff', haiku: '
 export const USAGE_BURN_COLORS = { 1: '#4aa8ff' } as const;
 export const USAGE_FLAME_GOLD = ['#c08a10', '#e8b020', '#ffd23a', '#ffe88a', '#fffbe0'] as const;
 export const USAGE_FLAME_FIRE = ['#c8101a', '#ff3b1a', '#ff8a1a', '#ffd23a', '#fff6c0'] as const;
-/** Usage window (📊 popout): default size, the remembered range, its token colours (per theme, index.css). */
-export const USAGE_WINDOW_W_PX = 720;
-export const USAGE_WINDOW_H_PX = 820;
+/** Usage panel (📊, under the top-left buttons): default/min size, resize grips, the gap kept
+ *  to the viewport's right/bottom edge, the remembered size and range, its token colours
+ *  (per theme, index.css). */
+export const USAGE_PANEL_DEFAULT_W_PX = 720;
+export const USAGE_PANEL_DEFAULT_H_PX = 640;
+export const USAGE_PANEL_MIN_W_PX = 360;
+export const USAGE_PANEL_MIN_H_PX = 240;
+export const USAGE_PANEL_EDGE_PX = 6;
+export const USAGE_PANEL_CORNER_PX = 14;
+export const USAGE_PANEL_MARGIN_PX = 8;
+export const USAGE_PANEL_SIZE_KEY = 'pixel-office.usage.size';
 export const USAGE_RANGE_KEY = 'pixel-office.usage.range';
 export const USAGE_TOKEN_COLORS = {
   input: 'var(--usage-input)',

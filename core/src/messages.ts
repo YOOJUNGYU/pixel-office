@@ -66,6 +66,7 @@ export type ClientMessage =
   | CloseTranscript
   | SetRelayAdminToken
   | OpenUsage
+  | CloseUsage
   | RelayKick;
 
 export interface LayoutLoaded {
@@ -668,6 +669,10 @@ export interface SetRelayAdminToken {
 export interface OpenUsage {
   type: 'openUsage';
   range: UsageRange;
+}
+
+export interface CloseUsage {
+  type: 'closeUsage';
 }
 
 export interface RelayKick {

@@ -7,8 +7,7 @@ import App from './App.tsx';
 import { ReplacedPanel } from './lan/ReplacedPanel.js';
 import { ServerPanel } from './lan/ServerPanel.js';
 import { TranscriptWindow } from './lan/TranscriptWindow.js';
-import { popoutId, USAGE_PARAM } from './lan/transcriptWindows.js';
-import { UsageWindow } from './lan/UsageWindow.js';
+import { popoutId } from './lan/transcriptWindows.js';
 import { initPwa } from './pwa.js';
 import { isBrowserRuntime } from './runtime';
 
@@ -19,14 +18,6 @@ async function main() {
   if (isBrowserRuntime && import.meta.env.DEV) {
     const { initBrowserMock } = await import('./browserMock.js');
     await initBrowserMock();
-  }
-  if (new URLSearchParams(window.location.search).has(USAGE_PARAM)) {
-    createRoot(document.getElementById('root')!).render(
-      <StrictMode>
-        <UsageWindow />
-      </StrictMode>,
-    );
-    return;
   }
   const popout = popoutId();
   if (popout !== null) {

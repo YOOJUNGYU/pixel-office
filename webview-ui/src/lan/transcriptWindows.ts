@@ -7,8 +7,6 @@ import {
   TRANSCRIPT_HEARTBEAT_MS,
   TRANSCRIPT_WINDOW_H_PX,
   TRANSCRIPT_WINDOW_W_PX,
-  USAGE_WINDOW_H_PX,
-  USAGE_WINDOW_W_PX,
 } from '../constants.js';
 
 /** The URL query a popout window carries its agent id in. */
@@ -27,19 +25,6 @@ export function openPopout(id: string): void {
     url,
     name,
     `popup,width=${String(TRANSCRIPT_WINDOW_W_PX)},height=${String(TRANSCRIPT_WINDOW_H_PX)}`,
-  );
-  w?.focus();
-}
-
-/** The URL query that makes a window the usage window (📊). */
-export const USAGE_PARAM = 'usage';
-
-/** Opens (or focuses: one window) the usage window. */
-export function openUsageWindow(): void {
-  const w = window.open(
-    `${window.location.pathname}?${USAGE_PARAM}`,
-    'po-usage',
-    `popup,width=${String(USAGE_WINDOW_W_PX)},height=${String(USAGE_WINDOW_H_PX)}`,
   );
   w?.focus();
 }
