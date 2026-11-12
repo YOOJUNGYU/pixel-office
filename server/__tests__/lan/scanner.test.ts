@@ -796,4 +796,73 @@ describe('WSL liveness checks only for shown sessions', () => {
     ]);
     expect([...m].map(([d, ids]) => [d, [...ids]])).toEqual([['Ubuntu', ['a', 'b']]]);
   });
+
+  describe('usage signals', () => {
+    const stub = {
+      fileUsage: () => ({
+        tokens: 500_000,
+        rate: 20_000,
+        model: 'claude-opus-4-7',
+        big: { n: 0, last: 0 },
+      }),
+      sumOf: (k: string) => (k === 'sid' ? 777 : 0),
+      keyOf: () => 'sid',
+    };
+    const shellLine =
+      assistant([
+        {
+          type: 'tool_use',
+          id: 'b1',
+          name: 'Bash',
+          input: { command: 'npm run dev', run_in_background: true },
+        },
+      ]) +
+      JSON.stringify({
+        type: 'user',
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'b1',
+              content: 'Command running in background with ID: bg1',
+            },
+          ],
+        },
+      }) +
+      '\n';
+
+    it('main + subagent get usage, sum only with a child; shell and brief get none', async () => {
+      writeFileSync(join(proj, 'sid.jsonl'), shellLine);
+      mkdirSync(join(proj, 'sid', 'subagents'), { recursive: true });
+      writeFileSync(join(proj, 'sid', 'subagents', 'agent-x.jsonl'), edit('a.ts'));
+      scanner.usage = stub;
+      await scanner.discover();
+      const vs = scanner.views();
+      const m = vs.find((v) => v.kind === 'main');
+      expect(m?.usage).toEqual({
+        tokens: 500_000,
+        rate: 20_000,
+        model: 'claude-opus-4-7',
+        sum: 777,
+      });
+      expect(vs.find((v) => v.kind === 'subagent')?.usage).toEqual({
+        tokens: 500_000,
+        rate: 20_000,
+        model: 'claude-opus-4-7',
+      });
+      const shells = vs.filter((v) => v.kind === 'shell');
+      expect(shells.length).toBeGreaterThan(0);
+      expect(shells.every((v) => v.usage === undefined)).toBe(true);
+      expect(scanner.views(true).every((v) => v.usage === undefined)).toBe(true);
+      expect(scanner.liveFiles()).toHaveLength(2);
+      expect(scanner.rootsNow().claude).toEqual([join(dir, 'claude')]);
+    });
+
+    it('a lone main has no sum', async () => {
+      writeFileSync(join(proj, 'sid.jsonl'), edit('a.ts'));
+      scanner.usage = stub;
+      await scanner.discover();
+      expect(scanner.views()[0].usage).not.toHaveProperty('sum');
+    });
+  });
 });

@@ -4,7 +4,7 @@ import { open, readdir, stat } from 'node:fs/promises';
 import * as path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 
-import type { AgentView, Provider, ViewKind } from '../../../core/src/lan.js';
+import type { AgentUsage, AgentView, Provider, ViewKind } from '../../../core/src/lan.js';
 import {
   CHILD_ENDED_HIDE_MS,
   CHILD_IDLE_TTL_MS,
@@ -29,6 +29,7 @@ import type { SessionState } from './session.js';
 import { folderOf, newSession, noteAct, tick, toViews } from './session.js';
 import type { Parse } from './transcript.js';
 import { codexShellParse, rawParse } from './transcript.js';
+import type { UsageIndex } from './usage.js';
 
 export { CHILD_IDLE_TTL_MS, SESSION_TTL_MS, TAIL_BYTES };
 export type { Roots } from './roots.js';
@@ -154,6 +155,10 @@ export class Scanner {
   private primed = false;
 
   private roots: Roots = { claude: [], codex: [] };
+  /** LOCAL ONLY: token usage for views(false). Never set on the brief/peer path. */
+  usage?: Pick<UsageIndex, 'fileUsage' | 'sumOf' | 'keyOf'>;
+  /** Resolves when the first discover pass (started by start()) is done. */
+  ready: Promise<void> = Promise.resolve();
   /** Claude session ids whose registry pids are all dead (closed): dropped at once, not after the TTL. */
   private closed = new Set<string>();
   /** file → mtime when it was turned away (closed / expired): skipped until it changes. */
@@ -395,19 +400,43 @@ export class Scanner {
     return 0;
   }
 
+  rootsNow(): Roots {
+    return this.roots;
+  }
+
+  liveFiles(): string[] {
+    return [...this.files.keys()];
+  }
+
   /** brief=true: commands as program name / description only (always, for peers) */
   views(brief = false): AgentView[] {
     const now = this.now();
-    return [...this.files.values()]
-      .filter((t) => t.endedAt === null || now - t.endedAt < CHILD_ENDED_HIDE_MS)
-      .flatMap((t) => {
+    return [...this.files]
+      .filter(([, t]) => t.endedAt === null || now - t.endedAt < CHILD_ENDED_HIDE_MS)
+      .flatMap(([file, t]) => {
         const views = toViews(t.s, brief, now);
         if (brief) return views;
+        this.attachUsage(file, t.s, views[0]);
         // Local only: this PC's own snapshot shows each agent's session title in its bubble.
         const title = this.titleOf(t.s);
         if (title) for (const v of views) v.title = title;
         return views;
       });
+  }
+
+  private attachUsage(file: string, s: SessionState, v: AgentView): void {
+    const fu = this.usage?.fileUsage(file);
+    if (!fu) return;
+    const u: AgentUsage = { tokens: fu.tokens, rate: fu.rate };
+    if (fu.model) u.model = fu.model;
+    if (fu.big.n > 0) u.big = fu.big;
+    if (s.kind === 'main') {
+      const kids = [...this.files.values()].some(
+        (o) => o.s.kind === 'subagent' && o.s.parentId === s.id,
+      );
+      if (kids) u.sum = this.usage?.sumOf(this.usage.keyOf(file) ?? s.id);
+    }
+    v.usage = u;
   }
 
   /** The bubble title of a session (its shells share it): main → info().title; a subagent →
@@ -433,7 +462,7 @@ export class Scanner {
       }
     };
     const disc = guard('discovering', () => this.discover());
-    void disc();
+    this.ready = disc();
     this.timers = [
       setInterval(disc, DISCOVER_INTERVAL_MS),
       setInterval(

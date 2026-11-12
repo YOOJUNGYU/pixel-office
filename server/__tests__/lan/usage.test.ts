@@ -53,6 +53,21 @@ describe('UsageIndex', () => {
     expect(u.fileUsage(main())?.tokens).toBe(110);
   });
 
+  it("report('all') survives history dated only in the future (clock moved back)", async () => {
+    fs.rmSync(path.join(proj, uuid, 'subagents'), { recursive: true });
+    let now = NOW + 3 * DAY;
+    fs.writeFileSync(main(), line('m9', 100, now));
+    const u = new UsageIndex({
+      dir,
+      roots: () => ({ claude: [path.dirname(proj)], codex: [] }),
+      now: () => now,
+    });
+    await u.scanAll();
+    now = NOW;
+    expect(() => u.report('all')).not.toThrow();
+    expect(u.report('all').days).toHaveLength(1);
+  });
+
   it('keeps a half line until it is complete', async () => {
     const u = mk();
     await u.scanAll();

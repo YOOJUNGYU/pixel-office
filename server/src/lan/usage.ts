@@ -272,10 +272,10 @@ export class UsageIndex {
 
   report(range: UsageRange): Omit<UsageLoaded, 'type'> {
     const today = dayKey(this.now());
-    const first = range === 'all' ? (Object.keys(this.days).sort()[0] ?? today) : '';
+    const first = range === 'all' ? ([...Object.keys(this.days), today].sort()[0] as string) : '';
     const span = range === '7d' ? 7 : range === '30d' ? 30 : 0;
     const dates = dayRange(span ? addDays(today, -(span - 1)) : first, today);
-    const startMs = dayStart(dates[0]);
+    const startMs = dayStart(dates[0] ?? today);
     const totals = { billable: 0, ...zero(), sessions: 0 };
     const projects = new Map<string, number>();
     const models = new Map<string, number>();

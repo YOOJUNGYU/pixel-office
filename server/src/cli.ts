@@ -8,6 +8,7 @@
  * WebSocket client receives the full state on webviewReady.
  */
 
+import * as os from 'os';
 import * as path from 'path';
 
 import { LAN_HTTP_PORT, LAN_UDP_PORT } from '../../core/src/lan.js';
@@ -22,6 +23,7 @@ import { relayStateMessage } from './clientMessageHandler.js';
 import { readConfig } from './configPersistence.js';
 import {
   LAN_HTTP_HOST,
+  LAYOUT_FILE_DIR,
   MAX_PORT,
   MIN_PORT,
   NO_PEERS_ENV,
@@ -31,6 +33,7 @@ import {
   UDP_PORT_ENV,
   UDP_TARGETS_ENV,
   UPDATE_RESTART_EXIT_CODE,
+  USAGE_RESCAN_MS,
 } from './constants.js';
 import { bootUpdated, reportListening, respawnSelf, restartMode } from './lan/appBundle.js';
 import { openOffice } from './lan/appWindow.js';
@@ -53,6 +56,7 @@ import {
   Updater,
   writeReopenMarker,
 } from './lan/updater.js';
+import { UsageIndex } from './lan/usage.js';
 import { PixelAgentsServer } from './server.js';
 
 // ── Argument parsing ──────────────────────────────────────────
@@ -185,6 +189,16 @@ export async function main(boot = true): Promise<void> {
   // LAN: local transcripts -> UDP peers; peers -> officeSnapshot.
   const scanner = new Scanner(() => discoverRoots());
   scanner.start();
+  // Token usage (local only): history on disk, live per-file numbers for my views.
+  const usage = new UsageIndex({
+    dir: path.join(os.homedir(), LAYOUT_FILE_DIR),
+    roots: () => scanner.rootsNow(),
+  });
+  usage.load();
+  scanner.usage = usage;
+  // First full scan after the first discover pass (rootsNow() is empty before it).
+  void scanner.ready.then(() => usage.scanAll());
+  setInterval(() => void usage.scanAll(), USAGE_RESCAN_MS).unref();
   const transcripts = new TranscriptService(scanner);
   const lan = new LanService(loadProfile(), scanner);
   const pins = new KnownPeers();
@@ -262,6 +276,7 @@ export async function main(boot = true): Promise<void> {
     peerNet.stop();
     relay?.stop();
     pins.flush();
+    usage.flush();
     updater.stop();
     await server.stop(quit);
     // An update restart: our ports are free now. launchd respawns a non-zero exit;
@@ -369,6 +384,14 @@ export async function main(boot = true): Promise<void> {
       tray,
     );
     setInterval(() => {
+      void (async () => {
+        try {
+          await usage.refresh(scanner.liveFiles());
+          usage.save();
+        } catch (err) {
+          console.error('[Pixel Office] usage refresh failed:', err);
+        }
+      })();
       try {
         notifier.tick();
       } catch (err) {
