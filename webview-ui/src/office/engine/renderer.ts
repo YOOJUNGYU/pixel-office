@@ -70,6 +70,7 @@ import type {
 } from '../types.js';
 import { CharacterState, TILE_SIZE, TileType } from '../types.js';
 import { getWallInstances, hasWallSprites, wallColorToHex } from '../wallTiles.js';
+import { BURN_FRAME_SEC, BURN_FRAMES, burnAuraSprite } from './burnAura.js';
 import { getCharacterSprite, getPetCharacterSprite } from './characters.js';
 import type { FloorData } from './floorChunks.js';
 import { changedFloorChunks } from './floorChunks.js';
@@ -510,7 +511,9 @@ export function renderScene(
         ? pet.idleDown[0] // 16 px wide, like the matrix effect's column sweep
         : getPetCharacterSprite(ch, pet, nowSec)
       : getCharacterSprite(ch, getCharacterSprites(ch.palette, ch.hueShift));
-    const cached = getCachedSprite(spriteData, zoom);
+    // My agents grow with their tokens: a whole number of device pixels per sprite pixel.
+    const sz = ch.usageScale ? Math.round(zoom * ch.usageScale) : zoom;
+    const cached = getCachedSprite(spriteData, sz);
     // Sitting offset: shift character down when seated so they visually sit in the chair
     const sittingOffset = ch.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0;
     // Talking: the two bob in turn (frame + id parity), like taking turns to speak.
@@ -542,7 +545,7 @@ export function renderScene(
         draw: (c) => {
           c.save();
           c.globalAlpha = alpha;
-          renderMatrixEffect(c, mCh, mSpriteData, mDrawX, mDrawY, zoom);
+          renderMatrixEffect(c, mCh, mSpriteData, mDrawX, mDrawY, sz);
           c.restore();
         },
       });
@@ -560,15 +563,37 @@ export function renderScene(
     if (isSelected || isHovered) {
       const outlineAlpha = isSelected ? SELECTED_OUTLINE_ALPHA : HOVERED_OUTLINE_ALPHA;
       const outlineData = getOutlineSprite(spriteData);
-      const outlineCached = getCachedSprite(outlineData, zoom);
-      const olDrawX = drawX - zoom; // 1 sprite-pixel offset, scaled
-      const olDrawY = drawY - zoom; // outline follows sitting offset via drawY
+      const outlineCached = getCachedSprite(outlineData, sz);
+      const olDrawX = drawX - sz; // 1 sprite-pixel offset, scaled
+      const olDrawY = drawY - sz; // outline follows sitting offset via drawY
       drawables.push({
         zY: charZY - OUTLINE_Z_SORT_OFFSET, // sort just before character
         draw: (c) => {
           c.save();
           c.globalAlpha = outlineAlpha;
           c.drawImage(outlineCached, olDrawX, olDrawY);
+          c.restore();
+        },
+      });
+    }
+
+    // Burn border / flame aura (token burn rate), behind the white outline that hugs the body.
+    if (ch.burn) {
+      const frame = Math.floor(nowSec / BURN_FRAME_SEC) % BURN_FRAMES;
+      const aura = burnAuraSprite(spriteData, ch.burn, frame);
+      const auraCached = getCachedSprite(aura.data, sz);
+      const axX = drawX - aura.pad * sz;
+      const axY = drawY - aura.pad * sz;
+      drawables.push({
+        zY: charZY - 2 * OUTLINE_Z_SORT_OFFSET,
+        draw: (c) => {
+          if (alpha === 1) {
+            c.drawImage(auraCached, axX, axY);
+            return;
+          }
+          c.save();
+          c.globalAlpha = alpha;
+          c.drawImage(auraCached, axX, axY);
           c.restore();
         },
       });

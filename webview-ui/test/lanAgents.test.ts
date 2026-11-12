@@ -14,6 +14,7 @@ import { test } from 'vitest';
 import { buildFurnitureCatalog } from '../../core/src/assets/build.ts';
 import { decodeAllFurniture } from '../../core/src/assets/loader.ts';
 import type { OfficeAgent, Room } from '../../core/src/lan.ts';
+import { CHARACTER_HIT_HEIGHT } from '../src/constants.js';
 import { setLang } from '../src/i18n.js';
 import {
   activityText,
@@ -670,4 +671,37 @@ test('loungeAgentsOf lists folded lounge agents of that PC only', () => {
     ['z'],
   );
   assert.deepEqual(lan.loungeAgentsOf('p3'), []);
+});
+
+test('usage: my agent grows and burns by its tokens; a peer agent never does', () => {
+  const { os, lan } = setup();
+  lan.applyPeople([
+    { peerId: 'p1', account: 'yoo', palette: 2, hueShift: 30, nickname: '', self: true },
+    { peerId: 'p2', account: 'o', palette: 1, hueShift: 0, nickname: '', self: false },
+  ]);
+  const usage = { tokens: 1_200_000, rate: 80_000 };
+  const other = { ...peer, id: 'p2' };
+  lan.apply([
+    agent('a', 'coding', { usage }),
+    { ...agent('b', 'coding', { usage }), key: 'p2:b', peer: other },
+  ]);
+  const mine = os.characters.get(lan.idFor('p1:a')!)!;
+  const theirs = os.characters.get(lan.idFor('p2:b')!)!;
+  assert.equal(mine.usageScale, 2);
+  assert.equal(mine.burn, 3);
+  assert.equal(theirs.usageScale, undefined);
+  assert.equal(theirs.burn, undefined);
+  lan.apply([agent('a', 'coding')]);
+  assert.equal(mine.usageScale, undefined, 'no usage → back to normal');
+  assert.equal(mine.burn, undefined);
+});
+
+test('getCharacterAt: a 1.5× character is hit 1.5× higher above its feet', () => {
+  const os = new OfficeState(structuredClone(layout));
+  os.addAgent(1, 0, 0, undefined, true);
+  const ch = os.characters.get(1)!;
+  const y = ch.y - CHARACTER_HIT_HEIGHT * 1.2;
+  assert.equal(os.getCharacterAt(ch.x, y), null);
+  ch.usageScale = 1.5;
+  assert.equal(os.getCharacterAt(ch.x, y), 1);
 });

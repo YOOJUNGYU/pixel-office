@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'vitest';
 
 import { TYPE_FRAME_DURATION_SEC } from '../src/constants.js';
+import { BURN_FRAME_SEC } from '../src/office/engine/burnAura.js';
 import type { LoopClock } from '../src/office/engine/gameLoop.js';
 import { onFrame, requestRender, startGameLoop } from '../src/office/engine/gameLoop.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
@@ -159,4 +160,19 @@ test('nextFrameIn: seated typist wakes at its next typing frame; idle sitter sle
   os.setAgentActive(1, false);
   os.update(0.05);
   assert.equal(os.nextFrameIn(0), Infinity, 'seated and idle → still');
+});
+
+test('nextFrameIn: a burning sitter wakes per flame frame (burn ≥ 2); a blue ring is static', () => {
+  const os = new OfficeState(structuredClone(layout));
+  os.addAgent(1, 0, 0, undefined, true);
+  os.moveToArea(1, '코딩실');
+  for (let i = 0; i < 20000 && os.nextFrameIn(0) === 0; i++) os.update(0.05);
+  os.setAgentActive(1, false);
+  os.update(0.05);
+  const ch = os.characters.get(1)!;
+  ch.burn = 1;
+  assert.equal(os.nextFrameIn(0.05), Infinity);
+  ch.burn = 2;
+  const next = os.nextFrameIn(0.05);
+  assert.ok(next > 0 && next <= BURN_FRAME_SEC, `flame boundary, got ${next}`);
 });

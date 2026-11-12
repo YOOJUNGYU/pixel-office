@@ -1,3 +1,5 @@
+import type { BurnTier, SizeTier } from '../lan/usageSignals.js';
+
 export {
   DEFAULT_COLS,
   DEFAULT_ROWS,
@@ -194,6 +196,10 @@ export interface OfficeLayout {
 }
 
 export interface Character {
+  /** My agents only (token usage): drawn this many times larger (1.5 / 2); unset = 1. */
+  usageScale?: SizeTier;
+  /** My agents only (token burn rate): 1 blue ring, 2 gold flame, 3 red flame aura; unset = none. */
+  burn?: BurnTier;
   /** What its PC screen shows while it works at a front PC (pcScreens); unset = the PC's own. */
   screen?: 'code' | 'term' | 'doc' | null;
   /** Its PC flashes red until then (OfficeState.furnitureAnimTimer seconds): a fresh failure. */

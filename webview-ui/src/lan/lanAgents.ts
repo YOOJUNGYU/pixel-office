@@ -10,6 +10,7 @@ import { Direction } from '../office/types.js';
 import { isDemoKey } from '../tour/demoAgents.js';
 import { type EffectTrigger, effectTriggers, type LiveEffect } from './effects.js';
 import { avatarLabel } from './nicknames.js';
+import { burnTier, sizeTier } from './usageSignals.js';
 
 const DIRS: Record<AvatarDir, Direction> = {
   down: Direction.DOWN,
@@ -440,7 +441,14 @@ export class LanAgents {
     for (const a of agents) {
       const cid = this.ids.get(a.key);
       const ch = cid !== undefined ? os.characters.get(cid) : undefined;
-      if (ch) ch.screen = screenKind(a);
+      if (!ch) continue;
+      ch.screen = screenKind(a);
+      // My agents grow with their tokens and burn by their rate (local only, never a peer's).
+      const mine = this.isMine(a) && a.usage !== undefined;
+      const scale = mine ? sizeTier(a.usage) : 1;
+      const burn = mine ? burnTier(a.usage) : 0;
+      ch.usageScale = scale === 1 ? undefined : scale;
+      ch.burn = burn === 0 ? undefined : burn;
     }
     requestRender('snapshot');
   }

@@ -340,7 +340,8 @@ export function LanOverlay({
               ch.y +
                 (typing ? BUBBLE_SITTING_OFFSET_PX : 0) +
                 (ch.pet ? PET_HEAD_DROP_PX : 0) -
-                BUBBLE_VERTICAL_OFFSET_PX,
+                BUBBLE_VERTICAL_OFFSET_PX -
+                ((ch.usageScale ?? 1) - 1) * LAN_BUBBLE_HEAD_OFFSET, // a grown sprite's taller head
             ) -
             (permissionSprite.height * scale + zoom) / dpr,
           zIndex: LAN_PERMISSION_Z_INDEX,
@@ -441,7 +442,7 @@ export function LanOverlay({
         ch.y +
           (typing ? CHARACTER_SITTING_OFFSET_PX : 0) +
           (ch.pet ? PET_HEAD_DROP_PX : 0) -
-          LAN_BUBBLE_HEAD_OFFSET,
+          LAN_BUBBLE_HEAD_OFFSET * (ch.usageScale ?? 1),
       );
       if (a.fail && !a.permission)
         nodes.push(
@@ -607,7 +608,7 @@ export function LanOverlay({
       ch.y +
         (typing ? CHARACTER_SITTING_OFFSET_PX : 0) +
         (ch.pet ? PET_HEAD_DROP_PX : 0) -
-        LAN_BUBBLE_HEAD_OFFSET,
+        LAN_BUBBLE_HEAD_OFFSET * (ch.usageScale ?? 1),
     );
     const side =
       e.kind === 'confetti' ? 0 : e.kind === 'plus' ? FX_SIDE_OFFSET_X : -FX_SIDE_OFFSET_X;
@@ -685,7 +686,7 @@ export function LanOverlay({
               hoveredCh.y +
                 (typing ? CHARACTER_SITTING_OFFSET_PX : 0) +
                 (hoveredCh.pet ? PET_HEAD_DROP_PX : 0) -
-                LAN_BUBBLE_HEAD_OFFSET,
+                LAN_BUBBLE_HEAD_OFFSET * (hoveredCh.usageScale ?? 1),
             ) - CHAT_TAIL_PX,
           maxWidth: LAN_BUBBLE_MAX_WIDTH_PX,
           padding: `${LAN_ACTIVITY_PAD_Y_PX * 2}px ${LAN_ACTIVITY_PAD_X_PX}px`,

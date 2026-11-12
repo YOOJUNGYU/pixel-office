@@ -50,6 +50,7 @@ import type {
   TileType as TileTypeVal,
 } from '../types.js';
 import { CharacterState, Direction, TILE_SIZE } from '../types.js';
+import { BURN_FRAME_SEC } from './burnAura.js';
 import { createCharacter, stepTile, updateCharacter } from './characters.js';
 import { requestRender } from './gameLoop.js';
 import { advanceMatrixEffect, startMatrixEffect } from './matrixEffectState.js';
@@ -1622,6 +1623,7 @@ export class OfficeState {
         next = Math.min(next, ch.followTimer);
       }
       if (ch.bubbleType === 'waiting') next = Math.min(next, ch.bubbleTimer);
+      if ((ch.burn ?? 0) >= 2) next = Math.min(next, BURN_FRAME_SEC - (nowSec % BURN_FRAME_SEC));
     }
     if (this.furnitureAnimated) {
       next = Math.min(
@@ -1764,14 +1766,17 @@ export class OfficeState {
       const sittingOffset = ch.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0;
       const anchorY = ch.y + sittingOffset;
       const side = ch.dir === Direction.LEFT || ch.dir === Direction.RIGHT;
-      const half = ch.pet
-        ? side && ch.state === CharacterState.WALK
-          ? PET_HIT_HALF_WIDTH_SIDE
-          : PET_HIT_HALF_WIDTH
-        : CHARACTER_HIT_HALF_WIDTH;
+      const scale = ch.usageScale ?? 1;
+      const half =
+        scale *
+        (ch.pet
+          ? side && ch.state === CharacterState.WALK
+            ? PET_HIT_HALF_WIDTH_SIDE
+            : PET_HIT_HALF_WIDTH
+          : CHARACTER_HIT_HALF_WIDTH);
       const left = ch.x - half;
       const right = ch.x + half;
-      const top = anchorY - (ch.pet ? PET_HIT_HEIGHT : CHARACTER_HIT_HEIGHT);
+      const top = anchorY - scale * (ch.pet ? PET_HIT_HEIGHT : CHARACTER_HIT_HEIGHT);
       const bottom = anchorY;
       if (worldX >= left && worldX <= right && worldY >= top && worldY <= bottom) {
         return ch.id;
