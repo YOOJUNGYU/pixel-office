@@ -299,3 +299,8 @@ export const USAGE_BIG_RESULT_TOKENS = 50_000;
 export const USAGE_CHARS_PER_TOKEN = 4;
 /** Token usage: Claude message ids kept per file whatever their age (snapshots of one message). */
 export const USAGE_MSG_KEEP = 64;
+/** Token usage index: file name in the data dir, full rescan period, stored format, write coalescing. */
+export const USAGE_FILE = 'usage.json';
+export const USAGE_RESCAN_MS = 600_000;
+export const USAGE_VERSION = 1;
+export const USAGE_SAVE_DELAY_MS = 5_000;
