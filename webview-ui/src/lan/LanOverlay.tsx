@@ -1,6 +1,6 @@
 import { type MutableRefObject, type RefObject, useEffect, useRef, useState } from 'react';
 
-import type { OfficeAgent } from '../../../core/src/lan.js';
+import type { AgentUsage, OfficeAgent } from '../../../core/src/lan.js';
 import {
   ACT_ICON_INLINE_PX,
   ACT_ICON_ONLY_BELOW_SCALE,
@@ -43,6 +43,7 @@ import {
   STATUS_CHIP_PAD_X_PX,
   STATUS_PART_GAP_PX,
   TODO_BAR_HEIGHT_PX,
+  USAGE_MODEL_COLORS,
 } from '../constants.js';
 import { t } from '../i18n.js';
 import { onFrame } from '../office/engine/gameLoop.js';
@@ -78,6 +79,7 @@ import {
 } from './statusSignals.js';
 import { stackTags, type TagBox } from './tagStack.js';
 import { textWidth } from './textWidth.js';
+import { modelFamily, modelLabel, usageChipText } from './usageSignals.js';
 
 const measureTag = (s: string) => textWidth(s, LAN_TAG_FONT);
 /** A chip's width with its gap before it (0 when empty). */
@@ -102,6 +104,28 @@ function TodoChip({ a }: { a: OfficeAgent }) {
 }
 
 /** The failure drop beside a head: fixed size, so it shows at any zoom. */
+/** The bubble's provider badge: the model's name and colour when known, else the provider's. */
+function badgeLabel(a: OfficeAgent): { text: string; bg: string } {
+  const f = modelFamily(a.usage?.model);
+  return f
+    ? { text: modelLabel(a.usage?.model), bg: USAGE_MODEL_COLORS[f] }
+    : { text: providerName(a), bg: LAN_PROVIDER_COLORS[a.provider] };
+}
+
+/** My agent's token use in its name tag ("3.4M · Σ4.1M"). */
+function TokenChip({ u }: { u: AgentUsage }) {
+  return (
+    <span
+      data-usage-tokens={usageChipText(u)}
+      className="shrink-0 text-2xs font-bold leading-none"
+      title={t('usage.sum')}
+      style={{ padding: `1px ${STATUS_CHIP_PAD_X_PX}px`, background: 'var(--ctx-track)' }}
+    >
+      {usageChipText(u)}
+    </span>
+  );
+}
+
 /** A speech bubble's header: provider badge + act icon | session title (centre; this PC's
  *  agents only) | task count + elapsed. `full` (hover bubble): the title wraps instead of …. */
 function BubbleHeader({
@@ -123,9 +147,9 @@ function BubbleHeader({
       <span
         data-provider={a.provider}
         className="shrink-0 px-2 text-2xs font-bold leading-none"
-        style={{ background: LAN_PROVIDER_COLORS[a.provider], color: LAN_PROVIDER_BADGE_FG }}
+        style={{ background: badgeLabel(a).bg, color: LAN_PROVIDER_BADGE_FG }}
       >
-        {providerName(a)}
+        {badgeLabel(a).text}
       </span>
       {icon && <ActIcon icon={icon} size={ACT_ICON_INLINE_PX} color={langColor(a)} />}
       <span
@@ -299,7 +323,8 @@ export function LanOverlay({
           LAN_TAG_BADGE_CHROME_PX +
           textWidth(tagBadge(a), LAN_TAG_BADGE_FONT) +
           textWidth(text, LAN_TAG_FONT) +
-          chipW(ctxText(a))) *
+          chipW(ctxText(a)) +
+          chipW(a.usage ? usageChipText(a.usage) : '')) *
         k,
     });
   }
@@ -406,6 +431,7 @@ export function LanOverlay({
         </span>
         {text}
         {a.ctx && <CtxChip a={a} />}
+        {a.usage && <TokenChip u={a.usage} />}
       </div>,
     );
     if (a.permission) alert(`${a.key}!`, ch);
@@ -475,7 +501,7 @@ export function LanOverlay({
       }
       const box = agentBubbleLayout(
         {
-          provider: providerName(a),
+          provider: badgeLabel(a).text,
           icon: !!icon,
           title: a.title ?? '',
           todo: todoText(a),
@@ -611,7 +637,11 @@ export function LanOverlay({
         LAN_BUBBLE_HEAD_OFFSET * (ch.usageScale ?? 1),
     );
     const side =
-      e.kind === 'confetti' ? 0 : e.kind === 'plus' ? FX_SIDE_OFFSET_X : -FX_SIDE_OFFSET_X;
+      e.kind === 'confetti'
+        ? 0
+        : e.kind === 'plus' || e.kind === 'box'
+          ? FX_SIDE_OFFSET_X
+          : -FX_SIDE_OFFSET_X;
     nodes.push(
       <div
         key={`fx:${String(e.id)}`}
@@ -626,6 +656,7 @@ export function LanOverlay({
           zIndex: LAN_PERMISSION_Z_INDEX,
         }}
       >
+        {e.kind === 'box' && <span className="fx-box">{e.text}</span>}
         {e.kind === 'plus' && (
           <span className="fx-plus">
             {(e.text ?? '').split(' ').map((part) => (

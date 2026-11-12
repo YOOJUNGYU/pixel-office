@@ -52,3 +52,12 @@ test('a quiet agent triggers no effects (no +N, smoke or confetti)', () => {
   assert.deepEqual(run(ag({ ...q }), ag({ ...q, act: 'idle' })), []);
   assert.deepEqual(run(ag({ ...q }), ag({ ...q, fail: true, diff: { add: 2, del: 0 } })), []);
 });
+
+test('box on a new big result; newcomer and unchanged emit none', () => {
+  const big = (n: number) => ({ tokens: 9, rate: 0, big: { n, last: 82_000 } });
+  assert.deepEqual(run(ag({ usage: big(1) }), ag({ usage: big(2) })), [
+    { key: 'p:s1', kind: 'box', text: '📦 +82k' },
+  ]);
+  assert.deepEqual(run(ag({ usage: big(2) }), ag({ usage: big(2) })), []);
+  assert.deepEqual(effectTriggers(new Map(), [ag({ usage: big(2) })]), []);
+});

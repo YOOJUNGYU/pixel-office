@@ -10,6 +10,7 @@ import {
   modelLabel,
   sizeTier,
   tokensText,
+  usageChipText,
 } from '../src/lan/usageSignals.js';
 
 const u = (tokens: number, rate = 0, big?: AgentUsage['big']): AgentUsage => ({
@@ -58,4 +59,14 @@ test('bigTrigger fires on a new big result only', () => {
   assert.equal(bigTrigger(undefined, u(1, 0, { n: 2, last: 82_000 })), null);
   assert.equal(bigTrigger(prev, undefined), null);
   assert.equal(bigTrigger(u(1), u(1, 0, { n: 1, last: 50_000 })), 50_000);
+});
+
+test('tokensText rounds into the next unit', () => {
+  assert.equal(tokensText(999_999), '1.0M');
+  assert.equal(tokensText(999_949), '999.9k');
+});
+
+test('usageChipText: tokens, plus Σ when a main has children', () => {
+  assert.equal(usageChipText({ tokens: 1_200_000, rate: 0 }), '1.2M');
+  assert.equal(usageChipText({ tokens: 3_400_000, rate: 0, sum: 4_100_000 }), '3.4M · Σ4.1M');
 });

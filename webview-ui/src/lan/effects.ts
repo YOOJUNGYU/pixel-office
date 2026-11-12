@@ -2,12 +2,13 @@
 // (never by tour demos): lines added (+N), a finished task list or turn (celebration), a
 // fresh failure (smoke + the PC's red flash).
 import type { OfficeAgent } from '../../../core/src/lan.js';
+import { bigTrigger, tokensText } from './usageSignals.js';
 
-export type EffectKind = 'plus' | 'confetti' | 'smoke';
+export type EffectKind = 'plus' | 'confetti' | 'smoke' | 'box';
 export interface EffectTrigger {
   key: string;
   kind: EffectKind;
-  /** plus: "+12" (and "−3" when lines went too). */
+  /** plus: "+12"; box: "📦 +82k" (and "−3" when lines went too). */
   text?: string;
 }
 
@@ -34,6 +35,9 @@ export function effectTriggers(
       const parts = [add > 0 ? `+${String(add)}` : '', del > 0 ? `−${String(del)}` : ''];
       out.push({ key: a.key, kind: 'plus', text: parts.filter(Boolean).join(' ') });
     }
+    const big = bigTrigger(p.usage, a.usage);
+    if (big !== null)
+      out.push({ key: a.key, kind: 'box', text: `📦 +${tokensText(big).replace('.0', '')}` });
     if (a.fail && !p.fail) out.push({ key: a.key, kind: 'smoke' });
     const listDone =
       !!a.todo && a.todo.done === a.todo.total && (!p.todo || p.todo.done < p.todo.total);

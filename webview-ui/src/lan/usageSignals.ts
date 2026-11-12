@@ -25,8 +25,16 @@ export function burnTier(u?: AgentUsage): BurnTier {
 /** "999", "1.2k", "1.3M" — one decimal, rounded. */
 export function tokensText(n: number): string {
   if (n < 1_000) return String(n);
-  const [v, unit] = n < 1_000_000 ? [n / 1_000, 'k'] : [n / 1_000_000, 'M'];
-  return `${(Math.round(v * 10) / 10).toFixed(1)}${unit}`;
+  const k = Math.round(n / 100) / 10; // thousands, 1 decimal; unit chosen after rounding
+  if (k < 1_000) return `${k.toFixed(1)}k`;
+  return `${(Math.round(n / 100_000) / 10).toFixed(1)}M`;
+}
+
+/** Name-tag chip: "3.4M", or "3.4M · Σ4.1M" for a main whose children add up to more. */
+export function usageChipText(u: AgentUsage): string {
+  return u.sum === undefined
+    ? tokensText(u.tokens)
+    : `${tokensText(u.tokens)} · Σ${tokensText(u.sum)}`;
 }
 
 export function modelFamily(model?: string): ModelFamily {

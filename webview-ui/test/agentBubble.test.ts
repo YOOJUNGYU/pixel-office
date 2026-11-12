@@ -22,6 +22,13 @@ const parts = {
 const inner = LAN_ACTIVITY_MAX_WIDTH_PX - 2 * (LAN_ACTIVITY_PAD_X_PX + CHAT_BORDER_PX);
 
 describe('agentBubbleLayout', () => {
+  it('a model label (Sonnet) widens the header badge', () => {
+    const t = { ...parts, title: 'x', text: 'a' };
+    const base = agentBubbleLayout({ ...t, provider: 'Claude' }, m);
+    const long = agentBubbleLayout({ ...t, provider: 'Sonnet 4.5 long' }, m);
+    expect(long.w).toBeGreaterThan(base.w);
+  });
+
   it('a short activity: one body line under the header', () => {
     const l = agentBubbleLayout(parts, m);
     expect(l.rows).toEqual(['a.ts 편집']);

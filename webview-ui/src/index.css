@@ -455,7 +455,8 @@
 }
 
 /* One-shot effects over agents (LanOverlay, lan/effects.ts): pixel squares, no blur. */
-.fx-plus {
+.fx-plus,
+.fx-box {
   position: absolute;
   transform: translate(-50%, 0);
   white-space: nowrap;
@@ -521,6 +522,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .fx-plus,
+  .fx-box,
   .fx-piece,
   .fx-puff {
     animation: none;
