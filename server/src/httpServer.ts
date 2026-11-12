@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import Fastify from 'fastify';
 
 import { WS_CLOSE_REPLACED } from '../../core/src/constants.js';
+import type { UsageRange } from '../../core/src/messages.js';
 import type {
   AssetCache,
   ClientMessageContext,
@@ -31,6 +32,7 @@ import type { LanService } from './lan/office.js';
 import type { TranscriptService } from './lan/transcript.js';
 import type { Updater } from './lan/updater.js';
 import { APP_VERSION } from './lan/updater.js';
+import type { UsageIndex } from './lan/usage.js';
 import { roomColorsOf, sanitizeLayout } from './layoutPersistence.js';
 
 /** Options for creating the HTTP + WebSocket server. */
@@ -61,11 +63,15 @@ export interface HttpServerOptions {
   autostart?: ClientMessageContext['autostart'];
   /** This PC's agent transcripts, per socket (closed with it). */
   transcripts?: TranscriptService;
+  /** Token usage (local only): the popout usage window's data. */
+  usage?: UsageIndex;
   /** `GET /api/health?waiting`: a page showing "server is off" is polling (it reloads by itself). */
   onWaitingPage?: () => void;
   /** Internet public office relay: status for the handshake, admin kick. */
   relay?: ClientMessageContext['relay'];
 }
+
+const USAGE_RANGES: readonly string[] = ['7d', '30d', 'all'];
 
 /** Result of createHttpServer(). */
 export interface HttpServerHandle {
@@ -177,6 +183,15 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
   /** Popout transcript windows (/ws/transcript): never replace the page, get only their
    *  transcripts and the snapshot tick (for the agent's status line). */
   const popouts = new Set<WsLike>();
+  /** Popouts that opened the usage window → the range each one shows. */
+  const usageRanges = new Map<WsLike, UsageRange>();
+  const sendUsage = (c: WsLike, range: UsageRange): void => {
+    if (options.usage) safeSend(c, { type: 'usageLoaded', ...options.usage.report(range) });
+  };
+  if (options.usage)
+    options.usage.onChanged = () => {
+      for (const [c, range] of usageRanges) sendUsage(c, range);
+    };
   if (lan) {
     // A team joined without a name learns it when a member announces it: re-send then.
     let lastOffices = JSON.stringify(officesMessage(lan));
@@ -196,6 +211,14 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
       if (popouts.size) {
         const snap = snapshotMessage(lan);
         for (const c of popouts) safeSend(c, snap);
+      }
+      if (options.usage && usageRanges.size) {
+        const now = {
+          type: 'usageNow',
+          today: options.usage.today(),
+          scanning: options.usage.scanning,
+        };
+        for (const c of usageRanges.keys()) safeSend(c, now);
       }
     }, SNAPSHOT_INTERVAL_MS);
     // A peer's avatar moved: one extra snapshot, coalesced to ≤ 5 per second.
@@ -296,6 +319,7 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     popouts.add(socket);
     socket.on('close', () => {
       popouts.delete(socket);
+      usageRanges.delete(socket);
       options.transcripts?.close(socket);
     });
     safeSend(socket, { type: 'officeAccess', readOnly: false, version: APP_VERSION });
@@ -303,6 +327,10 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     socket.on('message', (data: Buffer | string) => {
       try {
         const msg = JSON.parse(data.toString()) as Record<string, unknown>;
+        if (msg.type === 'openUsage' && USAGE_RANGES.includes(msg.range as UsageRange)) {
+          usageRanges.set(socket, msg.range as UsageRange);
+          sendUsage(socket, msg.range as UsageRange);
+        }
         if (options.transcripts)
           handleTranscriptMessage(msg, (m) => safeSend(socket, m), options.transcripts, socket);
       } catch {

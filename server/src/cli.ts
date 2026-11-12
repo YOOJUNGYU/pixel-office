@@ -197,9 +197,18 @@ export async function main(boot = true): Promise<void> {
   usage.load();
   scanner.usage = usage;
   // First full scan after the first discover pass (rootsNow() is empty before it).
-  void scanner.ready.then(() => usage.scanAll());
-  setInterval(() => void usage.scanAll(), USAGE_RESCAN_MS).unref();
-  const transcripts = new TranscriptService(scanner);
+  const usageScan = (): void =>
+    void usage.scanAll().catch((err) => console.error('[Pixel Office] usage scan failed:', err));
+  void scanner.ready.then(usageScan);
+  setInterval(usageScan, USAGE_RESCAN_MS).unref();
+  // `usage:<key>` = a finished session out of the usage index (key looked up, never a path).
+  const transcripts = new TranscriptService({
+    transcriptOf: (id) => {
+      if (!id.startsWith('usage:')) return scanner.transcriptOf(id);
+      const f = usage.fileOf(id.slice('usage:'.length));
+      return f && { ...f, kind: 'main', num: 0 };
+    },
+  });
   const lan = new LanService(loadProfile(), scanner);
   const pins = new KnownPeers();
   const udpPort = Number(process.env[UDP_PORT_ENV]) || LAN_UDP_PORT;
@@ -345,6 +354,7 @@ export async function main(boot = true): Promise<void> {
       updater,
       autostart: { get: () => getAutostart(), set: (on) => setAutostart(on) },
       transcripts,
+      usage,
       relay: relay
         ? {
             status: () => relay.status,

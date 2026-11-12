@@ -11,6 +11,7 @@ import { createHttpServer } from './httpServer.js';
 import type { LanService } from './lan/office.js';
 import type { TranscriptService } from './lan/transcript.js';
 import type { Updater } from './lan/updater.js';
+import type { UsageIndex } from './lan/usage.js';
 
 /**
  * Pixel Office server: serves the SPA and streams office state over WebSocket.
@@ -43,6 +44,7 @@ export class PixelAgentsServer {
     autostart?: ClientMessageContext['autostart'];
     onWaitingPage?: () => void;
     transcripts?: TranscriptService;
+    usage?: UsageIndex;
     relay?: ClientMessageContext['relay'];
   }): Promise<{ port: number }> {
     const { app, port, closeClients, broadcast } = await createHttpServer({
@@ -60,6 +62,7 @@ export class PixelAgentsServer {
       autostart: options?.autostart,
       onWaitingPage: options?.onWaitingPage,
       transcripts: options?.transcripts,
+      usage: options?.usage,
       relay: options?.relay,
     });
     this.app = app;

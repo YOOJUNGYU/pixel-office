@@ -255,10 +255,12 @@ export class UsageIndex {
     return this.files[file]?.key;
   }
 
-  fileOf(key: string): { file: string; provider: Provider } | undefined {
+  fileOf(
+    key: string,
+  ): { file: string; provider: Provider; title: string; folder: string } | undefined {
     const s = this.sessions[key];
     return s?.mainFile && fs.existsSync(s.mainFile)
-      ? { file: s.mainFile, provider: s.provider }
+      ? { file: s.mainFile, provider: s.provider, title: s.title, folder: s.folder }
       : undefined;
   }
 

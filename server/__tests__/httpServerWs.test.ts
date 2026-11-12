@@ -392,3 +392,97 @@ describe('/ws LAN office', () => {
     expect(await code).toEqual({ type: 'officeCode', tag: created.tag, code: created.code });
   });
 });
+
+describe('/ws/transcript usage', () => {
+  let server: InstanceType<typeof PixelAgentsServer>;
+  let port: number;
+  let file: string;
+  let changed: (() => void) | undefined;
+  const sockets: WebSocket[] = [];
+  const report = (range: string) => ({ range, scanning: false, totals: {}, days: [] });
+  const usage = {
+    report,
+    today: () => 42,
+    scanning: false,
+    fileOf: (key: string) =>
+      key === 'k1' ? { file, provider: 'claude', title: 'T', folder: 'f' } : undefined,
+    set onChanged(fn: (() => void) | undefined) {
+      changed = fn;
+    },
+  };
+
+  beforeEach(async () => {
+    tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-ws-usage-'));
+    file = path.join(tmpBase, 's.jsonl');
+    fs.writeFileSync(
+      file,
+      JSON.stringify({ type: 'user', message: { role: 'user', content: 'hi' } }) + '\n',
+    );
+    const lan = new LanService({ ...loadProfile(), activeView: PUBLIC_VIEW }, { views: () => [] });
+    const { TranscriptService } = await import('../src/lan/transcript.js');
+    const transcripts = new TranscriptService({
+      transcriptOf: (id) => {
+        if (!id.startsWith('usage:')) return undefined;
+        const f = usage.fileOf(id.slice(6));
+        return f && ({ ...f, kind: 'main', num: 0 } as never);
+      },
+    });
+    server = new PixelAgentsServer();
+    ({ port } = await server.start({ logger: false, lan, transcripts, usage: usage as never }));
+  });
+
+  afterEach(async () => {
+    for (const s of sockets) s.terminate();
+    sockets.length = 0;
+    await server.stop();
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+  });
+
+  const popout = async (): Promise<WebSocket> => {
+    const host = `localhost:${port.toString()}`;
+    const r = await connect(port, { Host: host, Origin: `http://${host}` }, '/ws/transcript');
+    sockets.push(r.socket);
+    return r.socket;
+  };
+
+  it('openUsage → usageLoaded with that range, usageNow on the tick, re-sent on change', async () => {
+    const s = await popout();
+    const loaded = waitForMessage(s, 'usageLoaded');
+    s.send(JSON.stringify({ type: 'openUsage', range: '7d' }));
+    expect(await loaded).toMatchObject({ range: '7d' });
+    expect(await waitForMessage(s, 'usageNow', 2_500)).toEqual({
+      type: 'usageNow',
+      today: 42,
+      scanning: false,
+    });
+    const again = waitForMessage(s, 'usageLoaded');
+    changed?.();
+    expect(await again).toMatchObject({ range: '7d' });
+  });
+
+  it('a bad range is ignored; a socket that never opened usage gets nothing', async () => {
+    const s = await popout();
+    const none = waitForMessage(s, 'usageLoaded', 500);
+    s.send(JSON.stringify({ type: 'openUsage', range: '1y' }));
+    expect(await none).toBeNull();
+    expect(await waitForMessage(s, 'usageNow', 1_500)).toBeNull();
+  });
+
+  it('usage:<key> opens a finished session; unknown keys and paths are errors', async () => {
+    const s = await popout();
+    const ok = waitForMessage(s, 'transcriptLoaded');
+    s.send(JSON.stringify({ type: 'openTranscript', id: 'usage:k1' }));
+    expect(await ok).not.toBeNull();
+    for (const id of ['usage:nope', 'usage:../../etc/passwd']) {
+      const err = waitForMessage(s, 'transcriptError', 2_000, (m) => m.id === id);
+      s.send(JSON.stringify({ type: 'openTranscript', id }));
+      expect(await err).not.toBeNull();
+    }
+  });
+
+  it('a foreign Origin is refused on /ws/transcript', async () => {
+    const evil = await connect(port, { Origin: 'http://evil.example' }, '/ws/transcript');
+    sockets.push(evil.socket);
+    expect(evil.accepted).toBe(false);
+  });
+});
