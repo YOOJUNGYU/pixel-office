@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { USAGE_FILE } from '../../src/constants.js';
 import { UsageIndex } from '../../src/lan/usage.js';
+import { dayRange } from '../../src/lan/usageDays.js';
 
 const NOW = new Date(2026, 10, 12, 12, 0, 0).getTime();
 const DAY = 86_400_000;
@@ -163,5 +164,68 @@ describe('UsageIndex', () => {
     await u.scanAll();
     expect(during).toBe(true);
     expect(u.scanning).toBe(false);
+  });
+
+  it('overlapping scanAll and refresh count once', async () => {
+    const u = mk();
+    await Promise.all([u.scanAll(), u.refresh([main()])]);
+    expect(u.report('all').totals.billable).toBe(170);
+    const v = mk();
+    await Promise.all([v.scanAll(), v.scanAll(), v.refresh([main()]), v.refresh([main()])]);
+    expect(v.report('all').totals.billable).toBe(170);
+    expect(v.scanning).toBe(false);
+  });
+
+  it('dayRange is calendar dates across a DST fall-back', () => {
+    const old = process.env.TZ;
+    process.env.TZ = 'America/New_York';
+    try {
+      const r = dayRange('2026-10-20', '2026-11-12');
+      expect(r.length).toBe(24);
+      expect(r[23]).toBe('2026-11-12');
+    } finally {
+      if (old === undefined) delete process.env.TZ;
+      else process.env.TZ = old;
+    }
+  });
+
+  it('keeps a newer or corrupt usage.json as a .bak and starts fresh', async () => {
+    fs.mkdirSync(dir, { recursive: true });
+    const orig = JSON.stringify({ version: 99, sessions: { x: 1 } });
+    fs.writeFileSync(path.join(dir, USAGE_FILE), orig);
+    const u = mk();
+    u.load();
+    const baks = () => fs.readdirSync(dir).filter((f) => f.startsWith(`${USAGE_FILE}.bak-`));
+    expect(baks().length).toBe(1);
+    expect(baks()[0]).toMatch(/\.bak-99-\d+$/);
+    expect(fs.readFileSync(path.join(dir, baks()[0]), 'utf-8')).toBe(orig);
+    await u.scanAll();
+    u.flush();
+    expect(JSON.parse(fs.readFileSync(path.join(dir, USAGE_FILE), 'utf-8')).version).toBe(1);
+    fs.writeFileSync(path.join(dir, USAGE_FILE), '{nope');
+    mk().load();
+    expect(baks().some((f) => f.includes('.bak-corrupt-'))).toBe(true);
+  });
+
+  it('chunked read equals a single read (split line, split UTF-8 char)', async () => {
+    const big = path.join(proj, 'bbbbbbbb-0000-0000-0000-000000000002.jsonl');
+    let text = '';
+    for (let i = 0; i < 40; i++)
+      text += line(`c${i}`, i + 1, NOW).replace('claude-x', 'claude-é한');
+    fs.writeFileSync(big, text);
+    const total = (n?: number) => {
+      const u = new UsageIndex({
+        dir,
+        roots: () => ({ claude: [path.dirname(proj)], codex: [] }),
+        now: () => NOW,
+        chunkBytes: n,
+      });
+      return u.scanAll().then(() => u.report('all'));
+    };
+    const whole = await total();
+    for (const n of [7, 64, 101]) expect(await total(n)).toEqual(whole);
+    // the multi-byte model name straddles a boundary for at least one of the sizes
+    expect(Buffer.byteLength(text)).toBeGreaterThan(text.length);
+    expect(whole.models.some((m) => m.model === 'claude-é한')).toBe(true);
   });
 });

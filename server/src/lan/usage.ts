@@ -5,10 +5,17 @@ import * as path from 'node:path';
 
 import type { Provider } from '../../../core/src/lan.js';
 import type { UsageLoaded } from '../../../core/src/messages.js';
-import { USAGE_FILE, USAGE_SAVE_DELAY_MS, USAGE_VERSION, VIEW_TITLE_MAX } from '../constants.js';
+import {
+  USAGE_FILE,
+  USAGE_READ_CHUNK_BYTES,
+  USAGE_SAVE_DELAY_MS,
+  USAGE_VERSION,
+  VIEW_TITLE_MAX,
+} from '../constants.js';
 import { codexSessionMeta } from './codexParser.js';
 import type { Roots } from './roots.js';
 import { folderOf } from './session.js';
+import { addDays, dayKey, dayRange, dayStart } from './usageDays.js';
 import { billable, type FileFold, foldLine, newFold, rateOf, type Tally } from './usageLine.js';
 
 export type UsageRange = '7d' | '30d' | 'all';
@@ -47,22 +54,12 @@ interface Candidate {
 
 const TOP_SESSIONS = 10;
 const TOP_PROJECTS = 8;
-const DAY_MS = 86_400_000;
 const zero = (): Tally => ({ input: 0, output: 0, cacheCreate: 0, cacheRead: 0 });
 const addTo = (a: Tally, d: Tally) => {
   a.input += d.input;
   a.output += d.output;
   a.cacheCreate += d.cacheCreate;
   a.cacheRead += d.cacheRead;
-};
-const pad = (n: number) => String(n).padStart(2, '0');
-const dayKey = (ms: number) => {
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-const dayStart = (key: string) => {
-  const [y, m, d] = key.split('-').map(Number);
-  return new Date(y, m - 1, d).getTime();
 };
 const dirents = (d: string) =>
   fs.promises.readdir(d, { withFileTypes: true }).catch(() => [] as fs.Dirent[]);
@@ -74,13 +71,17 @@ export class UsageIndex {
   private sessions: Record<string, SessionEntry> = {};
   private days: Days = {};
   private busy = false;
+  private scan?: Promise<void>;
+  private readonly inFlight = new Set<string>();
+  private readonly chunk: number;
   private dirty = false;
   private timer: NodeJS.Timeout | null = null;
   private readonly file: string;
   private readonly roots: () => Roots;
   private readonly now: () => number;
 
-  constructor(opts: { dir: string; roots: () => Roots; now?: () => number }) {
+  constructor(opts: { dir: string; roots: () => Roots; now?: () => number; chunkBytes?: number }) {
+    this.chunk = opts.chunkBytes ?? USAGE_READ_CHUNK_BYTES;
     this.file = path.join(opts.dir, USAGE_FILE);
     this.roots = opts.roots;
     this.now = opts.now ?? Date.now;
@@ -91,15 +92,31 @@ export class UsageIndex {
   }
 
   load(): void {
+    let text: string;
     try {
-      const j = JSON.parse(fs.readFileSync(this.file, 'utf-8'));
-      // v0 never held history (no sessions): nothing to migrate, rescan. Bump here when v2 exists.
-      if (j?.version !== USAGE_VERSION || !j.sessions) return;
-      this.files = j.files ?? {};
-      this.sessions = j.sessions;
-      this.days = j.days ?? {};
+      text = fs.readFileSync(this.file, 'utf-8');
     } catch {
-      // missing / corrupt: start empty
+      return; // none yet
+    }
+    let tag = 'corrupt';
+    try {
+      const j = JSON.parse(text);
+      tag = String(j?.version);
+      // v0 never held history (no sessions): rescan. Add a migration here when v2 exists.
+      if (j?.version === USAGE_VERSION && j.sessions) {
+        this.files = j.files ?? {};
+        this.sessions = j.sessions;
+        this.days = j.days ?? {};
+        return;
+      }
+    } catch {
+      // fall through: keep the unreadable file, start empty
+    }
+    try {
+      // the history may be unrecoverable (Claude deletes old transcripts): never overwrite it
+      fs.renameSync(this.file, `${this.file}.bak-${tag}-${Date.now()}`);
+    } catch {
+      // read-only dir: the next flush fails too
     }
   }
 
@@ -134,8 +151,17 @@ export class UsageIndex {
     }
   }
 
-  async scanAll(): Promise<void> {
+  /** One scan at a time: an overlapping caller gets the running one. */
+  scanAll(): Promise<void> {
+    if (this.scan) return this.scan;
     this.busy = true;
+    return (this.scan = this.doScan().finally(() => {
+      this.busy = false;
+      this.scan = undefined;
+    }));
+  }
+
+  private async doScan(): Promise<void> {
     let folded = false;
     try {
       const { claude, codex } = this.roots();
@@ -193,7 +219,7 @@ export class UsageIndex {
           this.dirty = true;
         }
     } finally {
-      this.busy = false;
+      // (busy is cleared by scanAll)
     }
     if (folded) this.onChanged?.();
   }
@@ -248,16 +274,15 @@ export class UsageIndex {
     const today = dayKey(this.now());
     const first = range === 'all' ? (Object.keys(this.days).sort()[0] ?? today) : '';
     const span = range === '7d' ? 7 : range === '30d' ? 30 : 0;
-    const startMs = span ? dayStart(today) - (span - 1) * DAY_MS : dayStart(first);
+    const dates = dayRange(span ? addDays(today, -(span - 1)) : first, today);
+    const startMs = dayStart(dates[0]);
     const totals = { billable: 0, ...zero(), sessions: 0 };
     const projects = new Map<string, number>();
     const models = new Map<string, number>();
     const providers = new Map<string, number>();
     const days: UsageLoaded['days'] = [];
     const bump = (m: Map<string, number>, k: string, n: number) => m.set(k, (m.get(k) ?? 0) + n);
-    // ponytail: DAY_MS steps drift an hour across DST; dayKey() of noon-ish start keeps the date right
-    for (let t = startMs; dayKey(t) <= today; t += DAY_MS) {
-      const day = dayKey(t + DAY_MS / 2);
+    for (const day of dates) {
       const sum = zero();
       for (const [folder, fm] of Object.entries(this.days[day] ?? {}))
         for (const [model, mm] of Object.entries(fm))
@@ -329,6 +354,16 @@ export class UsageIndex {
 
   /** Reads the appended whole lines of one file. True when it folded anything. */
   private async ingest(c: Candidate): Promise<boolean> {
+    if (this.inFlight.has(c.file)) return false; // another caller is reading it right now
+    this.inFlight.add(c.file);
+    try {
+      return await this.ingestFile(c);
+    } finally {
+      this.inFlight.delete(c.file);
+    }
+  }
+
+  private async ingestFile(c: Candidate): Promise<boolean> {
     let st: fs.Stats;
     try {
       st = await fs.promises.stat(c.file);
@@ -351,45 +386,70 @@ export class UsageIndex {
       e.fold = newFold(e.fold.provider);
       e.offset = 0;
     }
-    let buf: Buffer;
+    let any = false;
+    let fh: fs.promises.FileHandle;
     try {
-      const fh = await fs.promises.open(c.file, 'r');
-      try {
-        const from = e?.offset ?? 0;
-        buf = Buffer.alloc(Math.max(0, st.size - from));
-        await fh.read(buf, 0, buf.length, from);
-      } finally {
-        await fh.close();
-      }
+      fh = await fs.promises.open(c.file, 'r');
     } catch {
       return false;
     }
-    const end = buf.lastIndexOf(10) + 1;
-    if (!e) {
-      if (!end) return false; // nothing whole yet: look again later
-      let key = c.key;
-      if (!key) {
-        const first = buf.subarray(0, buf.indexOf(10)).toString('utf8');
-        const meta = codexSessionMeta(first);
-        key = meta ? (meta.parentId ?? meta.id) : path.basename(c.file, '.jsonl');
-        if (meta?.parentId) c = { ...c, sub: true };
+    try {
+      let pos = e?.offset ?? 0;
+      let pending: Buffer = Buffer.alloc(0); // bytes after the last newline (whole bytes: no split UTF-8)
+      while (pos < st.size) {
+        const buf = Buffer.alloc(Math.min(this.chunk, st.size - pos));
+        const { bytesRead } = await fh.read(buf, 0, buf.length, pos);
+        if (!bytesRead) break;
+        pos += bytesRead;
+        const data = Buffer.concat([pending, buf.subarray(0, bytesRead)]);
+        const end = data.lastIndexOf(10) + 1;
+        pending = data.subarray(end);
+        if (!end) continue;
+        if (!e) {
+          const made = this.register(c, data.subarray(0, data.indexOf(10)).toString('utf8'));
+          if (!made) return false;
+          e = made;
+        }
+        if (this.fold(e, c.file, data.subarray(0, end))) any = true;
+        e.offset += end;
+        await yieldLoop(); // a huge transcript must not block the event loop
       }
-      const base = path.basename(c.file);
-      for (const [f, o] of Object.entries(this.files))
-        if (o.key === key && path.basename(f) === base) return false; // same file via another root
-      e = this.files[c.file] = {
-        size: 0,
-        mtimeMs: 0,
-        offset: 0,
-        key,
-        ...(c.sub ? { sub: true as const } : {}),
-        fold: newFold(c.provider),
-      };
+    } catch {
+      // vanished mid-read: what was folded is kept (offset only moved past whole lines)
+    } finally {
+      await fh.close();
     }
-    e.size = st.size;
-    e.mtimeMs = st.mtimeMs;
-    this.dirty = true;
-    if (!end) return false;
+    if (e) {
+      e.size = st.size;
+      e.mtimeMs = st.mtimeMs;
+      this.dirty = true;
+    }
+    return any;
+  }
+
+  /** New file: pick its session key and take its entry, unless the same file is tracked via another root. */
+  private register(c: Candidate, firstLine: string): FileEntry | undefined {
+    let key = c.key;
+    let sub = c.sub;
+    if (!key) {
+      const meta = codexSessionMeta(firstLine);
+      key = meta ? (meta.parentId ?? meta.id) : path.basename(c.file, '.jsonl');
+      if (meta?.parentId) sub = true;
+    }
+    const base = path.basename(c.file);
+    for (const [f, o] of Object.entries(this.files))
+      if (o.key === key && path.basename(f) === base) return undefined;
+    return (this.files[c.file] = {
+      size: 0,
+      mtimeMs: 0,
+      offset: 0,
+      key,
+      ...(sub ? { sub: true as const } : {}),
+      fold: newFold(c.provider),
+    });
+  }
+
+  private fold(e: FileEntry, file: string, whole: Buffer): boolean {
     const now = this.now();
     const s = (this.sessions[e.key] ??= {
       provider: e.fold.provider,
@@ -401,7 +461,7 @@ export class UsageIndex {
       tally: zero(),
     });
     let any = false;
-    for (const line of buf.subarray(0, end).toString('utf8').split('\n')) {
+    for (const line of whole.toString('utf8').split('\n')) {
       if (!line) continue;
       const r = foldLine(e.fold, line, now);
       if (!r) continue;
@@ -409,13 +469,12 @@ export class UsageIndex {
       addTo(this.bucket(r.ts, e.fold, r.model || e.fold.model), r.d);
       addTo(s.tally, r.d);
     }
-    e.offset += end;
     const f = e.fold;
     if (f.firstTs && (!s.firstTs || f.firstTs < s.firstTs)) s.firstTs = f.firstTs;
     s.lastTs = Math.max(s.lastTs, f.lastTs);
     if (f.model) s.model = f.model;
     if (!e.sub) {
-      s.mainFile = c.file;
+      s.mainFile = file;
       s.title = Array.from(f.title).slice(0, VIEW_TITLE_MAX).join('');
       if (f.cwd) s.folder = folderOf(f.cwd);
     } else if (!s.folder && f.cwd) s.folder = folderOf(f.cwd);

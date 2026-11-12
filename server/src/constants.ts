@@ -304,3 +304,5 @@ export const USAGE_FILE = 'usage.json';
 export const USAGE_RESCAN_MS = 600_000;
 export const USAGE_VERSION = 1;
 export const USAGE_SAVE_DELAY_MS = 5_000;
+/** Token usage: bytes read per step while folding a transcript (the loop yields between steps). */
+export const USAGE_READ_CHUNK_BYTES = 8 * 1024 * 1024;
