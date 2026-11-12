@@ -152,17 +152,21 @@ describe('AgentWatcher (my own agents)', () => {
     expect(w.apply([agent(idle)])).toHaveLength(1);
   });
 
-  it('done waits until every subagent/shell of the session is idle or gone', () => {
+  it('done only when the main itself finishes with every subagent/shell idle or gone', () => {
     const w = new AgentWatcher();
     const sub = agent({ id: 's1/sub/x', kind: 'subagent', num: 0, parentId: 's1', act: 'read' });
     const shell = agent({ id: 's1/sh/y', kind: 'shell', num: 0, parentId: 's1', act: 'run' });
     w.apply([agent(), sub, shell]);
-    expect(w.apply([agent(idle), sub, shell])).toEqual([]); // main done, children still busy
+    expect(w.apply([agent(idle), sub, shell])).toEqual([]); // main's turn ended, children busy
+    // A child finishing is never the session finishing: the main picks its result up next.
     expect(w.apply([agent(idle), { ...sub, ...idle }, shell])).toEqual([]);
+    expect(w.apply([agent(idle), { ...sub, ...idle }])).toEqual([]); // the last shell left
+    // The main resumes on the result and ends its own turn: that is the one notification.
+    expect(w.apply([agent(), { ...sub, ...idle }])).toEqual([]);
     expect(w.apply([agent(idle), { ...sub, ...idle }])).toEqual([
       { kind: 'done', label: 'Claude #1', context: '' },
-    ]); // the last shell left
-    expect(w.apply([agent(idle), { ...sub, ...idle }])).toEqual([]);
+    ]);
+    expect(w.apply([agent(idle)])).toEqual([]);
     // another session's busy child does not hold this one back
     const w2 = new AgentWatcher();
     const other = { ...shell, id: 's2/sh/z', parentId: 's2' };

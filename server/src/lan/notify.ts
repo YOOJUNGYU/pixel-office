@@ -141,9 +141,10 @@ const idle = (v: AgentView): boolean => v.room === 'lounge' && v.act === 'idle';
 /**
  * This PC's main agents (subagents/shells are not announced themselves). An agent seen
  * for the first time is the baseline (also everything at start); a closed session just
- * disappears. waiting: false→true once per wait; done: busy→idle once per turn, where
- * idle also needs every subagent/shell of that session idle or gone — so a turn that
- * ends with background work still running is announced when the last of it finishes.
+ * disappears. waiting: false→true once per wait; done: the main's OWN busy→idle, once per
+ * turn, and only when every subagent/shell of that session is idle or gone by then. A
+ * child finishing never announces anything: the main picks its result up and goes on, so
+ * the session is done when that later turn of the main ends.
  */
 export class AgentWatcher {
   private last = new Map<string, { waiting: boolean; idle: boolean }>();
@@ -154,18 +155,18 @@ export class AgentWatcher {
   ): AgentEvent[] {
     const out: AgentEvent[] = [];
     const next = new Map<string, { waiting: boolean; idle: boolean }>();
-    // ponytail: a shell whose end never reaches the transcript keeps its session busy until the session's TTL
+    // ponytail: a turn that ends while a child runs and is never resumed says nothing (Claude resumes on the child's result)
     const busyKids = new Set(views.filter((c) => !idle(c)).map((c) => c.parentId));
     for (const v of views) {
       // a peer's agent (an office snapshot entry carries `peer`) is never ours to announce
       if (v.kind !== 'main' || 'peer' in v) continue;
-      const now = { waiting: waiting(v), idle: idle(v) && !busyKids.has(v.id) };
+      const now = { waiting: waiting(v), idle: idle(v) };
       const prev = this.last.get(v.id);
       next.set(v.id, now);
       if (!prev) continue;
       const label = `${v.provider === 'claude' ? 'Claude' : 'Codex'} #${v.num.toString()}`;
-      const kind =
-        now.waiting && !prev.waiting ? 'waiting' : now.idle && !prev.idle ? 'done' : null;
+      const finished = now.idle && !prev.idle && !busyKids.has(v.id);
+      const kind = now.waiting && !prev.waiting ? 'waiting' : finished ? 'done' : null;
       if (!kind) continue;
       const { title, folder } = info(v.id) ?? {};
       out.push({
