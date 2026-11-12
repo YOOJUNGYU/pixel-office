@@ -103,7 +103,6 @@ function TodoChip({ a }: { a: OfficeAgent }) {
   );
 }
 
-/** The failure drop beside a head: fixed size, so it shows at any zoom. */
 /** The bubble's provider badge: the model's name and colour when known, else the provider's. */
 function badgeLabel(a: OfficeAgent): { text: string; bg: string } {
   const f = modelFamily(a.usage?.model);
@@ -118,7 +117,7 @@ function TokenChip({ u }: { u: AgentUsage }) {
     <span
       data-usage-tokens={usageChipText(u)}
       className="shrink-0 text-2xs font-bold leading-none"
-      title={t('usage.sum')}
+      title={u.sum !== undefined ? t('usage.sum') : undefined}
       style={{ padding: `1px ${STATUS_CHIP_PAD_X_PX}px`, background: 'var(--ctx-track)' }}
     >
       {usageChipText(u)}

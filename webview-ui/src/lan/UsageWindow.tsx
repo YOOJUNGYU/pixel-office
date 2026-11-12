@@ -46,7 +46,7 @@ export function UsageWindow() {
   useThemePref(); // follows the office window's theme (storage event in theme.ts)
   const [range, setRange] = useState<UsageRange>(storedRange);
   const rangeRef = useRef(range);
-  const [now, setNow] = useState({ today: 0, scanning: false });
+  const [now, setNow] = useState<{ today: number; scanning?: boolean }>({ today: 0 });
   const [data, setData] = useState<UsageLoaded | null>(null);
   const [agents, setAgents] = useState<OfficeAgent[]>([]);
 
@@ -87,7 +87,7 @@ export function UsageWindow() {
     [],
   );
 
-  const scanning = now.scanning || !!data?.scanning;
+  const scanning = now.scanning ?? !!data?.scanning; // usageNow is the fresher word once seen
   return (
     <div className="fixed inset-0 bg-bg text-text overflow-y-auto pixel-scrollbar">
       <div className="flex flex-col gap-10 p-12">

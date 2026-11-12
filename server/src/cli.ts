@@ -199,7 +199,9 @@ export async function main(boot = true): Promise<void> {
   // First full scan after the first discover pass (rootsNow() is empty before it).
   const usageScan = (): void =>
     void usage.scanAll().catch((err) => console.error('[Pixel Office] usage scan failed:', err));
-  void scanner.ready.then(usageScan);
+  void scanner.ready.then(usageScan, (err) =>
+    console.error('[Pixel Office] first discover failed:', err),
+  );
   setInterval(usageScan, USAGE_RESCAN_MS).unref();
   const transcripts = new TranscriptService(usageTranscriptSource(scanner, usage));
   const lan = new LanService(loadProfile(), scanner);

@@ -7,6 +7,7 @@ import type { Provider } from '../../../core/src/lan.js';
 import type { UsageLoaded } from '../../../core/src/messages.js';
 import {
   USAGE_FILE,
+  USAGE_RATE_WINDOW_MS,
   USAGE_READ_CHUNK_BYTES,
   USAGE_SAVE_DELAY_MS,
   USAGE_VERSION,
@@ -34,6 +35,8 @@ interface FileEntry {
   key: string;
   sub?: true;
   fold: FileFold;
+  /** Tombstone: never read or counted (duplicate root, malformed stored entry). */
+  skip?: true;
 }
 interface SessionEntry {
   provider: Provider;
@@ -64,13 +67,22 @@ const addTo = (a: Tally, d: Tally) => {
 };
 const dirents = (d: string) =>
   fs.promises.readdir(d, { withFileTypes: true }).catch(() => [] as fs.Dirent[]);
+// Prototype-free maps: a folder or session named `__proto__`/`constructor` is just a key.
+const nul = <T>(): Record<string, T> => Object.create(null);
+const wrap = <T>(src: unknown, depth: number): Record<string, T> => {
+  const out = nul<T>();
+  if (src && typeof src === 'object')
+    for (const [k, v] of Object.entries(src)) out[k] = (depth > 1 ? wrap(v, depth - 1) : v) as T;
+  return out;
+};
 const yieldLoop = () => new Promise<void>((r) => setImmediate(r));
 
 export class UsageIndex {
   onChanged?: () => void;
   private files: Record<string, FileEntry> = {};
-  private sessions: Record<string, SessionEntry> = {};
-  private days: Days = {};
+  private sessions: Record<string, SessionEntry> = nul();
+  private days: Days = nul();
+  private readOnly = false; // usage.json unreadable: never overwrite it
   private busy = false;
   private scan?: Promise<void>;
   private readonly inFlight = new Set<string>();
@@ -96,7 +108,11 @@ export class UsageIndex {
     let text: string;
     try {
       text = fs.readFileSync(this.file, 'utf-8');
-    } catch {
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        this.readOnly = true; // the history may be intact: a rescan + flush must not replace it
+        console.error('[Pixel Office] Cannot read usage, history is not saved this run:', err);
+      }
       return; // none yet
     }
     let tag = 'corrupt';
@@ -105,9 +121,23 @@ export class UsageIndex {
       tag = String(j?.version);
       // v0 never held history (no sessions): rescan. Add a migration here when v2 exists.
       if (j?.version === USAGE_VERSION && j.sessions) {
-        this.files = j.files ?? {};
-        this.sessions = j.sessions;
-        this.days = j.days ?? {};
+        for (const [f, e] of Object.entries<FileEntry>(j.files ?? {})) {
+          const ok = e && typeof e.offset === 'number' && e.fold && typeof e.fold === 'object';
+          // A bad entry's buckets are already counted: re-reading from 0 would double them, so it
+          // becomes a tombstone at its stored size.
+          this.files[f] = ok
+            ? e
+            : {
+                size: Number(e?.size) || 0,
+                mtimeMs: 0,
+                offset: 0,
+                key: String(e?.key ?? ''),
+                fold: newFold('claude'),
+                skip: true,
+              };
+        }
+        this.sessions = wrap(j.sessions, 1);
+        this.days = wrap(j.days, 4);
         return;
       }
     } catch {
@@ -122,7 +152,7 @@ export class UsageIndex {
   }
 
   save(): void {
-    if (!this.dirty || this.timer) return;
+    if (!this.dirty || this.timer || this.readOnly) return;
     this.timer = setTimeout(() => this.flush(), USAGE_SAVE_DELAY_MS);
     this.timer.unref();
   }
@@ -130,8 +160,16 @@ export class UsageIndex {
   flush(): void {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
-    if (!this.dirty) return;
+    if (!this.dirty || this.readOnly) return;
     this.dirty = false;
+    // ponytail: an idle file's dedupe state (byMsg/recent) is dropped; a snapshot of the same
+    // message arriving later than the rate window is not real (snapshots come within seconds).
+    const cut = this.now() - USAGE_RATE_WINDOW_MS;
+    for (const e of Object.values(this.files))
+      if (e.fold.lastTs < cut) {
+        e.fold.byMsg = {};
+        e.fold.recent = [];
+      }
     try {
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
       const tmp = `${this.file}.tmp`;
@@ -159,18 +197,18 @@ export class UsageIndex {
     return (this.scan = this.doScan().finally(() => {
       this.busy = false;
       this.scan = undefined;
+      this.onChanged?.(); // after busy clears: the pushed report says scanning:false
     }));
   }
 
   private async doScan(): Promise<void> {
-    let folded = false;
     try {
       const { claude, codex } = this.roots();
       const seen = new Set<string>();
       const listed: string[] = [];
       const take = async (c: Candidate) => {
         seen.add(c.file);
-        if (await this.ingest(c)) folded = true;
+        await this.ingest(c);
         await yieldLoop();
       };
       for (const root of claude) {
@@ -222,7 +260,6 @@ export class UsageIndex {
     } finally {
       // (busy is cleared by scanAll)
     }
-    if (folded) this.onChanged?.();
   }
 
   async refresh(files: string[]): Promise<void> {
@@ -238,7 +275,7 @@ export class UsageIndex {
 
   fileUsage(file: string): FileUsage | undefined {
     const e = this.files[file];
-    if (!e) return undefined;
+    if (!e || e.skip) return undefined;
     return {
       tokens: billable(e.fold.total),
       rate: Math.max(0, rateOf(e.fold, this.now())),
@@ -253,7 +290,8 @@ export class UsageIndex {
   }
 
   keyOf(file: string): string | undefined {
-    return this.files[file]?.key;
+    const e = this.files[file];
+    return e?.skip ? undefined : e?.key;
   }
 
   fileOf(
@@ -349,9 +387,9 @@ export class UsageIndex {
   }
 
   private bucket(ts: number, fold: FileFold, model: string): Tally {
-    const m = (this.days[dayKey(ts)] ??= {});
-    const f = (m[folderOf(fold.cwd) || '?'] ??= {});
-    const mm = (f[model || 'unknown'] ??= {});
+    const m = (this.days[dayKey(ts)] ??= nul());
+    const f = (m[folderOf(fold.cwd) || '?'] ??= nul());
+    const mm = (f[model || 'unknown'] ??= nul());
     return (mm[fold.provider] ??= zero());
   }
 
@@ -374,6 +412,16 @@ export class UsageIndex {
       return false;
     }
     let e = this.files[c.file];
+    if (e?.skip) {
+      // ponytail: a tombstone follows the file's size without reading it (the other root's copy
+      // is the one counted); a grown file never un-skips.
+      if (st.size !== e.size) {
+        e.size = st.size;
+        e.mtimeMs = st.mtimeMs;
+        this.dirty = true;
+      }
+      return false;
+    }
     if (e && st.size === e.size) return false;
     if (e && st.size < e.offset) {
       // rewritten: take the old fold back out (ponytail: all of it from the day of its last line)
@@ -410,7 +458,18 @@ export class UsageIndex {
         if (!end) continue;
         if (!e) {
           const made = this.register(c, data.subarray(0, data.indexOf(10)).toString('utf8'));
-          if (!made) return false;
+          if (!made) {
+            this.files[c.file] = {
+              size: st.size,
+              mtimeMs: st.mtimeMs,
+              offset: st.size,
+              key: c.key ?? '',
+              fold: newFold(c.provider),
+              skip: true,
+            };
+            this.dirty = true;
+            return false;
+          }
           e = made;
         }
         if (this.fold(e, c.file, data.subarray(0, end))) any = true;
@@ -441,7 +500,7 @@ export class UsageIndex {
     }
     const base = path.basename(c.file);
     for (const [f, o] of Object.entries(this.files))
-      if (o.key === key && path.basename(f) === base) return undefined;
+      if (!o.skip && o.key === key && path.basename(f) === base) return undefined;
     return (this.files[c.file] = {
       size: 0,
       mtimeMs: 0,

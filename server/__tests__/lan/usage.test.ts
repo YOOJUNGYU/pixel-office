@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { USAGE_FILE } from '../../src/constants.js';
 import { TranscriptService } from '../../src/lan/transcript.js';
@@ -221,6 +221,103 @@ describe('UsageIndex', () => {
     fs.writeFileSync(path.join(dir, USAGE_FILE), '{nope');
     mk().load();
     expect(baks().some((f) => f.includes('.bak-corrupt-'))).toBe(true);
+  });
+
+  it('onChanged fires after busy clears, also when nothing was folded', async () => {
+    const u = mk();
+    const seen: boolean[] = [];
+    u.onChanged = () => seen.push(u.report('all').scanning);
+    await u.scanAll();
+    await u.scanAll(); // folds nothing
+    expect(seen).toEqual([false, false]);
+  });
+
+  it('drops dedupe state of an idle file at flush, totals kept, new lines still fold', async () => {
+    let now = NOW;
+    const u = new UsageIndex({
+      dir,
+      roots: () => ({ claude: [path.dirname(proj)], codex: [] }),
+      now: () => now,
+    });
+    await u.scanAll();
+    now = NOW + 10 * 60_000;
+    u.flush();
+    const stored = JSON.parse(fs.readFileSync(path.join(dir, USAGE_FILE), 'utf-8'));
+    const f = stored.files[main()].fold;
+    expect(f.byMsg).toEqual({});
+    expect(f.recent).toEqual([]);
+    expect(f.total.output).toBe(100);
+    fs.appendFileSync(main(), line('m2', 7, now));
+    await u.refresh([main()]);
+    expect(u.report('all').totals.billable).toBe(187);
+  });
+
+  it('a non-ENOENT read error keeps the file: load does not throw, flush never writes', async () => {
+    fs.mkdirSync(path.join(dir, USAGE_FILE), { recursive: true }); // EISDIR on read
+    const u = mk();
+    expect(() => u.load()).not.toThrow();
+    await u.scanAll();
+    expect(u.report('all').totals.billable).toBe(170);
+    u.flush();
+    expect(fs.statSync(path.join(dir, USAGE_FILE)).isDirectory()).toBe(true);
+  });
+
+  it('folders named like prototype keys count and survive save and load', async () => {
+    for (const [i, name] of ['__proto__', 'constructor'].entries()) {
+      const f = path.join(proj, `cccccccc-0000-0000-0000-00000000000${i}.jsonl`);
+      fs.writeFileSync(f, line(`p${i}`, 1000 * (i + 1), NOW).replace('/w/proj', `/w/${name}`));
+    }
+    const u = mk();
+    await u.scanAll();
+    const check = (x: UsageIndex) => {
+      const p = Object.fromEntries(x.report('all').projects.map((q) => [q.name, q.billable]));
+      expect(p['__proto__']).toBe(1010);
+      expect(p['constructor']).toBe(2010);
+    };
+    check(u);
+    u.flush();
+    const v = mk();
+    v.load();
+    check(v);
+    fs.appendFileSync(
+      path.join(proj, 'cccccccc-0000-0000-0000-000000000000.jsonl'),
+      line('p9', 5, NOW).replace('/w/proj', '/w/__proto__'),
+    );
+    await v.refresh([path.join(proj, 'cccccccc-0000-0000-0000-000000000000.jsonl')]);
+    expect(v.report('all').projects.find((q) => q.name === '__proto__')?.billable).toBe(1025);
+  });
+
+  it('a duplicate-root file is tombstoned: not re-read, never counted', async () => {
+    const root2 = path.join(tmp, 'projects2');
+    fs.cpSync(path.join(tmp, 'projects'), root2, { recursive: true });
+    const u = mk(() => ({ claude: [path.join(tmp, 'projects'), root2], codex: [] }));
+    await u.scanAll();
+    const dup = path.join(root2, 'p', `${uuid}.jsonl`);
+    expect(u.fileUsage(dup)).toBeUndefined();
+    const open = vi.spyOn(fs.promises, 'open');
+    try {
+      await u.scanAll();
+      expect(open).not.toHaveBeenCalled();
+    } finally {
+      open.mockRestore();
+    }
+    expect(u.report('all').totals.billable).toBe(170);
+  });
+
+  it('a malformed files entry loads as a tombstone: other entries refresh, no double count', async () => {
+    const u = mk();
+    await u.scanAll();
+    u.flush();
+    const fp = path.join(dir, USAGE_FILE);
+    const j = JSON.parse(fs.readFileSync(fp, 'utf-8'));
+    delete j.files[main()].fold;
+    fs.writeFileSync(fp, JSON.stringify(j));
+    const v = mk();
+    v.load();
+    fs.appendFileSync(path.join(proj, uuid, 'subagents', 'agent-a.jsonl'), line('s2', 3, NOW));
+    await v.scanAll();
+    expect(v.report('all').totals.billable).toBe(183);
+    expect(v.fileUsage(main())).toBeUndefined();
   });
 
   it('chunked read equals a single read (split line, split UTF-8 char)', async () => {
