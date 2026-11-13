@@ -21,9 +21,8 @@ test('code input: upper-case, spaces dropped, dashes kept', () => {
   assert.equal(normalizeCodeInput(''), '');
 });
 
-test('no team: the public office (active, enabled) and personal mode', () => {
+test('no team: personal mode first, then the public office (active, enabled)', () => {
   assert.deepEqual(switcherItems({ offices: [], activeView: 'public' }), [
-    { view: 'public', name: '', isPublic: true, isPersonal: false, active: true, disabled: false },
     {
       view: 'personal',
       name: '',
@@ -32,6 +31,7 @@ test('no team: the public office (active, enabled) and personal mode', () => {
       active: false,
       disabled: false,
     },
+    { view: 'public', name: '', isPublic: true, isPersonal: false, active: true, disabled: false },
   ]);
 });
 
@@ -40,9 +40,9 @@ test('personal mode: only the personal tab is active; teams stay listed and enab
   assert.deepEqual(
     items.map((i) => [i.view, i.active, i.disabled]),
     [
+      ['personal', true, false],
       ['public', false, true],
       ['a', false, false],
-      ['personal', true, false],
     ],
   );
   assert.equal(isPersonal({ activeView: 'personal' }), true);
@@ -61,13 +61,13 @@ test('in a team: public disabled, teams in join order, active follows activeView
   assert.deepEqual(
     items.map((i) => [i.view, i.isPublic, i.active, i.disabled]),
     [
+      ['personal', false, false, false],
       ['public', true, false, true],
       ['a', false, false, false],
       ['b', false, true, false],
-      ['personal', false, false, false],
     ],
   );
-  assert.equal(items[1].name, '개발팀');
+  assert.equal(items[2].name, '개발팀');
 });
 
 test('switchConfirmName: the current team or null', () => {

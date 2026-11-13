@@ -5,7 +5,7 @@ import { transport } from '../transport/index.js';
 import { switcherItems } from './offices.js';
 
 /**
- * Top-centre office tabs: 🌐 public + 🔒 each team + 🏠 personal. This PC's browser only.
+ * Top-centre office tabs: 🏠 personal + 🌐 public + 🔒 each team. This PC's browser only.
  */
 export function OfficeSwitcher({ state }: { state: Omit<OfficesState, 'type'> }) {
   useLang();

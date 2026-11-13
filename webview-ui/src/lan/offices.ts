@@ -22,6 +22,14 @@ export function switcherItems(state: Omit<OfficesState, 'type'>): SwitcherItem[]
   const inTeam = state.offices.length > 0;
   return [
     {
+      view: PERSONAL_VIEW,
+      name: '',
+      isPublic: false,
+      isPersonal: true,
+      active: state.activeView === PERSONAL_VIEW,
+      disabled: false,
+    },
+    {
       view: PUBLIC_VIEW,
       name: '',
       isPublic: true,
@@ -37,14 +45,6 @@ export function switcherItems(state: Omit<OfficesState, 'type'>): SwitcherItem[]
       active: state.activeView === o.tag,
       disabled: false,
     })),
-    {
-      view: PERSONAL_VIEW,
-      name: '',
-      isPublic: false,
-      isPersonal: true,
-      active: state.activeView === PERSONAL_VIEW,
-      disabled: false,
-    },
   ];
 }
 
