@@ -99,6 +99,9 @@ components:
         # Internet public office relay (loopback browser only)
         - $ref: '#/components/schemas/RelayState'
         - $ref: '#/components/schemas/RelayKickResult'
+        - $ref: '#/components/schemas/ArcadeTicketMessage'
+        - $ref: '#/components/schemas/ArcadeResult'
+        - $ref: '#/components/schemas/ArcadeBoard'
         # Offices (loopback browser only)
         - $ref: '#/components/schemas/OfficesState'
         - $ref: '#/components/schemas/OfficeCreated'
@@ -135,6 +138,9 @@ components:
         - $ref: '#/components/schemas/GetOfficeCode'
         - $ref: '#/components/schemas/SendChat'
         - $ref: '#/components/schemas/DeleteChat'
+        - $ref: '#/components/schemas/ArcadeStart'
+        - $ref: '#/components/schemas/SubmitScore'
+        - $ref: '#/components/schemas/OpenArcade'
         - $ref: '#/components/schemas/MoveAvatar'
         - $ref: '#/components/schemas/SetNotifications'
         - $ref: '#/components/schemas/OpenTranscript'
@@ -470,6 +476,64 @@ components:
           type: boolean
         reason:
           $ref: '#/components/schemas/RelayKickReason'
+
+    ArcadeTicketMessage:
+      description: >-
+        Answer to arcadeStart, to the requesting socket only. No ticket = the
+        relay is unreachable: the run is played but not ranked.
+      type: object
+      additionalProperties: false
+      required: [type, game, req]
+      properties:
+        type:
+          const: arcadeTicket
+        game:
+          $ref: '#/components/schemas/GameId'
+        req:
+          type: integer
+        ticket:
+          $ref: '#/components/schemas/ArcadeTicket'
+
+    ArcadeResult:
+      description: >-
+        Answer to submitScore, to the requesting socket only: the score the
+        relay computed, this PC's best and rank, or why it was refused.
+      type: object
+      additionalProperties: false
+      required: [type, game, ok]
+      properties:
+        type:
+          const: arcadeResult
+        game:
+          $ref: '#/components/schemas/GameId'
+        ok:
+          type: boolean
+        score:
+          type: integer
+        best:
+          type: integer
+        rank:
+          type: integer
+        reason:
+          $ref: '#/components/schemas/ArcadeRefusal'
+
+    ArcadeRefusal:
+      type: string
+      description: Why a run was not recorded (network = the relay could not be reached).
+      enum: [network, bad, sig, expired, used, replay, time]
+
+    ArcadeBoard:
+      description: >-
+        The relay's hall of fame (each person's best per game, best first),
+        to the asking socket only. No boards = the relay is unreachable.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: arcadeBoard
+        boards:
+          $ref: '#/components/schemas/ArcadeBoards'
 
     RelayStateKind:
       type: string
@@ -1335,6 +1399,67 @@ components:
           type: string
           pattern: '^#[0-9A-Fa-f]{6}$'
 
+    GameId:
+      type: string
+      enum: [cable, bugs, breaker, drone, merge]
+
+    ArcadeTicket:
+      type: object
+      description: >-
+        A run's ticket from the relay (seed + signature, single use, valid
+        3 h). Returned unchanged with the run's inputs in submitScore.
+      additionalProperties: false
+      required: [seed, issued, sig]
+      properties:
+        seed:
+          type: integer
+        issued:
+          type: integer
+        sig:
+          type: string
+
+    ArcadeRow:
+      type: object
+      additionalProperties: false
+      required: [id, name, score, at]
+      properties:
+        id:
+          type: string
+          description: Peer id.
+        name:
+          type: string
+        score:
+          type: integer
+        at:
+          type: integer
+          description: When the record was set (ms epoch, relay clock).
+
+    ArcadeBoards:
+      type: object
+      additionalProperties: false
+      required: [cable, bugs, breaker, drone, merge]
+      properties:
+        cable:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArcadeRow'
+        bugs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArcadeRow'
+        breaker:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArcadeRow'
+        drone:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArcadeRow'
+        merge:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArcadeRow'
+
     ConnPath:
       type: string
       description: >-
@@ -1731,6 +1856,53 @@ components:
           type: integer
         dir:
           $ref: '#/components/schemas/AvatarDir'
+
+    ArcadeStart:
+      description: >-
+        A run is about to start (loopback browser only): this PC's server asks
+        the relay for a ticket. Answered with arcadeTicket (same `req`).
+      type: object
+      additionalProperties: false
+      required: [type, game, req]
+      properties:
+        type:
+          const: arcadeStart
+        game:
+          $ref: '#/components/schemas/GameId'
+        req:
+          type: integer
+
+    SubmitScore:
+      description: >-
+        A finished run (loopback browser only): its ticket and recorded inputs
+        (flat [ticks since previous input, action, ...]). The relay replays
+        them and keeps the score it computed when it beats this PC's best.
+        Answered with arcadeResult, then arcadeBoard.
+      type: object
+      additionalProperties: false
+      required: [type, game, ticket, inputs]
+      properties:
+        type:
+          const: submitScore
+        game:
+          $ref: '#/components/schemas/GameId'
+        ticket:
+          $ref: '#/components/schemas/ArcadeTicket'
+        inputs:
+          type: array
+          items:
+            type: integer
+
+    OpenArcade:
+      description: >-
+        The arcade panel opened (loopback browser only): answered with
+        arcadeBoard (the relay's hall of fame).
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: openArcade
 
     DeleteChat:
       description: >-

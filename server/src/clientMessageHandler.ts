@@ -1,9 +1,11 @@
+import { isGameId, peerLabel } from '../../core/src/lan.js';
 import type { ClientMessage, OfficeErrorReason, RelayKickReason } from '../../core/src/messages.js';
 import { isPeerId } from '../../core/src/relay.js';
 import type { LoadedAssets, LoadedCharacterSprites, LoadedPetSprites } from './assetLoader.js';
 import { readConfig, writeConfig } from './configPersistence.js';
 import { RELAY_ADMIN_TOKEN_MAX } from './constants.js';
 import type { FileStateAdapter } from './fileStateAdapter.js';
+import type { ArcadeClient } from './lan/arcade.js';
 import type { AutostartState } from './lan/autostart.js';
 import type { LanService } from './lan/office.js';
 import { validateProfileUpdate } from './lan/profile.js';
@@ -73,6 +75,8 @@ export interface ClientMessageContext {
   transcripts?: TranscriptService;
   /** The socket itself: a transcript subscription belongs to it (falls back to `send`). */
   client?: object;
+  /** The relay's arcade hall of fame (lan/arcade.ts). Absent = no relay: runs are unranked. */
+  arcade?: ArcadeClient | null;
   /** Internet public office relay (cli.ts). Absent = no relay ('off'). */
   relay?: {
     status(): RelayStatus;
@@ -243,6 +247,45 @@ export function handleClientMessage(
       if (typeof msg.token === 'string' && msg.token.length <= RELAY_ADMIN_TOKEN_MAX)
         adapter.setSetting(KEY_RELAY_ADMIN_TOKEN, msg.token);
       send(settingsSnapshot(ctx));
+      break;
+
+    // Lounge arcade: tickets, runs and boards go from this server to the relay, never from
+    // the browser. Answers go to the asking socket only.
+    case 'arcadeStart': {
+      if (!isGameId(msg.game)) break;
+      const game = msg.game;
+      const req = Number.isSafeInteger(msg.req) ? msg.req : 0;
+      const id = ctx.lan?.self().id;
+      void (id && ctx.arcade ? ctx.arcade.start(id, game) : Promise.resolve(null)).then((ticket) =>
+        send({ type: 'arcadeTicket', game, req, ...(ticket && { ticket }) }),
+      );
+      break;
+    }
+    case 'submitScore': {
+      if (!isGameId(msg.game) || !ctx.lan) break;
+      const game = msg.game;
+      const self = ctx.lan.self();
+      const arcade = ctx.arcade;
+      void (async () => {
+        const r = arcade
+          ? await arcade.submit({
+              id: self.id,
+              name: peerLabel(self),
+              game,
+              ticket: msg.ticket,
+              inputs: msg.inputs,
+            })
+          : ({ ok: false, reason: 'network' } as const);
+        send({ type: 'arcadeResult', game, ...r });
+        const boards = await arcade?.board();
+        send({ type: 'arcadeBoard', ...(boards && { boards }) });
+      })();
+      break;
+    }
+    case 'openArcade':
+      void (ctx.arcade?.board() ?? Promise.resolve(null)).then((boards) =>
+        send({ type: 'arcadeBoard', ...(boards && { boards }) }),
+      );
       break;
 
     // The kick request goes from this server to the relay, never from the browser.
@@ -494,6 +537,9 @@ const KNOWN_CLIENT_TYPES: ReadonlySet<string> = new Set<ClientMessage['type']>([
   'getOfficeCode',
   'setRelayAdminToken',
   'relayKick',
+  'arcadeStart',
+  'submitScore',
+  'openArcade',
 ]);
 const UNKNOWN_REFUSAL_KEY = 'unknown';
 

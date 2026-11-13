@@ -33,6 +33,7 @@ import { useEditorKeyboard } from './hooks/useEditorKeyboard.js';
 import { useExtensionMessages } from './hooks/useExtensionMessages.js';
 import { useIsMobile } from './hooks/useIsMobile.js';
 import { type Key, t, useLang } from './i18n.js';
+import { ArcadePanel } from './lan/ArcadePanel.js';
 import { AvatarAgentList } from './lan/AvatarAgentList.js';
 import { useAvatarKeys } from './lan/avatarKeys.js';
 import { ChatLayer } from './lan/ChatLayer.js';
@@ -640,6 +641,8 @@ function App() {
           }}
           onDelete={() => transport.send({ type: 'deleteChat' })}
         />
+
+        <ArcadePanel officeState={officeState} enabled={avatarControls} people={people} />
 
         {/* A read-only office gets no layout button and only the language setting: everything
           else would be refused by the server anyway. The layout editor stays desktop-only (its

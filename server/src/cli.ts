@@ -37,6 +37,7 @@ import {
 } from './constants.js';
 import { bootUpdated, reportListening, respawnSelf, restartMode } from './lan/appBundle.js';
 import { openOffice } from './lan/appWindow.js';
+import { arcadeClient } from './lan/arcade.js';
 import { applyInstallerChoice, getAutostart, setAutostart } from './lan/autostart.js';
 import { Notifier } from './lan/notify.js';
 import { checkExisting, LanService } from './lan/office.js';
@@ -350,6 +351,7 @@ export async function main(boot = true): Promise<void> {
       autostart: { get: () => getAutostart(), set: (on) => setAutostart(on) },
       transcripts,
       usage,
+      arcade: arcadeClient(url),
       relay: relay
         ? {
             status: () => relay.status,

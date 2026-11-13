@@ -1,5 +1,11 @@
 import type { ServerZone } from '../../../../core/src/lan.js';
-import { ROOM_LABELS, ROOM_ORDER, serverZoneTiles } from '../../../../core/src/lan.js';
+import type { GameId } from '../../../../core/src/lan.js';
+import {
+  arcadeGameOf,
+  ROOM_LABELS,
+  ROOM_ORDER,
+  serverZoneTiles,
+} from '../../../../core/src/lan.js';
 import { pickDiversePalette } from '../../../../core/src/paletteUtils.js';
 import {
   AUTO_ON_FACING_DEPTH,
@@ -949,6 +955,40 @@ export class OfficeState {
     }
   }
 
+  /** The game of the arcade cabinet a seat faces; else null. */
+  private arcadeOfSeat(uid: string | null): GameId | null {
+    const seat = uid ? this.seats.get(uid) : undefined;
+    if (!seat) return null;
+    const { dCol, dRow } = seatFacingOffset(seat.facingDir);
+    const col = seat.seatCol + dCol;
+    const row = seat.seatRow + dRow;
+    for (const f of this.layout.furniture) {
+      if (f.col !== col || (f.row !== row && f.row + 1 !== row)) continue;
+      const game = arcadeGameOf(f.type);
+      if (game) return game;
+    }
+    return null;
+  }
+
+  /** The game of the arcade cabinet my avatar sits (arrived, not walking) in front of; else null. */
+  myArcadeGame(): GameId | null {
+    const ch = this.myAvatarId !== null ? this.characters.get(this.myAvatarId) : undefined;
+    return ch?.seatId && ch.path.length === 0 ? this.arcadeOfSeat(ch.seatId) : null;
+  }
+
+  /** The last time my avatar was turned away from an arcade chair someone else sits on. */
+  arcadeBusy: { peerId: string; at: number } | null = null;
+
+  /** Who (peer id) sits on the arcade chair on (col,row), when it is not `ch`; else null. */
+  private arcadeOccupant(ch: Character, col: number, row: number): string | null {
+    const uid = this.getSeatAtTile(col, row);
+    if (!uid || ch.seatId === uid || !this.seats.get(uid)?.assigned || !this.arcadeOfSeat(uid))
+      return null;
+    for (const other of this.characters.values())
+      if (other !== ch && other.seatId === uid) return other.avatarOf ?? null;
+    return null;
+  }
+
   /** Arrow key down: my avatar steps at once (a seated one stands up) and keeps walking while held. */
   pressAvatar(dir: Direction): void {
     this.avatarHeld = dir;
@@ -969,7 +1009,10 @@ export class OfficeState {
   private stepAvatar(ch: Character, dir: Direction): void {
     const next = stepTile(ch.tileCol, ch.tileRow, dir);
     const chair = this.avatarSeat(ch, next.col, next.row);
-    if (chair || this.avatarMayStand(next.col, next.row)) {
+    const busy = chair ? null : this.arcadeOccupant(ch, next.col, next.row);
+    // One player per arcade cabinet: an occupied arcade chair is never stepped onto.
+    if (busy) this.arcadeBusy = { peerId: busy, at: performance.now() };
+    if (chair || (!busy && this.avatarMayStand(next.col, next.row))) {
       this.claimAvatarSeat(ch, next);
       ch.path = [next];
       ch.moveProgress = 0;

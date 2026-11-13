@@ -28,6 +28,9 @@ export type ServerMessage =
   | AutostartState
   | RelayState
   | RelayKickResult
+  | ArcadeTicketMessage
+  | ArcadeResult
+  | ArcadeBoard
   | OfficesState
   | OfficeCreated
   | OfficeCode
@@ -59,6 +62,9 @@ export type ClientMessage =
   | GetOfficeCode
   | SendChat
   | DeleteChat
+  | ArcadeStart
+  | SubmitScore
+  | OpenArcade
   | MoveAvatar
   | SetNotifications
   | OpenTranscript
@@ -398,6 +404,53 @@ export interface RelayKickResult {
 
 export type RelayKickReason = 'auth' | 'network' | 'bad' | 'noToken';
 
+export interface ArcadeTicketMessage {
+  type: 'arcadeTicket';
+  game: GameId;
+  req: number;
+  ticket?: ArcadeTicket;
+}
+
+export type GameId = 'cable' | 'bugs' | 'breaker' | 'drone' | 'merge';
+
+export interface ArcadeTicket {
+  seed: number;
+  issued: number;
+  sig: string;
+}
+
+export interface ArcadeResult {
+  type: 'arcadeResult';
+  game: GameId;
+  ok: boolean;
+  score?: number;
+  best?: number;
+  rank?: number;
+  reason?: ArcadeRefusal;
+}
+
+export type ArcadeRefusal = 'network' | 'bad' | 'sig' | 'expired' | 'used' | 'replay' | 'time';
+
+export interface ArcadeBoard {
+  type: 'arcadeBoard';
+  boards?: ArcadeBoards;
+}
+
+export interface ArcadeBoards {
+  cable: ArcadeRow[];
+  bugs: ArcadeRow[];
+  breaker: ArcadeRow[];
+  drone: ArcadeRow[];
+  merge: ArcadeRow[];
+}
+
+export interface ArcadeRow {
+  id: string;
+  name: string;
+  score: number;
+  at: number;
+}
+
 export interface OfficesState {
   type: 'officesState';
   offices: OfficeSummary[];
@@ -635,6 +688,23 @@ export interface SendChat {
 
 export interface DeleteChat {
   type: 'deleteChat';
+}
+
+export interface ArcadeStart {
+  type: 'arcadeStart';
+  game: GameId;
+  req: number;
+}
+
+export interface SubmitScore {
+  type: 'submitScore';
+  game: GameId;
+  ticket: ArcadeTicket;
+  inputs: number[];
+}
+
+export interface OpenArcade {
+  type: 'openArcade';
 }
 
 export interface MoveAvatar {

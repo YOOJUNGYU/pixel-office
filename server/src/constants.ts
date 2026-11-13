@@ -312,3 +312,9 @@ export const USAGE_VERSION = 1;
 export const USAGE_SAVE_DELAY_MS = 5_000;
 /** Token usage: bytes read per step while folding a transcript (the loop yields between steps). */
 export const USAGE_READ_CHUNK_BYTES = 8 * 1024 * 1024;
+
+// ── Lounge arcade (lan/arcade.ts: the relay keeps the hall of fame) ──
+/** Each relay call gives up after this long (the run is then unranked). */
+export const ARCADE_HTTP_TIMEOUT_MS = 10_000;
+/** The board is re-read from the relay at most this often (every read costs relay budget). */
+export const ARCADE_BOARD_CACHE_MS = 10_000;

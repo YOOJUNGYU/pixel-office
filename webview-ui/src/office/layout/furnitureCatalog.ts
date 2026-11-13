@@ -1,3 +1,4 @@
+import { isFixedFurniture } from '../../../../core/src/lan.js';
 import type { FurnitureCatalogEntry, SpriteData } from '../types.js';
 
 export interface LoadedAssetData {
@@ -315,9 +316,10 @@ export function getCatalogEntry(type: string): CatalogEntryWithCategory | undefi
   return dynamicCatalog?.find((e) => e.type === type);
 }
 
+/** The editor palette of a category: never the fixed furniture (seats, desks, PCs, cabinets). */
 export function getCatalogByCategory(category: FurnitureCategory): CatalogEntryWithCategory[] {
   const catalog = dynamicCatalog ?? [];
-  return catalog.filter((e) => e.category === category);
+  return catalog.filter((e) => e.category === category && !isFixedFurniture(e.type));
 }
 
 /* Currently unused since the editor palette is organized by category. */
@@ -327,7 +329,9 @@ export function getCatalogByCategory(category: FurnitureCategory): CatalogEntryW
 
 export function getActiveCategories(): Array<{ id: FurnitureCategory; label: string }> {
   const categories = dynamicCategories ?? [];
-  return FURNITURE_CATEGORIES.filter((c) => categories.includes(c.id));
+  return FURNITURE_CATEGORIES.filter(
+    (c) => categories.includes(c.id) && getCatalogByCategory(c.id).length > 0,
+  );
 }
 
 /** @internal */

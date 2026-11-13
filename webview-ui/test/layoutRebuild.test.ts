@@ -15,7 +15,7 @@ import { test } from 'vitest';
 
 import { buildFurnitureCatalog } from '../../core/src/assets/build.ts';
 import { decodeAllFurniture } from '../../core/src/assets/loader.ts';
-import { placeFurniture, removeFurniture } from '../src/office/editor/editorActions.js';
+import { placeFurniture } from '../src/office/editor/editorActions.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
 import { buildDynamicCatalog } from '../src/office/layout/furnitureCatalog.js';
 import { isWalkable } from '../src/office/layout/tileMap.js';
@@ -165,7 +165,11 @@ test('removing its chair sends a character to another seat in its room on foot',
   const { os, ch } = seated();
   const before = snapshot(ch);
   const oldSeat = ch.seatId!;
-  os.rebuildFromLayout(removeFurniture(os.layout, oldSeat));
+  // (a new layout without that chair: the editor never removes one, a new default may)
+  os.rebuildFromLayout({
+    ...os.layout,
+    furniture: os.layout.furniture.filter((f) => f.uid !== oldSeat),
+  });
 
   assert.deepEqual([ch.x, ch.y], [before.x, before.y], 'not teleported');
   assert.notEqual(ch.seatId, oldSeat);

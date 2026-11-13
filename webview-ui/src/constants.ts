@@ -267,6 +267,207 @@ export const FX_CONFETTI_COLORS = [
   '#d197ff',
   '#ffb04d',
 ];
+
+// ── Mini games (lan/games/; rules in core/src/constants.ts) ─────────
+/** Every game draws on one logical canvas (px), blown up by an integer scale that fits the window. */
+export const GAME_VIEW_W = 240;
+export const GAME_VIEW_H = 208;
+export const GAME_SCALE_MIN = 2;
+export const GAME_SCALE_MAX = 4;
+/** Room the arcade panel needs around the canvas (how-to column, hall of fame, header, padding). */
+export const GAME_FIT_SPARE_W = 520;
+export const GAME_FIT_SPARE_H = 110;
+/** Longest frame step fed to the game logic (a backgrounded tab must not jump). */
+export const GAME_MAX_STEP_MS = 100;
+/** 3-2-1 before a run starts (the run's clock waits). */
+export const GAME_COUNTDOWN_MS = 1500;
+/** Effects (visual only). */
+export const GAME_FLOAT_MS = 900;
+export const GAME_PARTICLE_MS = 700;
+export const GAME_PARTICLE_GRAVITY = 0.0004;
+export const GAME_PARTICLES_MAX = 240;
+export const GAME_SHAKE_MS = 260;
+export const GAME_CLEAR_FLASH_MS = 260;
+/** Every 3rd device row darkened a little (CRT). */
+export const GAME_SCANLINE_ALPHA = 0.14;
+export const GAME_SOUND_VOLUME = 0.05;
+/** localStorage: '1' = arcade sound off. */
+export const GAME_MUTE_KEY = 'pixel-office.arcade.mute';
+export {
+  GAME_BREAKER_PADDLE_H,
+  GAME_BREAKER_PADDLE_Y,
+  GAME_BUGS_ROUND_MS,
+  GAME_CABLE_BURST_MS,
+  GAME_CABLE_COLS,
+  GAME_CABLE_ROWS,
+  GAME_DRONE_BOX_H,
+  GAME_DRONE_BOX_W,
+  GAME_DRONE_H,
+  GAME_DRONE_RACK_W,
+  GAME_DRONE_X,
+  GAME_FP,
+  GAME_MERGE_SIZE,
+} from '../../core/src/constants.js';
+/** Canvas text, in logical px (scaled with the canvas). */
+export const GAME_FONT = '7px Pretendard';
+export const GAME_FONT_TINY = 'bold 5px Pretendard';
+export const GAME_FONT_BOLD = 'bold 8px Pretendard';
+export const GAME_FONT_NUM = 'bold 11px Pretendard';
+export const GAME_FONT_BIG = 'bold 18px Pretendard';
+export const GAME_FONT_HUGE = 'bold 36px Pretendard';
+export const GAME_COLORS = {
+  bg: '#0d0f17',
+  panel: '#161a26',
+  panelEdge: '#2a3042',
+  text: '#e6e9f2',
+  muted: '#7d859c',
+  accent: '#ffd94a',
+  good: '#5cff9d',
+  bad: '#ff5d6c',
+  overlay: 'rgba(6, 8, 14, 0.78)',
+  scanline: '#000000',
+  white: '#ffffff',
+  /** Breaker: field, bricks per row, paddle, power-ups (wide multi slow life). */
+  field: '#0a0d17',
+  fieldGrid: '#111626',
+  brickRows: ['#ff5d6c', '#ff8a3d', '#ffd94a', '#4ade80', '#3ee0d0', '#6cb6ff', '#b48cff'],
+  brickShade: 'rgba(0, 0, 0, 0.35)',
+  brickShine: 'rgba(255, 255, 255, 0.35)',
+  rivet: '#20242f',
+  crack: '#11131b',
+  steel: '#7d859c',
+  steelDark: '#4c5266',
+  steelLight: '#b8bfd0',
+  paddle: '#d9e0ee',
+  paddleDark: '#8a93a8',
+  paddleLed: '#4ade80',
+  ball: '#ffffff',
+  ballGlow: 'rgba(255, 255, 255, 0.25)',
+  powers: ['#6cb6ff', '#ffd94a', '#5ce1ff', '#ff6bd5'],
+  /** Drone: sky bands, skyline, racks, drone. */
+  sky: ['#0b1020', '#0e1428', '#121a33', '#16203d'],
+  skyline: '#0f1630',
+  skylineLit: '#2a3560',
+  rackBody: '#3a3f4f',
+  rackLight: '#4c5266',
+  rackEdge: '#20242f',
+  rackLed: '#4ade80',
+  rackLedAmber: '#ffb04d',
+  droneBody: '#e6e9f2',
+  droneDark: '#8a93a8',
+  droneAccent: '#ff8a3d',
+  prop: '#b8bfd0',
+  ground: '#1c2133',
+  groundLine: '#2e3550',
+  /** Merge: board, empty cell, tiles by exponent (1 = 2, 2 = 4, …; last = beyond). */
+  board: '#161a26',
+  cellEmpty: '#1f2433',
+  tiles: [
+    '#2c3a5c',
+    '#2f5277',
+    '#2f6f8f',
+    '#2f8a86',
+    '#37995f',
+    '#6ba63a',
+    '#c2a12f',
+    '#d97b2f',
+    '#d94a4a',
+    '#c23a8a',
+    '#8a3ac2',
+    '#ffd94a',
+  ],
+  tileDarkText: '#1a1423',
+  /** Cable: board, cable stripes, plug, packets, firewalls. */
+  pcb: '#0e1a16',
+  pcbTrace: '#15291f',
+  pcbDot: '#1d3a2c',
+  cable: '#3d7bd9',
+  cableDark: '#2a5aa6',
+  cableStripe: '#78a8ff',
+  plug: '#d9e0ee',
+  plugDark: '#8a93a8',
+  plugPin: '#ffd94a',
+  packet: '#4ade80',
+  packetDark: '#1f8a4a',
+  gold: '#ffd94a',
+  goldDark: '#b8901c',
+  wall: '#c2413a',
+  wallDark: '#7a2420',
+  wallLight: '#ff7a5c',
+  /** Bugs: monitors, screen, sprites. */
+  monitor: '#3d4356',
+  monitorLight: '#5a6178',
+  monitorDark: '#232838',
+  screen: '#0b1a2c',
+  screenCode: '#163552',
+  screenCode2: '#1d4a3a',
+  ring: '#ffffff',
+  bug: '#ff5d6c',
+  bugDark: '#a8243a',
+  glitch: '#c77dff',
+  glitchDark: '#6b2fb0',
+  patch: '#4ade80',
+  patchDark: '#1f8a4a',
+  clock: '#5ce1ff',
+  clockDark: '#1f7a99',
+  eye: '#ffffff',
+  pupil: '#0d0f17',
+};
+/** One-letter palettes for the games' pixel sprites (lan/games/sprites.ts). */
+export const GAME_SPRITE_COLORS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  bug: { a: '#ff5d6c', b: '#a8243a', e: '#ffffff', p: '#0d0f17', l: '#3a1520' },
+  glitch: { a: '#c77dff', b: '#6b2fb0', e: '#ffffff', p: '#0d0f17', l: '#2a1440' },
+  patch: { a: '#4ade80', b: '#1f8a4a', e: '#ffffff', p: '#0d0f17', l: '#0f3a22' },
+  clock: { a: '#5ce1ff', b: '#1f7a99', e: '#ffffff', p: '#0d0f17', l: '#0f2a3a' },
+};
+/** Sounds: [start Hz, end Hz, ms, wave]. */
+export const GAME_SFX: Readonly<
+  Record<string, readonly [number, number, number, 'sine' | 'square' | 'sawtooth' | 'triangle']>
+> = {
+  move: [440, 440, 25, 'square'],
+  turn: [620, 700, 35, 'square'],
+  lock: [180, 120, 60, 'triangle'],
+  drop: [300, 90, 90, 'triangle'],
+  hold: [520, 780, 70, 'sine'],
+  clear: [523, 1046, 220, 'square'],
+  level: [660, 1320, 380, 'square'],
+  eat: [700, 1000, 60, 'square'],
+  gold: [880, 1760, 260, 'square'],
+  burst: [1200, 1500, 90, 'sine'],
+  wall: [140, 90, 140, 'sawtooth'],
+  fade: [500, 300, 120, 'sine'],
+  pop: [900, 1100, 25, 'sine'],
+  bug: [300, 900, 80, 'square'],
+  glitch: [400, 1600, 120, 'square'],
+  clock: [1000, 1500, 160, 'sine'],
+  patch: [200, 80, 220, 'sawtooth'],
+  miss: [160, 120, 90, 'sawtooth'],
+  escape: [400, 250, 90, 'triangle'],
+  over: [440, 110, 600, 'sawtooth'],
+  count: [660, 660, 80, 'square'],
+  go: [990, 990, 160, 'square'],
+};
+/** Merge: board (px) and its tile fonts by digit count (≤ 2, 3, 4+). */
+export const GAME_MERGE_CELL = 41;
+export const GAME_MERGE_GAP = 4;
+export const GAME_MERGE_FONTS = [
+  'bold 16px Pretendard',
+  'bold 13px Pretendard',
+  'bold 10px Pretendard',
+];
+/** Merge animation: slide, then the pop of merged / new tiles (ms). */
+export const GAME_MERGE_SLIDE_MS = 90;
+export const GAME_MERGE_POP_MS = 120;
+/** Cable Run cells (px) under a header. */
+export const GAME_CABLE_CELL = 10;
+export const GAME_HEADER_H = 22;
+/** Bug Squash monitors (px): frame + stand, gaps between. */
+export const GAME_BUGS_MON_W = 72;
+export const GAME_BUGS_MON_H = 56;
+export const GAME_BUGS_FRAME_H = 48;
+export const GAME_BUGS_GAP = 6;
+/** How-to column beside the game (px). */
+export const ARCADE_HOWTO_WIDTH_PX = 210;
 export const PC_SCREEN_COLORS: Readonly<Record<string, string>> = {
   k: '#10261a',
   g: '#4ade80',
@@ -700,3 +901,14 @@ export const USAGE_CHART_W = 640;
 export const USAGE_DAILY_H = 120;
 export const USAGE_CACHE_H = 60;
 export const USAGE_SHARE_H = 14;
+
+// ── Lounge arcade (sitting at a cabinet opens the games, `lan/ArcadePanel.tsx`) ──
+export const ARCADE_Z_INDEX = 48; // above the chat and top-left buttons, below modals (50)
+/** Leaderboard rows shown per game. */
+export const ARCADE_RANK_ROWS = 10;
+export const ARCADE_LEADERBOARD_WIDTH_PX = 220;
+/** How long a run waits for its relay ticket before it starts unranked. */
+export const ARCADE_TICKET_WAIT_MS = 5000;
+/** The arcade's "taken" notice: shown this long, this far above the bottom edge (over the chat bar). */
+export const ARCADE_NOTICE_MS = 3500;
+export const ARCADE_NOTICE_BOTTOM_PX = 64;

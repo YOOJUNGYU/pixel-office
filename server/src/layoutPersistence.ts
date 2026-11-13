@@ -7,6 +7,7 @@ import {
   fillMissingRooms,
   isLayoutGrid,
   normalizeRoomAreas,
+  pinFixedFurniture,
   ROOM_LABELS,
   ROOM_ORDER,
 } from '../../core/src/lan.js';
@@ -29,7 +30,8 @@ export function roomColorsOf(layout: unknown): Partial<Record<Room, string>> {
 /**
  * A layout fit to store or serve: a v1 grid within MAX_LAYOUT_COLS×ROWS whose
  * tiles match it, with exactly the four fixed rooms (normalizeRoomAreas; a room
- * without tiles takes the default layout's when the grid is the default size)
+ * without tiles takes the default layout's when the grid is the default size),
+ * the default's seats/desks/PCs/cabinets (pinFixedFurniture, same grid size only)
  * and no decorative pets. Null for anything else. Never throws.
  */
 export function sanitizeLayout(
@@ -39,8 +41,11 @@ export function sanitizeLayout(
 ): Record<string, unknown> | null {
   if (!isLayoutGrid(raw)) return null;
   // normalizeRoomAreas checks every areas/areaTiles entry itself.
-  const out: Record<string, unknown> = fillMissingRooms(
-    normalizeRoomAreas(raw as RoomAreasLayout & Record<string, unknown>, colors),
+  const out: Record<string, unknown> = pinFixedFurniture(
+    fillMissingRooms(
+      normalizeRoomAreas(raw as RoomAreasLayout & Record<string, unknown>, colors),
+      defaultLayout,
+    ),
     defaultLayout,
   );
   delete out.pets;

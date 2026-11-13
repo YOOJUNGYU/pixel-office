@@ -11,5 +11,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "../core/src/relay.ts"]
+  "include": ["src/**/*.ts", "../core/src/relay.ts", "../core/src/arcade.ts", "../core/src/lan.ts", "../core/src/constants.ts", "../core/src/games/*.ts"]
 }

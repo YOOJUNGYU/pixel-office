@@ -43,6 +43,23 @@ curl -s -H "$T" -X DELETE $R/admin/bans/<peerId>     # {ok}
 
 A ban is per peer id: deleting `profile.json` gets a new id. No IP bans (a whole office shares one NAT IP).
 
+## Arcade hall of fame
+
+The hub also referees the lounge arcade's cumulative leaderboard (`src/arcade.ts`, types and
+parsers shared with the PC in `core/src/arcade.ts`). Scores are never taken from clients: the
+relay replays the recorded inputs on its own seed with the shared engine (`core/src/games/`).
+
+| Request                                                           | Answer                                         |
+| ----------------------------------------------------------------- | ---------------------------------------------- |
+| `POST /arcade/start {id, game}`                                   | `{seed, issued, sig}` (HMAC ticket, 3 h, once) |
+| `POST /arcade/submit {id, name, game, seed, issued, sig, inputs}` | `{score, best, rank}` (rank null = off board)  |
+| `GET /arcade/board`                                               | `{boards: {rack, cable, bugs}}`, 50 rows each  |
+
+Errors: 400 `{error: bad|sig|expired|used|replay|time}`, 405 wrong method, 503 `{error: budget}`.
+Each request counts 20 against the day budget. Known limits (ids unproven, bots, slow-motion
+play) are the `ponytail:` note in `src/arcade.ts`. A change here needs a redeploy:
+`cd relay && npx wrangler deploy`.
+
 ## Cloudflare free limits (2026-11)
 
 | Limit               | Value                  | Meaning                                                                                         |

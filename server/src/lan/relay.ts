@@ -247,17 +247,28 @@ export class Relay {
   }
 }
 
+/** The relay's HTTP origin for its WebSocket URL (wss → https, loopback ws → http); else null. */
+export function relayHttpOrigin(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'wss:') u.protocol = 'https:';
+    else if (isLoopbackWs(u)) u.protocol = 'http:';
+    else return null;
+    return u.origin;
+  } catch {
+    return null;
+  }
+}
+
 export async function relayKick(
   url: string,
   token: string,
   id: string,
 ): Promise<{ ok: boolean; reason?: 'auth' | 'network' | 'bad' }> {
+  const origin = relayHttpOrigin(url);
+  if (!origin) return { ok: false, reason: 'bad' };
   try {
-    const u = new URL(url);
-    if (u.protocol === 'wss:') u.protocol = 'https:';
-    else if (isLoopbackWs(u)) u.protocol = 'http:';
-    else return { ok: false, reason: 'bad' };
-    const res = await fetch(`${u.origin}/admin/kick`, {
+    const res = await fetch(`${origin}/admin/kick`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),

@@ -86,17 +86,13 @@ function floorLayout(cols: number, rows: number, furniture: PlacedFurniture[]): 
 }
 
 describe('rotateFurniture validates the whole desk group', () => {
-  test('a desk with a PC on it rotates both when the group fits', () => {
+  test('a desk (fixed furniture, owned by the default layout) never rotates', () => {
     const layout = floorLayout(12, 12, [
       { uid: 'desk', type: 'DESK_FRONT', col: 3, row: 3 },
       { uid: 'pc', type: 'PC_FRONT_OFF', col: 4, row: 3 },
     ]);
-    const rotated = rotateFurniture(layout, 'desk', 'cw');
-    assert.notEqual(rotated, layout);
-    assert.deepEqual(
-      rotated.furniture.map((f) => `${f.uid}:${f.type}@${f.col},${f.row}`),
-      ['desk:DESK_SIDE@3,3', 'pc:PC_SIDE@3,4'],
-    );
+    assert.equal(rotateFurniture(layout, 'desk', 'cw'), layout);
+    assert.equal(rotateFurniture(layout, 'pc', 'cw'), layout);
   });
 
   test('refused when a rider would land on another item, though the desk fits', () => {
@@ -110,15 +106,6 @@ describe('rotateFurniture validates the whole desk group', () => {
     assert.equal(rotateFurniture(layout, 'desk', 'cw'), layout);
   });
 
-  test('the same desk without the coffee rotates — only the rider was in the way', () => {
-    const layout = floorLayout(12, 12, [
-      { uid: 'desk', type: 'DESK_FRONT', col: 3, row: 3 },
-      { uid: 'chair', type: 'WOODEN_CHAIR_FRONT', col: 3, row: 2 },
-    ]);
-    const rotated = rotateFurniture(layout, 'desk', 'cw');
-    assert.equal(rotated.furniture.find((f) => f.uid === 'desk')?.type, 'DESK_SIDE');
-  });
-
   test('refused when the rotated group would leave the grid', () => {
     // A 1x4 side desk at row 10 of a 12-row grid covers rows 10-13.
     const layout = floorLayout(12, 12, [
@@ -130,12 +117,18 @@ describe('rotateFurniture validates the whole desk group', () => {
 });
 
 describe('eraseTile never changes tiles', () => {
-  test('removes the furniture and the carpet, keeps the floor', () => {
-    const layout = floorLayout(6, 6, [{ uid: 'desk', type: 'DESK_FRONT', col: 1, row: 1 }]);
+  test('removes decor and the carpet, keeps the floor and fixed furniture (the desk)', () => {
+    const layout = floorLayout(6, 6, [
+      { uid: 'desk', type: 'DESK_FRONT', col: 1, row: 1 },
+      { uid: 'coffee', type: 'COFFEE', col: 2, row: 2 },
+    ]);
     layout.carpetTiles = new Array(36).fill(null);
     layout.carpetTiles[2 * 6 + 2] = { variant: 0, order: 1 };
     const erased = eraseTile(layout, 2, 2);
-    assert.deepEqual(erased.furniture, []);
+    assert.deepEqual(
+      erased.furniture.map((f) => f.uid),
+      ['desk'],
+    );
     assert.equal(erased.carpetTiles?.[2 * 6 + 2], null);
     assert.deepEqual(erased.tiles, layout.tiles);
   });

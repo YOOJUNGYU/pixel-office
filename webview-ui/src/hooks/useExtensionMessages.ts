@@ -20,6 +20,7 @@ import type {
   UpdateStatus,
 } from '../../../core/src/messages.js';
 import { LAN_READING_TOOLS } from '../constants.js';
+import { arcadeEvents } from '../lan/arcade.js';
 import { ChatBubbles } from '../lan/chat.js';
 import { EMPTY_DIRECTORY } from '../lan/directoryModel.js';
 import { avatarDirName, LanAgents } from '../lan/lanAgents.js';
@@ -236,6 +237,12 @@ export function useExtensionMessages(
       } else if (msg.type === 'relayState') {
         const { state, retryInMs } = msg as RelayState;
         setRelay({ state, retryInMs, at: Date.now() });
+      } else if (
+        msg.type === 'arcadeTicket' ||
+        msg.type === 'arcadeResult' ||
+        msg.type === 'arcadeBoard'
+      ) {
+        arcadeEvents.dispatchEvent(new MessageEvent(msg.type, { data: msg }));
       } else if (msg.type === 'relayKickResult') {
         setKickResult(msg as RelayKickResult);
       } else if (msg.type === 'updateAvailable') {

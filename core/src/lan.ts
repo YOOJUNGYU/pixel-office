@@ -178,10 +178,60 @@ export function fillMissingRooms<T extends RoomAreasLayout>(layout: T, fallback:
   return { ...layout, areaTiles };
 }
 
+/**
+ * Furniture the office works by — seats (chairs, sofas, benches), desks and tables, PCs and
+ * arcade cabinets — belongs to the bundled default layout: users cannot place, move,
+ * rotate or remove it (editor), and every served/saved layout gets the default's set.
+ */
+const FIXED_FURNITURE = /ARCADE_|^PC(_|:|$)|DESK|CHAIR|SOFA|BENCH|TABLE/;
+export const isFixedFurniture = (type: unknown): boolean =>
+  typeof type === 'string' && FIXED_FURNITURE.test(type);
+
+/**
+ * `layout` with exactly the default's fixed furniture (isFixedFurniture) at the default's
+ * spots and orientations, so a saved or shared layout picks up a new default's seats,
+ * desks and cabinets by itself. Decor is kept; a fixed item keeps its other fields
+ * (colour) when its uid matches. Only when both grids are the same size; else as is.
+ */
+export function pinFixedFurniture<
+  T extends { cols?: unknown; rows?: unknown; furniture?: unknown },
+>(layout: T, def: unknown): T {
+  if (
+    !isObj(def) ||
+    def.cols !== layout.cols ||
+    def.rows !== layout.rows ||
+    !Array.isArray(def.furniture) ||
+    !Array.isArray(layout.furniture)
+  )
+    return layout;
+  const items = layout.furniture as unknown[];
+  const prev = new Map<unknown, Obj>();
+  for (const f of items) if (isObj(f) && isFixedFurniture(f.type)) prev.set(f.uid, f);
+  const pinned = (def.furniture as unknown[]).flatMap((d) => {
+    if (!isObj(d) || !isFixedFurniture(d.type)) return [];
+    const p = prev.get(d.uid);
+    return [p ? { ...p, type: d.type, col: d.col, row: d.row } : d];
+  });
+  const decor = items.filter((f) => !(isObj(f) && isFixedFurniture(f.type)));
+  return { ...layout, furniture: [...decor, ...pinned] };
+}
+
 /** Bundled pets a profile may pick as its character (unknown ids → the human palette). */
 export const PET_IDS = ['claudio', 'gitcat'] as const;
 export type PetId = (typeof PET_IDS)[number];
 export const isPetId = (x: unknown): x is PetId => (PET_IDS as readonly unknown[]).includes(x);
+
+/** Arcade games in the lounge (`core/src/games/`); scores are refereed and kept by the relay. */
+export const GAME_IDS = ['cable', 'bugs', 'breaker', 'drone', 'merge'] as const;
+export type GameId = (typeof GAME_IDS)[number];
+export const isGameId = (x: unknown): x is GameId => (GAME_IDS as readonly unknown[]).includes(x);
+/** Highest score a board row may hold (larger ones are dropped). */
+export const GAME_SCORE_MAX = 99_999_999;
+/** Arcade cabinet furniture type → its game (`ARCADE_CABLE` → cable); else null. */
+export function arcadeGameOf(type: string): GameId | null {
+  const id = type.startsWith('ARCADE_') ? type.slice('ARCADE_'.length).toLowerCase() : '';
+  return isGameId(id) ? id : null;
+}
 export const ACTS = [
   'idle',
   'edit',

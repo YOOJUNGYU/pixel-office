@@ -786,60 +786,120 @@
     },
     {
       "uid": "lan-119",
-      "type": "LARGE_PLANT",
-      "col": 1,
-      "row": 13
+      "type": "ARCADE_BREAKER",
+      "col": 28,
+      "row": 19
     },
     {
       "uid": "lan-120",
+      "type": "CUSHIONED_CHAIR_BACK",
+      "col": 28,
+      "row": 21
+    },
+    {
+      "uid": "lan-121",
+      "type": "ARCADE_CABLE",
+      "col": 30,
+      "row": 19
+    },
+    {
+      "uid": "lan-122",
+      "type": "CUSHIONED_CHAIR_BACK",
+      "col": 30,
+      "row": 21
+    },
+    {
+      "uid": "lan-123",
+      "type": "ARCADE_BUGS",
+      "col": 32,
+      "row": 19
+    },
+    {
+      "uid": "lan-124",
+      "type": "CUSHIONED_CHAIR_BACK",
+      "col": 32,
+      "row": 21
+    },
+    {
+      "uid": "lan-125",
+      "type": "ARCADE_DRONE",
+      "col": 34,
+      "row": 19
+    },
+    {
+      "uid": "lan-126",
+      "type": "CUSHIONED_CHAIR_BACK",
+      "col": 34,
+      "row": 21
+    },
+    {
+      "uid": "lan-127",
+      "type": "ARCADE_MERGE",
+      "col": 36,
+      "row": 19
+    },
+    {
+      "uid": "lan-128",
+      "type": "CUSHIONED_CHAIR_BACK",
+      "col": 36,
+      "row": 21
+    },
+    {
+      "uid": "lan-129",
+      "type": "LARGE_PLANT",
+      "col": 1,
+      "row": 13
+    },
+    {
+      "uid": "lan-130",
       "type": "LARGE_PLANT",
       "col": 14,
       "row": 13
     },
     {
-      "uid": "lan-121",
+      "uid": "lan-131",
       "type": "LARGE_PLANT",
       "col": 1,
       "row": 27
     },
     {
-      "uid": "lan-122",
+      "uid": "lan-132",
       "type": "LARGE_PLANT",
       "col": 14,
       "row": 27
     },
     {
-      "uid": "lan-123",
+      "uid": "lan-133",
       "type": "LARGE_PLANT",
       "col": 17,
       "row": 27
     },
     {
-      "uid": "lan-124",
+      "uid": "lan-134",
       "type": "LARGE_PLANT",
       "col": 47,
       "row": 27
     },
     {
-      "uid": "lan-125",
+      "uid": "lan-135",
       "type": "LARGE_PLANT",
       "col": 17,
       "row": 20
     },
     {
-      "uid": "lan-126",
+      "uid": "lan-136",
       "type": "LARGE_PLANT",
       "col": 47,
       "row": 20
     },
     {
-      "uid": "lan-127",
+      "uid": "lan-137",
       "type": "LARGE_PAINTING",
       "col": 23,
       "row": 18
     },
     {
-      "uid": "lan-128",
+      "uid": "lan-138",
       "type": "LARGE_PAINTING",
       "col": 40,
       "row": 18

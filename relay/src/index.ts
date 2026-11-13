@@ -1,7 +1,19 @@
 // Cloudflare Worker + the one Durable Object "hub": a thin shell around the pure decisions
-// in hub.ts. The Worker checks the admin token and forwards /ws and /admin/* to the hub.
+// in hub.ts (and arcade.ts). The Worker checks the admin token and forwards /ws, /admin/*
+// and /arcade/* to the hub.
 import { DurableObject } from 'cloudflare:workers';
 
+import {
+  ARCADE_BOARD_PATH,
+  ARCADE_BOARD_SIZE,
+  ARCADE_START_PATH,
+  ARCADE_SUBMIT_PATH,
+  type ArcadeError,
+  type ArcadeRow,
+  parseArcadeStart,
+  parseArcadeSubmit,
+} from '../../core/src/arcade.js';
+import { GAME_IDS } from '../../core/src/lan.js';
 import {
   closeReason,
   isPeerId,
@@ -11,6 +23,16 @@ import {
   type RelayCloseKind,
   type RelayDown,
 } from '../../core/src/relay.js';
+import {
+  checkTicket,
+  hmacHex,
+  judge,
+  placeScore,
+  ticketMessage,
+  USED_PREFIX,
+  usedExpiredEnd,
+  usedKey,
+} from './arcade.js';
 import {
   admit,
   authorized,
@@ -55,6 +77,13 @@ const MAX_FRAMES_CEILING = 150;
 /** Close code for a socket the hub dropped as silent (WebSocket "going away"). */
 const SILENT_CLOSE = 1001;
 const ADMIN = '/admin/';
+const ARCADE = '/arcade/';
+const ARCADE_KEY = 'arcadeKey';
+const BOARD_KEY = 'board:';
+/** Largest /arcade/* body read (a long run's inputs are a few hundred KB of JSON). */
+const ARCADE_MAX_BODY = 2 * 1024 * 1024;
+/** Expired used-ticket keys deleted per submit (lazy, bounded). */
+const USED_PRUNE_BATCH = 20;
 const BANS = `${ADMIN}bans/`;
 
 /** Socket attachment; `gone` = the hub closed it itself (its leave was already sent). */
@@ -90,6 +119,7 @@ export class Hub extends DurableObject<Env> {
   private readonly l: Limits;
   private unsaved = 0;
   private salt = '';
+  private arcadeKey = '';
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -104,6 +134,12 @@ export class Hub extends DurableObject<Env> {
         await ctx.storage.put(SALT_KEY, salt);
       }
       this.salt = salt;
+      let key = await ctx.storage.get<string>(ARCADE_KEY);
+      if (!key) {
+        key = toHex(crypto.getRandomValues(new Uint8Array(SALT_BYTES)));
+        await ctx.storage.put(ARCADE_KEY, key);
+      }
+      this.arcadeKey = key;
       pruneBans(this.s, Date.now());
     });
   }
@@ -175,7 +211,68 @@ export class Hub extends DurableObject<Env> {
     const url = new URL(req.url);
     const now = Date.now();
     this.spend(REQUEST_WEIGHT, now);
-    return url.pathname === RELAY_PATH ? this.upgrade(req, url, now) : this.admin(req, url, now);
+    if (url.pathname === RELAY_PATH) return this.upgrade(req, url, now);
+    if (url.pathname.startsWith(ARCADE)) return this.arcade(req, url.pathname, now);
+    return this.admin(req, url, now);
+  }
+
+  private async arcade(req: Request, path: string, now: number): Promise<Response> {
+    const err = (error: ArcadeError, status = 400): Response => json({ error }, status);
+    if (exhausted(this.s, this.l)) return err('budget', 503);
+    if (path === ARCADE_BOARD_PATH) {
+      if (req.method !== 'GET') return json({ error: 'method' }, 405);
+      const saved = await this.ctx.storage.get<ArcadeRow[]>(GAME_IDS.map((g) => BOARD_KEY + g));
+      const boards = Object.fromEntries(GAME_IDS.map((g) => [g, saved.get(BOARD_KEY + g) ?? []]));
+      return json({ boards });
+    }
+    if (path !== ARCADE_START_PATH && path !== ARCADE_SUBMIT_PATH)
+      return json({ error: 'not found' }, 404);
+    if (req.method !== 'POST') return json({ error: 'method' }, 405);
+    let body: unknown;
+    try {
+      const text = await req.text();
+      if (text.length > ARCADE_MAX_BODY) return err('bad');
+      body = JSON.parse(text);
+    } catch {
+      return err('bad');
+    }
+    if (path === ARCADE_START_PATH) {
+      const st = parseArcadeStart(body);
+      if (!st) return err('bad');
+      const seed = crypto.getRandomValues(new Uint32Array(1))[0];
+      const sig = await hmacHex(this.arcadeKey, ticketMessage(st.id, st.game, seed, now));
+      return json({ seed, issued: now, sig });
+    }
+    const sub = parseArcadeSubmit(body);
+    if (!sub) return err('bad');
+    const bad = await checkTicket(sub, this.arcadeKey, now);
+    if (bad) return err(bad);
+    // Only a storage await between the used check and the put: the input gate holds a second
+    // submit of the same ticket until both are done (a crypto await here would let it in).
+    const key = usedKey(sub.issued, sub.sig);
+    if ((await this.ctx.storage.get(key)) !== undefined) return err('used');
+    void this.ctx.storage.put(key, now);
+    await this.pruneUsed(now);
+    const v = judge(sub, now);
+    if ('error' in v) return err(v.error);
+    const bk = BOARD_KEY + sub.game;
+    const board = (await this.ctx.storage.get<ArcadeRow[]>(bk)) ?? [];
+    const r = placeScore(
+      board,
+      { id: sub.id, name: sub.name, score: v.score, at: now },
+      ARCADE_BOARD_SIZE,
+    );
+    if (r.changed) await this.ctx.storage.put(bk, r.board);
+    return json({ score: r.score, best: r.best, rank: r.rank });
+  }
+
+  private async pruneUsed(now: number): Promise<void> {
+    const old = await this.ctx.storage.list({
+      prefix: USED_PREFIX,
+      end: usedExpiredEnd(now),
+      limit: USED_PRUNE_BATCH,
+    });
+    if (old.size) await this.ctx.storage.delete([...old.keys()]);
   }
 
   /** Rejected upgrades are still accepted, then closed, so the client can read the code. */
@@ -331,7 +428,7 @@ export default {
     } else if (pathname.startsWith(ADMIN)) {
       if (!authorized(req.headers.get('Authorization'), env.ADMIN_TOKEN ?? ''))
         return new Response('unauthorized', { status: 401 });
-    } else return new Response('not found', { status: 404 });
+    } else if (!pathname.startsWith(ARCADE)) return new Response('not found', { status: 404 });
     return env.HUB.get(env.HUB.idFromName('hub')).fetch(req);
   },
 } satisfies ExportedHandler<Env>;

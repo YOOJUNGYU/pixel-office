@@ -69,6 +69,8 @@ export interface HttpServerOptions {
   onWaitingPage?: () => void;
   /** Internet public office relay: status for the handshake, admin kick. */
   relay?: ClientMessageContext['relay'];
+  /** Lounge arcade hall of fame on the relay. */
+  arcade?: ClientMessageContext['arcade'];
 }
 
 const USAGE_RANGES: readonly string[] = ['7d', '30d', 'all'];
@@ -320,6 +322,7 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
           transcripts: options.transcripts,
           client: socket,
           relay: options.relay,
+          arcade: options.arcade,
         });
       } catch {
         // Malformed JSON, ignore

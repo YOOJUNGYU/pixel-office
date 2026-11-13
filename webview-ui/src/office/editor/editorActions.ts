@@ -1,3 +1,4 @@
+import { isFixedFurniture } from '../../../../core/src/lan.js';
 import { serverZoneTiles } from '../../../../core/src/lan.js';
 import type { ColorValue } from '../../components/ui/types.js';
 import { DEFAULT_NEUTRAL_COLOR } from '../../constants.js';
@@ -127,13 +128,14 @@ export function paintTiles(
 
 /** Place furniture. Returns new layout (immutable). */
 export function placeFurniture(layout: OfficeLayout, item: PlacedFurniture): OfficeLayout {
+  if (isFixedFurniture(item.type)) return layout; // the default layout's own
   if (!canPlaceFurniture(layout, item.type, item.col, item.row)) return layout;
   return { ...layout, furniture: [...layout.furniture, item] };
 }
 
 /** Remove furniture by uid. Returns new layout (immutable). */
 export function removeFurniture(layout: OfficeLayout, uid: string): OfficeLayout {
-  const filtered = layout.furniture.filter((f) => f.uid !== uid);
+  const filtered = layout.furniture.filter((f) => f.uid !== uid || isFixedFurniture(f.type));
   if (filtered.length === layout.furniture.length) return layout;
   return { ...layout, furniture: filtered };
 }
@@ -177,7 +179,9 @@ export function furnitureAt(
  * rather than silently dropped.
  */
 export function removeFurnitureAt(layout: OfficeLayout, col: number, row: number): OfficeLayout {
-  const filtered = layout.furniture.filter((f) => !coversTile(f, col, row));
+  const filtered = layout.furniture.filter(
+    (f) => !coversTile(f, col, row) || isFixedFurniture(f.type),
+  );
   if (filtered.length === layout.furniture.length) return layout;
   return { ...layout, furniture: filtered };
 }
@@ -272,7 +276,7 @@ export function planFurnitureMove(
   opts: { duplicate?: boolean } = {},
 ): FurnitureMovePlan | null {
   const item = layout.furniture.find((f) => f.uid === uid);
-  if (!item) return null;
+  if (!item || isFixedFurniture(item.type)) return null; // fixed furniture never moves
   const dCol = newCol - item.col;
   const dRow = newRow - item.row;
   const items = [item, ...getSurfaceRiders(layout, uid)].map((f) => ({
@@ -471,7 +475,7 @@ export function rotateFurniture(
   direction: 'cw' | 'ccw',
 ): OfficeLayout {
   const item = layout.furniture.find((f) => f.uid === uid);
-  if (!item) return layout;
+  if (!item || isFixedFurniture(item.type)) return layout;
   const newType = getRotatedType(item.type, direction);
   if (!newType) return layout;
 
@@ -491,7 +495,7 @@ export function rotateFurniture(
 /** Toggle furniture state (on/off). Returns new layout (immutable). */
 export function toggleFurnitureState(layout: OfficeLayout, uid: string): OfficeLayout {
   const item = layout.furniture.find((f) => f.uid === uid);
-  if (!item) return layout;
+  if (!item || isFixedFurniture(item.type)) return layout;
   const newType = getToggledType(item.type);
   if (!newType) return layout;
   return {

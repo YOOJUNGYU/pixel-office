@@ -46,6 +46,7 @@ export class PixelAgentsServer {
     transcripts?: TranscriptService;
     usage?: UsageIndex;
     relay?: ClientMessageContext['relay'];
+    arcade?: ClientMessageContext['arcade'];
   }): Promise<{ port: number }> {
     const { app, port, closeClients, broadcast } = await createHttpServer({
       host: options?.host,
@@ -64,6 +65,7 @@ export class PixelAgentsServer {
       transcripts: options?.transcripts,
       usage: options?.usage,
       relay: options?.relay,
+      arcade: options?.arcade,
     });
     this.app = app;
     this.closeClients = closeClients;
