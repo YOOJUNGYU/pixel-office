@@ -340,18 +340,18 @@ function History({ data }: { data: UsageLoaded }) {
   const { totals } = data;
   const empty = totals.billable === 0 && totals.cacheRead === 0 && data.top.length === 0;
   if (empty) return <div className="text-sm text-text-muted px-2">{t('usage.empty')}</div>;
-  const kpis: Array<[string, string]> = [
-    [t('usage.kpi.billable'), tokensText(totals.billable)],
-    [t('usage.tok.cacheRead'), tokensText(totals.cacheRead)],
-    [t('usage.kpi.hit'), hitRate(totals)],
-    [t('usage.kpi.sessions'), String(totals.sessions)],
+  const kpis: Array<[string, string, string]> = [
+    [t('usage.kpi.billable'), tokensText(totals.billable), t('usage.tip.billable')],
+    [t('usage.tok.cacheRead'), tokensText(totals.cacheRead), t('usage.tip.cacheRead')],
+    [t('usage.kpi.hit'), hitRate(totals), t('usage.tip.hit')],
+    [t('usage.kpi.sessions'), String(totals.sessions), t('usage.tip.sessions')],
   ];
   const dayKeys = ['input', 'output', 'cacheCreate'] as const;
   return (
     <>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-8">
-        {kpis.map(([label, value]) => (
-          <div key={label} className="pixel-panel px-8 py-6">
+        {kpis.map(([label, value, tip]) => (
+          <div key={label} className="pixel-panel px-8 py-6 cursor-help" title={tip}>
             <div className="text-2xs text-text-muted">{label}</div>
             <div className="text-xl font-bold font-mono">{value}</div>
           </div>

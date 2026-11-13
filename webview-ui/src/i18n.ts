@@ -30,6 +30,14 @@ const ko = {
   'usage.kpi.billable': '토큰',
   'usage.kpi.hit': '캐시 적중',
   'usage.kpi.sessions': '세션',
+  'usage.tip.billable':
+    '청구 대상 토큰: 입력 + 출력 + 캐시 쓰기. 캐시 읽기는 빠짐 (단가가 입력의 약 10%라 따로 셈)',
+  'usage.tip.cacheRead':
+    '이전 호출에서 캐시해 둔 대화 앞부분을 다시 쓴 입력 토큰. 매 호출마다 쌓여 가장 크지만 저렴함',
+  'usage.tip.hit':
+    '모델에 들어간 입력 중 캐시에서 온 비율: 캐시 읽기 ÷ (캐시 읽기 + 입력 + 캐시 쓰기). 높을수록 절약',
+  'usage.tip.sessions':
+    '이 기간에 활동이 있었던 Claude·Codex 세션 수 (서브에이전트는 부모 세션에 포함)',
   'usage.daily': '일별',
   'usage.dailyCache': '일별 캐시 읽기',
   'usage.tok.input': '입력',
@@ -573,6 +581,14 @@ const en: Record<Key, string> = {
   'usage.kpi.billable': 'Tokens',
   'usage.kpi.hit': 'Cache hits',
   'usage.kpi.sessions': 'Sessions',
+  'usage.tip.billable':
+    'Billable tokens: input + output + cache write. Cache reads excluded (about 10% of the input price, counted apart)',
+  'usage.tip.cacheRead':
+    'Input tokens served from the cache: the conversation prefix cached by an earlier call. Grows every call, but cheap',
+  'usage.tip.hit':
+    'Share of input that came from the cache: cache read ÷ (cache read + input + cache write). Higher = cheaper',
+  'usage.tip.sessions':
+    'Claude/Codex sessions active in this range (subagents count with their parent session)',
   'usage.daily': 'Daily',
   'usage.dailyCache': 'Daily cache read',
   'usage.tok.input': 'Input',
