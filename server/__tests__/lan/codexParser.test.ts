@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { Act } from '../../../core/src/lan.js';
+import { CODEX_SHELL_IDLE_MS } from '../../src/constants.js';
 import { applyCodexLine, codexSessionMeta, parseCodexIndex } from '../../src/lan/codexParser.js';
 import { classifyShell, newSession, noteAct, tick, toViews } from '../../src/lan/session.js';
 
@@ -110,6 +111,35 @@ describe('applyCodexLine', () => {
     applyCodexLine(s, output('{"session_id":42,"output":""}'), 0);
     applyCodexLine(s, exec('tools.write_stdin({session_id:42,chars:""})', 'call_y'), 0);
     applyCodexLine(s, output('Process exited with code 0\n"exit_code": 0', 'call_y'), 0);
+    expect(s.shells.size).toBe(0);
+  });
+
+  it('an unpolled shell leaves after CODEX_SHELL_IDLE_MS; a poll keeps it', () => {
+    const s = mk();
+    applyCodexLine(s, exec('tools.exec_command({cmd:"git log"})'), 0);
+    applyCodexLine(s, output('{"session_id":1,"output":""}'), 0);
+    applyCodexLine(s, exec('tools.exec_command({cmd:"pnpm dev"})', 'call_y'), 0);
+    applyCodexLine(s, output('{"session_id":2,"output":""}', 'call_y'), 0);
+    const T = CODEX_SHELL_IDLE_MS;
+    // a later poll of 2 only
+    applyCodexLine(s, exec('tools.write_stdin({session_id:2,chars:""})', 'call_z'), T - 1);
+    applyCodexLine(s, output('{"session_id":2,"output":"ready"}', 'call_z'), T - 1);
+    const shells = (now: number) =>
+      toViews(s, false, now)
+        .filter((v) => v.kind === 'shell')
+        .map((v) => v.id);
+    expect(shells(T - 1)).toEqual(['c1/sh/1', 'c1/sh/2']);
+    expect(shells(T)).toEqual(['c1/sh/2']); // 1 expired in the view, no new line needed
+    expect(shells(2 * T)).toEqual([]);
+    applyCodexLine(s, output('{"session_id":3,"output":""}'), 2 * T); // any later output prunes
+    expect([...s.shells.keys()]).toEqual(['3']);
+  });
+
+  it('write_stdin on a gone process removes the shell', () => {
+    const s = mk();
+    applyCodexLine(s, output('{"session_id":42,"output":""}'), 0);
+    applyCodexLine(s, exec('tools.write_stdin({session_id:42,chars:""})', 'call_y'), 0);
+    applyCodexLine(s, output('write_stdin failed: Unknown process id 42', 'call_y'), 0);
     expect(s.shells.size).toBe(0);
   });
 

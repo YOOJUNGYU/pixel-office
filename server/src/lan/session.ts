@@ -9,6 +9,7 @@ import type {
 } from '../../../core/src/lan.js';
 import { AGE_MAX_SEC, DIFF_MAX, TODO_MAX } from '../../../core/src/lan.js';
 import {
+  CODEX_SHELL_IDLE_MS,
   LINE_CLOCK_SLACK_MS,
   PERMISSION_DELAY_MS,
   ROOM_DEBOUNCE_MS,
@@ -69,6 +70,8 @@ export interface SessionState {
       zone: ServerZone;
       command?: string;
       output?: string;
+      /** Codex: last line naming this process (start or poll); see CODEX_SHELL_IDLE_MS. */
+      seen?: number;
     }
   >;
   /** LOCAL ONLY (notifications on this PC): never copied into an AgentView, so never sent. */
@@ -383,7 +386,10 @@ export function toViews(s: SessionState, brief = false, now = 0): AgentView[] {
   if (s.diff.add || s.diff.del) self.diff = { ...s.diff };
   // Local only: this PC's own snapshot (brief = what peers get never carries it).
   if (!brief && s.local.context) self.ctx = { ...s.local.context };
-  const shells = [...s.shells].map(([shellId, sh]): AgentView => ({
+  const live = [...s.shells].filter(
+    ([, sh]) => sh.seen === undefined || now - sh.seen < CODEX_SHELL_IDLE_MS,
+  );
+  const shells = live.map(([shellId, sh]): AgentView => ({
     id: `${s.id}/sh/${shellId}`,
     provider: s.provider,
     kind: 'shell',

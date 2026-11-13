@@ -74,6 +74,9 @@ export const CLAUDE_SESSIONS_DIR_NAME = 'sessions';
 export const WSL_PROC_TIMEOUT_MS = 3_000;
 /** A Codex session whose turn ended (task_complete / turn_aborted) leaves after this since its last line. */
 export const CODEX_ENDED_TTL_MS = 10 * 60_000;
+/** A Codex shell nobody polled for this long leaves: Codex records an exit only when the model
+ *  polls the process again (write_stdin), so an unpolled one would otherwise run forever. */
+export const CODEX_SHELL_IDLE_MS = 3 * 60_000;
 
 // ── LAN office wiring ──────────────────────────────────────
 /** `GET /api/ping` answer that marks a running Pixel Office (single-instance check). */
