@@ -32,6 +32,8 @@ There are three offices, and you can switch between them any time with the butto
 
 [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents) (MIT) is a VS Code extension that launches Claude Code agents and shows the ones on your own PC as characters. Pixel Office keeps its office engine, layout editor and furniture, and builds a different app around them.
 
+The token usage feature is modeled on [token-dashboard](https://github.com/nateherkai/token-dashboard). The idea of reading the transcripts into per-day, per-project and per-model totals with a list of the most expensive sessions comes from there, and so does counting a response once even when the transcript logs it several times. No code was copied: it was written from scratch and lives as a panel inside the office instead of a separate dashboard. Codex support, the character size and flames, and opening finished sessions are additions.
+
 |             | pixel-agents                             | Pixel Office                                         |
 | ----------- | ---------------------------------------- | ---------------------------------------------------- |
 | Form        | VS Code extension                        | Standalone app with installers, tray and auto-update |
@@ -114,7 +116,7 @@ How the numbers work:
 
 ### Token usage (📊)
 
-The 📊 button at the top left opens the usage panel right under the buttons. Drag its right edge, bottom edge or corner to resize it; it remembers the size. Click 📊 again or × to close it.
+This one borrows its idea from [token-dashboard](https://github.com/nateherkai/token-dashboard). The 📊 button at the top left opens the usage panel right under the buttons. Drag its right edge, bottom edge or corner to resize it; it remembers the size. Click 📊 again or × to close it.
 
 ![The office with the usage panel open](docs/images/usage-office-en.png)
 
@@ -242,6 +244,7 @@ npm run check-types && npm run lint
 
 - Original project: [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents) (MIT), where the office engine, layout editor and furniture come from.
 - Characters: [JIK-A-4, Metro City](https://jik-a-4.itch.io/metrocity-free-topdown-character-pack)
+- Token usage: idea and counting rules from [token-dashboard](https://github.com/nateherkai/token-dashboard) (MIT).
 - Font: [Pretendard](https://github.com/orioncactus/pretendard) (SIL OFL 1.1)
 
 <p align="center">

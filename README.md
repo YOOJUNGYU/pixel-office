@@ -26,6 +26,8 @@
 
 [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents)(MIT)를 가져와 고친 프로젝트입니다. 원작은 VS Code 확장이라 VS Code 안에서 Claude Code를 실행하고, 내 PC의 에이전트만 캐릭터로 보여 줍니다. 사무실을 그리는 엔진, 레이아웃 편집기, 가구 그림은 원작 것을 그대로 씁니다.
 
+토큰 사용량 기능은 [token-dashboard](https://github.com/nateherkai/token-dashboard)를 참고했습니다. 대화 기록을 읽어 날짜·프로젝트·모델별로 집계하고 비싼 세션을 뽑아 보여 주는 아이디어와, 같은 응답이 여러 줄로 남을 때 한 번만 세는 방식을 가져왔습니다. 코드는 가져오지 않고 새로 짰고, 따로 띄우는 대시보드 대신 사무실 안 패널로 넣었습니다. Codex 집계, 캐릭터 크기와 불꽃, 끝난 세션의 대화 열기는 여기서 더한 것입니다.
+
 |           | 원작 pixel-agents              | Pixel Office                                                   |
 | --------- | ------------------------------ | -------------------------------------------------------------- |
 | 형태      | VS Code 확장                   | 따로 설치하는 앱 (브라우저 창, 트레이, 자동 업데이트)          |
@@ -116,7 +118,7 @@
 
 ### 토큰 사용량 (📊)
 
-왼쪽 위 📊 버튼을 누르면 버튼 바로 아래에 사용량 패널이 열립니다. 오른쪽 끝, 아래 끝, 오른쪽 아래 모서리를 잡아 끌면 크기를 바꿀 수 있고, 바꾼 크기는 기억해 둡니다. 다시 누르거나 ×를 누르면 닫힙니다.
+[token-dashboard](https://github.com/nateherkai/token-dashboard)에서 아이디어를 얻은 기능입니다. 왼쪽 위 📊 버튼을 누르면 버튼 바로 아래에 사용량 패널이 열립니다. 오른쪽 끝, 아래 끝, 오른쪽 아래 모서리를 잡아 끌면 크기를 바꿀 수 있고, 바꾼 크기는 기억해 둡니다. 다시 누르거나 ×를 누르면 닫힙니다.
 
 ![사용량 패널을 연 사무실](docs/images/usage-office-ko.png)
 
@@ -246,6 +248,7 @@ npm run check-types && npm run lint
 
 - 원작: [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents) (MIT). 사무실 엔진, 레이아웃 편집기, 가구 그림을 가져왔습니다.
 - 캐릭터: [JIK-A-4, Metro City](https://jik-a-4.itch.io/metrocity-free-topdown-character-pack)
+- 토큰 사용량: [token-dashboard](https://github.com/nateherkai/token-dashboard) (MIT)의 아이디어와 집계 방식을 참고했습니다.
 - 글꼴: [Pretendard](https://github.com/orioncactus/pretendard) (SIL OFL 1.1)
 
 <p align="center">
