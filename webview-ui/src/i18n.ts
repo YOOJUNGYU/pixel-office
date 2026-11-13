@@ -129,7 +129,7 @@ const ko = {
   'legend.lounge':
     '입력·승인 대기, 작업 끝남 — 그 PC의 캐릭터로 합쳐짐 (머리 위 빨간 ! = 확인 필요)',
   'tour.roomLegend.title': '방 안내',
-  'tour.roomLegend.body': '방 명패에 마우스를 올리면 어떤 일을 할 때 그 방으로 가는지 보입니다.',
+  'tour.roomLegend.body': '방 이름표에 마우스를 올리면 어떤 일로 그 방에 오는지 보여 줍니다.',
   'app.restarting': '새 버전으로 다시 시작합니다…',
   'server.offTitle': 'Pixel Office 서버가 꺼져 있습니다',
   'server.quitTitle': 'Pixel Office 를 종료했습니다',
@@ -382,98 +382,98 @@ const ko = {
   'tour.demo.editReason': '로그인 버그 고치는 중',
   'tour.demo.readReason': 'API 문서 확인',
   'tour.demo.waitReason': '배포 명령을 실행해도 될까요?',
-  'tour.welcome.title': 'Pixel Office 에 오신 걸 환영합니다',
+  'tour.welcome.title': 'Pixel Office에 오신 걸 환영해요',
   'tour.welcome.body':
-    'Claude Code · Codex 에이전트가 이 픽셀 사무실의 캐릭터로 나타납니다. 혼자(개인용), 팀과(팀 오피스), 또는 모두와(공개 오피스) 볼 수 있습니다.',
+    'Claude Code와 Codex 에이전트가 이 사무실의 캐릭터로 나타납니다. 혼자 볼 수도 있고, 팀이나 다른 사람들과 같이 볼 수도 있어요.',
   'tour.welcome.bodyDemo':
-    'Claude Code · Codex 에이전트가 이 픽셀 사무실의 캐릭터로 나타납니다. 혼자(개인용), 팀과(팀 오피스), 또는 모두와(공개 오피스) 볼 수 있습니다.\n지금 보이는 캐릭터 중 일부는 안내용 예시이며, 안내가 끝나면 사라집니다.',
+    'Claude Code와 Codex 에이전트가 이 사무실의 캐릭터로 나타납니다. 혼자 볼 수도 있고, 팀이나 다른 사람들과 같이 볼 수도 있어요.\n지금 보이는 캐릭터 몇 명은 설명용 예시라서 안내가 끝나면 사라집니다.',
   'tour.roomCoding.title': '코딩실',
   'tour.roomCoding.body':
-    '에이전트는 하는 일에 따라 방을 옮겨 다닙니다. 파일을 고치거나 쓰는 동안은 코딩실 책상에 앉아 있습니다.\n방 왼쪽 위 명패의 "에이전트 N" 은 그 방에 있는 에이전트 수(서브에이전트·셸 포함)입니다.',
+    '에이전트는 하는 일에 따라 방을 옮겨 다녀요. 파일을 고치는 동안에는 코딩실 책상에 앉아 있습니다.\n방 이름표 옆 숫자는 지금 그 방에 있는 에이전트 수예요.',
   'tour.roomLibrary.title': '자료실',
-  'tour.roomLibrary.body': '파일을 읽거나 검색하고, 웹을 찾아볼 때는 자료실로 갑니다.',
+  'tour.roomLibrary.body': '파일을 읽거나 코드·웹을 검색할 때는 자료실로 갑니다.',
   'tour.roomLibrary.bodyDemo':
-    '파일을 읽거나 검색하고, 웹을 찾아볼 때는 자료실로 갑니다. 지금 캐릭터 하나가 걸어가는 게 보이죠?',
+    '파일을 읽거나 코드·웹을 검색할 때는 자료실로 갑니다. 지금 한 명이 걸어가고 있죠?',
   'tour.roomServer.title': '서버실',
   'tour.roomServer.body':
-    '명령을 실행할 때는 서버실에서 일합니다. 서버실은 테스트 · 빌드 · Git · 실행 네 구역으로 나뉘어, 명령 종류에 맞는 구역에 앉습니다.\n구역 명패에 마우스를 올리면 그 구역에 어떤 명령이 오는지 보입니다.',
+    '명령을 실행할 때는 서버실로 갑니다. 서버실은 테스트, 빌드, Git, 실행 네 구역으로 나뉘어 있어서 명령 종류에 맞는 구역에 앉아요.\n구역 이름표에 마우스를 올리면 어떤 명령이 오는지 보입니다.',
   'tour.roomLounge.title': '대기실',
   'tour.roomLounge.body':
-    '대기실은 사람 캐릭터의 공간입니다. 할 일이나 확인을 기다리는 에이전트는 대기실로 돌아와 그 PC 의 사람 캐릭터에 합쳐지고, 확인이 필요하면 사람 머리 위에 빨간 ! 가 뜹니다.\n방 이동은 3초 정도 상태가 이어져야 일어나서, 잠깐씩 바뀌는 작업에 캐릭터가 왔다 갔다 하지 않습니다.',
+    '대기실은 사람들 자리예요. 답이나 승인을 기다리는 에이전트는 대기실로 돌아와 주인 캐릭터에 합쳐지고, 승인이 필요하면 머리 위에 빨간 !가 뜹니다.\n일이 3초쯤 이어져야 방을 옮기니까, 잠깐씩 바뀌는 일로 왔다 갔다 하지는 않아요.',
   'tour.tag.title': '이름표',
   'tour.tag.body':
-    '이름표는 한 줄: 맨 앞 MAIN = 메인 에이전트, SUB / SHELL = 서브에이전트와 셸(부모의 번호로 보임), 다음 #번호, 그다음 닉네임(없으면 PC 계정).\n머리 위 말풍선에는 Claude(주황) / Codex(초록) 배지, 세션 제목(내 에이전트만), 지금 하는 일이 보입니다.',
+    '이름표 맨 앞의 MAIN은 메인 에이전트, SUB와 SHELL은 서브에이전트와 셸이에요. 그 뒤에 번호와 주인 이름이 붙습니다.\n머리 위 말풍선에는 Claude(주황)인지 Codex(초록)인지와 지금 하는 일이 나와요.',
   'tour.bubble.title': '말풍선',
   'tour.bubble.body':
-    '캐릭터에 마우스를 올리면 어느 방에서 무엇을 하는지, 그리고 이유가 보입니다.\n머리 위 빨간 ! 는 사용자의 확인(권한 승인이나 답변)을 기다린다는 뜻입니다.',
+    '캐릭터에 마우스를 올리면 무슨 일을 왜 하고 있는지 자세히 보여 줍니다.\n머리 위 빨간 !는 내 승인이나 답을 기다린다는 뜻이에요.',
   'tour.family.title': '서브에이전트와 셸',
   'tour.family.body':
-    '에이전트가 만든 서브에이전트와 셸은 부모와 같은 방이면 부모 가까운 빈자리에 앉고(방이 꽉 차면 손을 잡고 다님), 다른 방이면 그 방에서 따로 일합니다.\n일을 넘기거나 결과를 보고할 때는 부모와 마주 서서 잠깐 이야기합니다.',
+    '서브에이전트와 셸은 부모와 같은 방에 있으면 부모 옆자리에 앉아요.\n일을 넘겨받거나 결과를 보고할 때는 부모와 마주 보고 잠깐 이야기를 나눕니다.',
   'tour.signals.title': '내 에이전트의 토큰',
   'tour.signals.body':
-    '내 에이전트는 토큰을 많이 쓸수록 커지고(30만·100만 토큰에서 1.5배·2배), 빨리 쓸수록 테두리가 파랑 → 노랑 불꽃 → 빨강 불꽃 오라로 바뀝니다(분당 1.5만·4만·7.5만). 이름표 끝 칩은 그 세션의 토큰(자식까지 합치면 Σ), 말풍선 배지 색은 모델(Opus 보라·Sonnet 파랑·Haiku 초록), 큰 도구 결과(5만 토큰 이상)는 📦 로 떠오릅니다. 다른 사람에게는 보이지 않습니다.',
+    '내 에이전트는 토큰을 많이 쓸수록 커지고(30만에 1.5배, 100만에 2배), 빨리 쓸수록 파란 테두리, 노란 불꽃, 빨간 불꽃이 붙어요.\n이름표 끝 숫자는 그 세션이 쓴 토큰이에요. 이건 나한테만 보입니다.',
   'tour.map.title': '지도 움직이기',
   'tour.map.body':
-    '드래그로 지도를 옮기고, 휠로 커서 위치를 중심으로 확대·축소합니다. 왼쪽 위 + / − 버튼도 됩니다.\n지금 직접 해 보세요 — 다음으로 넘어가면 원래 화면으로 돌아옵니다.',
+    '드래그로 지도를 옮기고 휠로 확대·축소해요. 왼쪽 위 + / − 버튼도 있어요.\n한번 해 보세요. 다음으로 넘어가면 원래 화면으로 돌아옵니다.',
   'tour.map.bodyTouch':
-    '한 손가락으로 끌어 지도를 옮기고, 두 손가락으로 벌리거나 오므려 확대·축소합니다.\n지금 직접 해 보세요 — 다음으로 넘어가면 원래 화면으로 돌아옵니다.',
+    '한 손가락으로 끌어서 옮기고, 두 손가락으로 벌리거나 오므려서 확대·축소해요.\n한번 해 보세요. 다음으로 넘어가면 원래 화면으로 돌아옵니다.',
   'tour.switcher.title': '오피스 전환',
   'tour.switcher.body':
-    '🌐 공개 오피스에는 앱을 설치한 모든 PC가 보입니다(같은 망은 바로, 다른 망은 인터넷 중계로). 🔒 팀 오피스는 코드를 가진 팀원끼리만, 같은 망에서만 보입니다.\n팀 오피스에 참여한 PC는 공개 오피스에서 빠집니다. 🏠 개인용은 다른 PC 와 연결하지 않고 혼자 쓰는 작은 오피스입니다.',
+    '🌐 공개 오피스에는 앱을 설치한 사람 모두가 보여요. 🔒 팀 오피스는 초대 코드를 가진 같은 망 팀원끼리만 씁니다. 🏠 개인용은 나 혼자 쓰는 사무실이에요.\n팀 오피스에 들어가면 공개 오피스에서는 빠집니다.',
   'tour.people.title': '접속 중인 사람',
   'tour.people.body':
-    '지금 이 오피스에 접속한 사람이 모두 보입니다. 에이전트가 없는 사람도요.\n❗ 는 확인을 기다리는 에이전트가 있다는 뜻입니다. 이름을 누르면 그 사람의 에이전트로 화면이 따라갑니다.\n공개 오피스에서는 연결 경로(LAN / 인터넷)가, 나와 버전이 다르면 이름 뒤에 그 버전이 붙습니다.',
+    '지금 이 오피스에 있는 사람이 모두 나와요. 에이전트가 없는 사람까지요.\n❗는 승인을 기다리는 에이전트가 있다는 뜻이고, 이름을 누르면 그 사람 에이전트 쪽으로 화면이 따라갑니다.',
   'tour.chat.title': '내 캐릭터와 채팅',
   'tour.chat.body':
-    '에이전트와 별개로 사람마다 캐릭터가 하나 있습니다. 방향키(↑↓←→)로 내 캐릭터를 어느 방이든 움직이세요(대기실 의자에는 앉을 수 있음).\n아래 가운데 채팅창에 쓰고 Enter → 내 캐릭터 위에 말풍선(새로 쓰면 바뀌고 × 로 지움). 아무것도 선택되지 않았을 때 Space+Enter = 채팅창, Esc = 방향키로 복귀.',
+    '에이전트와 따로 사람마다 캐릭터가 하나 있어요. 방향키로 어디든 걸어 다닐 수 있고, 대기실 의자에는 앉을 수도 있어요.\n아래 채팅창에 쓰고 Enter를 누르면 머리 위에 말풍선이 뜹니다. Space+Enter로 채팅창에 가고, Esc로 빠져나와요.',
   'tour.transcript.title': '세션 상세',
   'tour.transcript.body':
-    '내 에이전트 캐릭터를 누르면 그 세션의 대화 전체가 새 창으로 열립니다(대기실의 에이전트는 내 캐릭터를 눌러 고름).',
+    '내 에이전트 캐릭터를 누르면 그 세션의 대화 전체가 새 창으로 열려요. 대기실에 합쳐진 에이전트는 내 캐릭터를 눌러서 고르면 됩니다.',
   'tour.usage.title': '토큰 사용량',
   'tour.usage.body':
-    '📊 버튼은 토큰 사용량 패널을 엽니다. 위는 지금(오늘 합계와 일하는 내 에이전트별 토큰·모델·분당 소모량), 아래는 7일·30일·전체 기록(일별 막대, 캐시 읽기, 프로젝트·모델 비중, 비싼 세션 Top 10 — 누르면 대화가 열림)입니다. 오른쪽·아래 테두리와 모서리를 끌어 크기를 바꿉니다. 이 PC 에서만 보입니다.',
+    '📊 버튼을 누르면 토큰 사용량이 열려요. 위에는 오늘 쓴 양과 지금 일하는 에이전트, 아래에는 날짜별·프로젝트별 기록과 가장 많이 쓴 세션이 나옵니다.\n테두리를 끌어서 크기를 바꿀 수 있어요. 이 PC에서만 보입니다.',
   'tour.settingsButton.title': '설정',
-  'tour.settingsButton.body': '언어, 테마, 프로필, 팀 오피스 같은 설정은 모두 여기에 있습니다.',
+  'tour.settingsButton.body': '언어, 테마, 프로필, 팀 오피스 같은 설정은 다 여기 있어요.',
   'tour.language.title': '언어 · 테마',
   'tour.language.body':
-    '화면 언어와 다크/라이트 테마는 브라우저마다 따로 고릅니다. 다른 PC의 에이전트 활동도 내가 고른 언어로 보입니다.\n왼쪽 위 해/달 버튼으로 다크와 라이트를 바로 바꿀 수도 있습니다.',
+    '언어와 다크/라이트 테마를 고릅니다. 다른 사람 에이전트가 하는 일도 내가 고른 언어로 보여요.\n왼쪽 위 해/달 버튼으로 테마를 바로 바꿀 수도 있어요.',
   'tour.profile.title': '내 프로필',
   'tour.profile.body':
-    '캐릭터(사람 6종 또는 펫 Claudio · Gitcat)와 색, 닉네임, 내 캐릭터 이름표 색을 정합니다. 내 캐릭터와 이 PC 의 에이전트가 이 모습으로 나옵니다. 이름은 PC 계정 이름이 먼저이고 바꿀 수 없습니다.',
+    '캐릭터(사람 6종이나 펫 Claudio, Gitcat), 색, 닉네임, 이름표 색을 정해요. 내 캐릭터와 내 에이전트가 이 모습으로 나옵니다.\n이름 앞에는 PC 계정 이름이 항상 붙어요.',
   'tour.offices.title': '팀 오피스',
   'tour.offices.body':
-    '팀 이름을 정해 만들면 초대 코드(PO2-…)가 나옵니다. 팀원은 그 코드로 참여합니다.\n팀 오피스의 내용은 팀원끼리만 암호화되어 오가고, 언제든 나갈 수 있습니다.',
+    '팀 이름을 정해서 만들면 초대 코드(PO2-…)가 나와요. 팀원에게 이 코드를 알려 주면 됩니다.\n팀 오피스 내용은 암호화돼서 팀원끼리만 오가요.',
   'tour.system.title': '자동 실행 · 알림 · 업데이트',
   'tour.system.body':
-    '로그인할 때 자동 실행과 PC 알림(접속·퇴장, 내 에이전트의 응답 대기·작업 완료, 채팅)을 켜고 끕니다.\n새 버전은 자동으로 받아 다시 시작합니다. [업데이트 확인] 으로 바로 확인할 수도 있습니다.',
+    '로그인할 때 자동 실행과 PC 알림을 켜고 끕니다. 알림은 누가 들어오고 나갈 때, 내 에이전트가 답을 기다리거나 일을 마쳤을 때, 새 채팅이 올 때 와요.\n새 버전은 알아서 받아서 다시 시작합니다.',
   'tour.system.bodyNoAutostart':
-    'PC 알림(접속·퇴장, 내 에이전트의 응답 대기·작업 완료, 채팅)을 켜고 끕니다.\n새 버전은 자동으로 받아 다시 시작합니다. [업데이트 확인] 으로 바로 확인할 수도 있습니다.',
+    'PC 알림을 켜고 끕니다. 알림은 누가 들어오고 나갈 때, 내 에이전트가 답을 기다리거나 일을 마쳤을 때, 새 채팅이 올 때 와요.\n새 버전은 알아서 받아서 다시 시작합니다.',
   'tour.layoutButton.title': '레이아웃 편집',
-  'tour.layoutButton.body': '사무실 배치를 직접 꾸밀 수 있습니다. 편집기를 열어 볼게요.',
+  'tour.layoutButton.body': '사무실을 직접 꾸밀 수 있어요. 편집기를 한번 열어 볼게요.',
   'tour.floor.title': '바닥',
   'tour.floor.body':
-    '바닥 무늬를 고르고 색을 정한 뒤, 바닥 도구로 방을 클릭하면 방 전체가 한 번에 칠해집니다(서버실은 구역 하나씩). 복도는 이어진 바닥만 칠해집니다. [복사] 로 이미 칠해진 바닥을 집어 올 수도 있습니다.',
+    '바닥 무늬와 색을 고른 다음 방을 클릭하면 방 전체가 한 번에 칠해져요. 서버실은 구역 하나씩 칠해집니다.\n[복사]로 이미 칠한 바닥을 집어 올 수도 있어요.',
   'tour.walls.title': '벽',
-  'tour.walls.body': '벽은 고정되어 있어 색만 바꿀 수 있습니다.',
+  'tour.walls.body': '벽 위치는 바꿀 수 없고 색만 바꿀 수 있어요.',
   'tour.furniture.title': '가구',
   'tour.furniture.body':
-    '목록에서 골라 놓고, 드래그로 옮기고, Alt+드래그로 복사합니다.\nR 은 회전, T 는 켜기/끄기(모니터 등), 색 버튼으로 색을 바꿉니다. 카펫도 여기 있습니다.',
+    '목록에서 골라 놓고, 드래그로 옮기고, Alt+드래그로 복사해요.\nR로 돌리고, T로 모니터 같은 걸 켜고 끄고, 색 버튼으로 색을 바꿉니다. 카펫도 여기 있어요.',
   'tour.background.title': '배경',
-  'tour.background.body': '사무실 바깥을 단색, 바닥 무늬, 카펫 무늬 중 하나로 채웁니다.',
+  'tour.background.body': '사무실 바깥을 단색이나 바닥·카펫 무늬로 채울 수 있어요.',
   'tour.editorMore.title': '지우기 · 실행 취소',
   'tour.editorMore.body':
-    '[지우기] 로 가구·카펫을 지울 수 있습니다 (바닥·벽은 남습니다). Ctrl+Z / Ctrl+Y 로 실행 취소 · 다시 실행.\n배치를 바꿔도 캐릭터는 있던 자리에 그대로 있습니다.',
+    '[지우기]로 가구와 카펫을 지워요. 바닥과 벽은 남습니다.\nCtrl+Z로 되돌리고 Ctrl+Y로 다시 할 수 있어요.',
   'tour.save.title': '저장',
   'tour.save.body':
-    '편집은 [저장] 을 누르기 전까지 이 화면에만 있습니다. [저장] = 저장하고 편집 닫기(공개·팀 오피스는 접속한 모두에게 공유, 마지막 저장이 남음 · 🏠 개인용은 이 PC 에만), [취소] = 바꾼 내용을 모두 버리고 닫기(Esc 도 같음), [초기화] = 기본 배치로(저장해야 적용).\n배치를 파일로 남기려면 설정 → [레이아웃 내보내기] / [레이아웃 가져오기].',
+    '고친 내용은 [저장]을 눌러야 반영돼요. 공개·팀 오피스에서는 저장하면 같은 오피스 사람 모두에게 보입니다.\n[취소]나 Esc를 누르면 고친 걸 다 버리고, [초기화]는 처음 배치로 되돌려요.',
   'tour.install.title': '앱으로 설치',
   'tour.install.body':
-    '이 PC의 브라우저에서는 Pixel Office 를 앱으로 설치할 수 있습니다(Edge·Chrome). 설치하면 바로가기가 탭이 아닌 앱 창으로 열립니다.\n안내 창을 닫았다면 주소창의 설치 아이콘을 쓰세요.',
+    'Edge나 Chrome에서는 Pixel Office를 앱으로 설치할 수 있어요. 설치하면 탭이 아니라 따로 창이 열립니다.\n안내 창을 닫았다면 주소창의 설치 아이콘을 누르세요.',
   'tour.done.title': '준비 끝!',
   'tour.done.body':
-    '이제 에이전트를 실행하면 사무실에 나타납니다.\n이 안내는 설정 → "사용법 다시 보기" 에서 언제든 다시 볼 수 있습니다.',
+    '이제 에이전트를 실행하면 사무실에 나타날 거예요.\n안내는 설정 → "사용법 다시 보기"에서 언제든 다시 볼 수 있어요.',
   'tour.done.bodyDemo':
-    '이제 에이전트를 실행하면 사무실에 나타납니다. 안내 캐릭터는 사라집니다.\n이 안내는 설정 → "사용법 다시 보기" 에서 언제든 다시 볼 수 있습니다.',
+    '이제 에이전트를 실행하면 사무실에 나타날 거예요. 예시 캐릭터들은 사라집니다.\n안내는 설정 → "사용법 다시 보기"에서 언제든 다시 볼 수 있어요.',
 };
 
 export type Key = keyof typeof ko;
@@ -853,98 +853,98 @@ const en: Record<Key, string> = {
   'tour.demo.waitReason': 'OK to run the deploy command?',
   'tour.welcome.title': 'Welcome to Pixel Office',
   'tour.welcome.body':
-    'Your Claude Code and Codex agents show up as characters in this pixel office — alone (personal), with your team (team office) or with everyone (public office).',
+    'Every Claude Code and Codex session on your PC shows up here as a character. You can keep the office to yourself, share it with your team, or join everyone in the public office.',
   'tour.welcome.bodyDemo':
-    'Your Claude Code and Codex agents show up as characters in this pixel office — alone (personal), with your team (team office) or with everyone (public office).\nSome characters you see now are examples for this tour; they leave when it ends.',
+    'Every Claude Code and Codex session on your PC shows up here as a character. You can keep the office to yourself, share it with your team, or join everyone in the public office.\nA few of the characters you see are just for this tour. They leave when it ends.',
   'tour.roomCoding.title': 'Coding room',
   'tour.roomCoding.body':
-    'Agents move between rooms by what they are doing. While editing or writing files they sit at a desk in the coding room.\n"Agents N" on the plate at the top left of each room counts the agents there (subagents and shells included).',
+    "Agents go to the room that matches what they are doing. Editing files means a desk in the coding room.\nThe plate in each room's corner counts the agents inside.",
   'tour.roomLibrary.title': 'Library',
   'tour.roomLibrary.body':
-    'Reading, searching files or browsing the web takes them to the library.',
+    'Reading files, searching code or looking things up on the web happens in the library.',
   'tour.roomLibrary.bodyDemo':
-    'Reading, searching files or browsing the web takes them to the library. See the character walking over?',
+    'Reading files, searching code or looking things up on the web happens in the library. See that one walking over?',
   'tour.roomServer.title': 'Server room',
   'tour.roomServer.body':
-    'Running commands happens in the server room. It is split into four zones — Test · Build · Git · Run — and an agent sits in the zone of its command.\nHover a zone plate to see which commands go there.',
+    'Commands run in the server room. It has four zones, Test, Build, Git and Run, and an agent sits in the one that fits its command.\nHover a zone plate to see what goes where.',
   'tour.roomLounge.title': 'Lounge',
   'tour.roomLounge.body':
-    "The lounge is for people's characters. An idle agent, or one waiting for you, comes back here and merges into its PC's character; a red ! over the person means it needs you.\nA move only happens after the new activity lasts about 3 seconds, so characters do not bounce around on quick tasks.",
+    "The lounge belongs to people. When an agent is idle or waiting for you, it walks back here and merges into its owner's character. A red ! over someone means an agent needs them.\nAgents only move once a new activity lasts about 3 seconds, so quick tasks don't make them bounce around.",
   'tour.tag.title': 'Name tags',
   'tour.tag.body':
-    "One line: first MAIN = main agent, SUB / SHELL = subagents and shells (with their parent's number), then #number, then the nickname (else the PC account).\nThe bubble above the head shows a Claude (orange) / Codex (green) badge, the session title (your own agents only) and the current activity.",
+    "The tag says what the character is: MAIN for a main agent, SUB or SHELL for its helpers, then its number and the owner's name.\nThe bubble above shows Claude (orange) or Codex (green) and what it's doing right now.",
   'tour.bubble.title': 'Hover bubble',
   'tour.bubble.body':
-    'Hover a character to see its room, what it is doing and why.\nA red ! over its head means it is waiting for you (a permission or an answer).',
+    'Hover a character to see where it is, what it is doing and why.\nA red ! means it is waiting for you to approve something or answer a question.',
   'tour.family.title': 'Subagents and shells',
   'tour.family.body':
-    'Subagents and shells an agent starts sit at the free seat closest to it in the same room (in a full room they hold its hand); one working in another room acts on its own there.\nWhen work is handed over or reported back, the two stand face to face and talk for a moment.',
+    'When an agent starts a subagent or a shell, the helper sits as close to it as it can. If it works in a different room, it goes there on its own.\nWhen they hand work over or report back, they stand face to face and chat for a moment.',
   'tour.signals.title': "Your agents' tokens",
   'tour.signals.body':
-    "Your agents grow as they use more tokens (1.5× at 300k, 2× at 1M) and their outline turns from blue to a gold flame to a red flame aura the faster they burn them (15k, 40k, 75k per minute). The chip at the end of the name tag is the session's tokens (Σ with its subagents), the bubble badge's colour is the model (Opus purple, Sonnet blue, Haiku green), and a big tool result (50k tokens or more) rises as 📦. Nobody else sees these.",
+    'Your agents get bigger as a session uses more tokens (1.5× at 300k, 2× at 1M). Burn fast and they light up: a blue outline at 15k a minute, a gold flame at 40k, a red flame at 75k.\nOnly you see this.',
   'tour.map.title': 'Moving the map',
   'tour.map.body':
-    'Drag to pan, scroll to zoom at the cursor, or use the + / − buttons at the top left.\nTry it now — the view goes back when you continue.',
+    'Drag to pan and scroll to zoom, or use + and − at the top left.\nGo ahead and try it. The view resets when you continue.',
   'tour.map.bodyTouch':
-    'Drag with one finger to pan, pinch with two to zoom.\nTry it now — the view goes back when you continue.',
+    'Drag with one finger to pan, pinch to zoom.\nGo ahead and try it. The view resets when you continue.',
   'tour.switcher.title': 'Office switcher',
   'tour.switcher.body':
-    '🌐 The public office shows every PC with the app (the same network directly, others through the internet relay). 🔒 A team office is shared only by teammates who have its code, on the same network.\nA PC in a team office leaves the public office. 🏠 Personal is a small office just for you, not connected to other PCs.',
+    "🌐 The public office has everyone running the app, on any network. 🔒 A team office is for people with your invite code on the same network. While you're in it, you're not in the public office.\n🏠 Personal is just you.",
   'tour.people.title': "Who's online",
   'tour.people.body':
-    "Everyone connected to this office is listed here, even people with no agents.\n❗ means one of their agents is waiting for them. Click a name and the view follows that person's agent.\nIn the public office each row shows its connection (LAN / Internet), and a version different from yours follows the name.",
+    "Everyone in this office is listed here, agents or not. A ❗ means one of their agents is waiting for them.\nClick a name and the view follows that person's agents.",
   'tour.chat.title': 'Your character and chat',
   'tour.chat.body':
-    'Besides agents, everyone has one character. Walk yours into any room with the arrow keys (↑↓←→); it can sit on lounge chairs.\nType in the chat bar at the bottom centre and press Enter → a bubble over your character (a new one replaces it, × deletes it). With nothing focused, Space+Enter = chat bar; Esc = back to the arrow keys.',
+    'You have a character too. Walk it around with the arrow keys, and sit down on a lounge chair if you like.\nType in the bar at the bottom and press Enter to put a bubble over your head. Space+Enter jumps to the chat bar, Esc leaves it.',
   'tour.transcript.title': 'Session details',
   'tour.transcript.body':
-    "Click one of your agent characters to open that session's whole conversation in a new window (agents in the lounge: click your own character).",
+    'Click one of your agents to open the whole session in its own window. For agents resting in the lounge, click your own character and pick one.',
   'tour.usage.title': 'Token usage',
   'tour.usage.body':
-    "The 📊 button opens the token usage panel. On top, now: today's total and each of your working agents' tokens, model and tokens per minute. Below, 7 days, 30 days or all: daily bars, cache reads, projects and models, the 10 costliest sessions (click one to open its conversation). Drag the right or bottom edge or the corner to resize it. Only on this PC.",
+    "The 📊 button opens the usage panel: today's tokens, what each working agent is burning, and your history over 7 days, 30 days or all time.\nClick a session to open its conversation. Drag the edges to resize.",
   'tour.settingsButton.title': 'Settings',
-  'tour.settingsButton.body': 'Language, theme, profile, team offices and more live here.',
+  'tour.settingsButton.body': 'Language, theme, profile, team offices and the rest live here.',
   'tour.language.title': 'Language & theme',
   'tour.language.body':
-    'Each browser picks its own language and dark/light theme. Activity of agents on other PCs is shown in your language too.\nThe sun/moon button at the top left switches dark and light in one click.',
+    "Pick your language and a dark or light theme. Other people's agent activity shows up in your language too.\nThe sun/moon button at the top left flips the theme in one click.",
   'tour.profile.title': 'My profile',
   'tour.profile.body':
-    "Character (six people or the pets Claudio · Gitcat), colour, nickname and your name tag colours — for your own character and this PC's agents. Your PC account name always comes first and cannot be changed.",
+    "Pick a character (six people or the pets Claudio and Gitcat), a colour, a nickname and your name tag colours.\nYour PC account name always comes first and can't be changed.",
   'tour.offices.title': 'Team offices',
   'tour.offices.body':
-    'Create a team to get an invite code (PO2-…); teammates join with it.\nA team office is encrypted between its members, and you can leave any time.',
+    'Create a team and you get an invite code (PO2-…) to send to teammates.\nEverything inside a team office is encrypted, and you can leave whenever you want.',
   'tour.system.title': 'Start at login · Notifications · Updates',
   'tour.system.body':
-    'Turn start at login and PC notifications (join/leave, my agents waiting or finished, chat) on or off.\nNew versions are installed automatically; [Check for updates] checks right now.',
+    'Choose whether Pixel Office starts at login and which PC notifications you get: people coming and going, your agents waiting or done, chat.\nUpdates install themselves. [Check for updates] checks right away.',
   'tour.system.bodyNoAutostart':
-    'Turn PC notifications (join/leave, my agents waiting or finished, chat) on or off.\nNew versions are installed automatically; [Check for updates] checks right now.',
+    'Choose which PC notifications you get: people coming and going, your agents waiting or done, chat.\nUpdates install themselves. [Check for updates] checks right away.',
   'tour.layoutButton.title': 'Layout editor',
-  'tour.layoutButton.body': 'Arrange the office yourself. Let’s open the editor.',
+  'tour.layoutButton.body': 'You can rearrange the office yourself. Let’s open the editor.',
   'tour.floor.title': 'Floor',
   'tour.floor.body':
-    'Pick a floor pattern and a color, then click a room with the floor tool: the whole room is painted at once (one zone at a time in the server room; in the corridor, the connected floor). [Copy] picks up an already painted floor.',
+    'Pick a pattern and a colour, then click a room to paint the whole floor. In the server room it paints one zone at a time.\n[Copy] picks up a floor you already painted.',
   'tour.walls.title': 'Walls',
-  'tour.walls.body': 'Walls are fixed; only their color can be changed.',
+  'tour.walls.body': 'Walls stay where they are. You can only change their colour.',
   'tour.furniture.title': 'Furniture',
   'tour.furniture.body':
-    'Pick an item and place it, drag to move, Alt+drag to copy.\nR rotates, T toggles (monitors…), the color button recolors. Carpets live here too.',
+    'Pick something and place it. Drag to move, Alt+drag to copy.\nR rotates, T turns things like monitors on and off. Carpets are in here too.',
   'tour.background.title': 'Background',
   'tour.background.body':
-    'Fill the outside of the office with a solid color, a floor pattern or a carpet.',
+    'Fill the space around the office with a solid colour, a floor pattern or a carpet.',
   'tour.editorMore.title': 'Erase · Undo',
   'tour.editorMore.body':
-    'Clear furniture and carpets with [Erase] (floor and walls stay). Ctrl+Z / Ctrl+Y undo and redo.\nChanging the layout never moves the characters.',
+    '[Erase] removes furniture and carpets but leaves floors and walls alone. Ctrl+Z and Ctrl+Y undo and redo.\nEditing never moves the characters.',
   'tour.save.title': 'Save',
   'tour.save.body':
-    'Edits stay on this screen until [Save]. [Save] = save and close (public/team office: shared with everyone there, the last save wins · 🏠 Personal: this PC only); [Cancel] = drop every change and close (Esc too); [Reset] = the default layout (applied on [Save]).\nTo keep a layout as a file: Settings → [Export layout] / [Import layout].',
+    'Nothing is saved until you press [Save]. In the public or a team office, everyone there gets your layout, and the last save wins. [Cancel] or Esc throws your changes away, [Reset] brings back the default.\nTo keep a copy, use Settings → [Export layout].',
   'tour.install.title': 'Install as an app',
   'tour.install.body':
-    'On this PC’s browser you can install Pixel Office as an app (Edge, Chrome). Shortcuts then open it in its own window instead of a tab.\nIf you closed the prompt, use the install icon in the address bar.',
+    'In Edge or Chrome you can install Pixel Office as an app, so it opens in its own window instead of a tab.\nClosed the prompt? Use the install icon in the address bar.',
   'tour.done.title': 'All set!',
   'tour.done.body':
-    'Start an agent and it walks into the office.\nReplay this tour any time from Settings → "Replay tour".',
+    'Start an agent and watch it walk in.\nYou can replay this tour any time from Settings.',
   'tour.done.bodyDemo':
-    'Start an agent and it walks into the office. The tour characters leave now.\nReplay this tour any time from Settings → "Replay tour".',
+    'Start an agent and watch it walk in. The tour characters are heading out now.\nYou can replay this tour any time from Settings.',
 };
 
 export const DICT: Record<Lang, Record<Key, string>> = { ko, en };
