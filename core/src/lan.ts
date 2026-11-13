@@ -246,6 +246,30 @@ export interface AgentView {
   title?: string;
   /** THIS PC's browser only (never on the wire, not parsed from peers): token usage. */
   usage?: AgentUsage;
+  /** Token usage as two small tiers, shared with peers (public and team offices): the
+   *  character's size and its burn effect. Absent = 0/0. Older peers ignore it. */
+  heat?: AgentHeat;
+}
+export interface AgentHeat {
+  size: 0 | 1 | 2; // billable total: none / HEAT_SIZE_TOKENS[0] / [1]
+  burn: 0 | 1 | 2 | 3; // billable per minute: none / blue / gold / red (HEAT_BURN_RATES)
+}
+/** A session's billable tokens at which its character grows 1.5x / 2x. */
+export const HEAT_SIZE_TOKENS = [300_000, 1_000_000] as const;
+/** Billable tokens per minute at which the blue, gold and red burn effects start. */
+export const HEAT_BURN_RATES = [15_000, 40_000, 75_000] as const;
+
+export function heatOf(tokens: number, rate: number): AgentHeat {
+  const size = tokens >= HEAT_SIZE_TOKENS[1] ? 2 : tokens >= HEAT_SIZE_TOKENS[0] ? 1 : 0;
+  const burn =
+    rate >= HEAT_BURN_RATES[2]
+      ? 3
+      : rate >= HEAT_BURN_RATES[1]
+        ? 2
+        : rate >= HEAT_BURN_RATES[0]
+          ? 1
+          : 0;
+  return { size, burn };
 }
 export interface AgentUsage {
   tokens: number; // this file's billable total
@@ -589,6 +613,11 @@ function parseView(raw: unknown): AgentView | null {
     const add = int(raw.diff.add, 0, DIFF_MAX);
     const del = int(raw.diff.del, 0, DIFF_MAX);
     if (add !== null && del !== null && add + del > 0) view.diff = { add, del };
+  }
+  if (isObj(raw.heat)) {
+    const size = int(raw.heat.size, 0, 2);
+    const burn = int(raw.heat.burn, 0, 3);
+    if (size !== null && burn !== null && size + burn > 0) view.heat = { size, burn } as AgentHeat;
   }
   if (raw.parentId !== undefined) {
     const parentId = str(raw.parentId, MAX_ID);

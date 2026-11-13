@@ -15,7 +15,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { PUBLIC_VIEW } from '../../../core/src/lan.js';
-import { TAIL_BYTES, VIEW_TITLE_MAX } from '../../src/constants.js';
+import { HEAT_BURN_HOLD_MS, TAIL_BYTES, VIEW_TITLE_MAX } from '../../src/constants.js';
 import { createIdentity } from '../../src/lan/crypto.js';
 import type { CheckPids, PidState } from '../../src/lan/liveness.js';
 import {
@@ -856,6 +856,20 @@ describe('WSL liveness checks only for shown sessions', () => {
       expect(scanner.views(true).every((v) => v.usage === undefined)).toBe(true);
       expect(scanner.liveFiles()).toHaveLength(2);
       expect(scanner.rootsNow().claude).toEqual([join(dir, 'claude')]);
+    });
+
+    it('heat goes to peers too; the burn tier is held for HEAT_BURN_HOLD_MS', async () => {
+      writeFileSync(join(proj, 'sid.jsonl'), edit('a.ts'));
+      let rate = 80_000;
+      scanner.usage = { ...stub, fileUsage: () => ({ ...stub.fileUsage(), rate }) };
+      await scanner.discover();
+      expect(scanner.views(true)[0].heat).toEqual({ size: 1, burn: 3 });
+      expect(scanner.views()[0].heat).toEqual({ size: 1, burn: 3 });
+      rate = 0;
+      t += HEAT_BURN_HOLD_MS - 1;
+      expect(scanner.views(true)[0].heat).toEqual({ size: 1, burn: 3 });
+      t += 1;
+      expect(scanner.views(true)[0].heat).toEqual({ size: 1, burn: 0 });
     });
 
     it('a lone main has no sum', async () => {

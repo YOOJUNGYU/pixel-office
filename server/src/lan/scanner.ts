@@ -4,7 +4,14 @@ import { open, readdir, stat } from 'node:fs/promises';
 import * as path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 
-import type { AgentUsage, AgentView, Provider, ViewKind } from '../../../core/src/lan.js';
+import type {
+  AgentHeat,
+  AgentUsage,
+  AgentView,
+  Provider,
+  ViewKind,
+} from '../../../core/src/lan.js';
+import { heatOf } from '../../../core/src/lan.js';
 import {
   CHILD_ENDED_HIDE_MS,
   CHILD_IDLE_TTL_MS,
@@ -12,6 +19,7 @@ import {
   CODEX_INDEX_MAX_BYTES,
   CODEX_META_MAX_BYTES,
   DISCOVER_INTERVAL_MS,
+  HEAT_BURN_HOLD_MS,
   PERMISSION_MODE_SCAN_BYTES,
   POLL_INTERVAL_MS,
   SESSION_TTL_MS,
@@ -148,6 +156,8 @@ function ttl(s: SessionState): number {
 // ponytail: 폴링 기반, WSL 9P 위 수천 파일에서 느리면 루트별 간격 조정
 export class Scanner {
   private files = new Map<string, Tracked>();
+  /** Per file: the burn tier shown and when the rate last reached it (HEAT_BURN_HOLD_MS). */
+  private burnHold = new Map<string, { burn: AgentHeat['burn']; at: number }>();
   private timers: NodeJS.Timeout[] = [];
   private discovering = false;
   private polling = false;
@@ -415,6 +425,8 @@ export class Scanner {
       .filter(([, t]) => t.endedAt === null || now - t.endedAt < CHILD_ENDED_HIDE_MS)
       .flatMap(([file, t]) => {
         const views = toViews(t.s, brief, now);
+        const heat = this.heatOf(file, now);
+        if (heat) views[0].heat = heat;
         if (brief) return views;
         this.attachUsage(file, t.s, views[0]);
         // Local only: this PC's own snapshot shows each agent's session title in its bubble.
@@ -422,6 +434,19 @@ export class Scanner {
         if (title) for (const v of views) v.title = title;
         return views;
       });
+  }
+
+  /** Size and burn tiers of a file (shared with peers); the burn tier is held for
+   *  HEAT_BURN_HOLD_MS after the rate drops below it. */
+  private heatOf(file: string, now: number): AgentHeat | undefined {
+    for (const k of this.burnHold.keys()) if (!this.files.has(k)) this.burnHold.delete(k);
+    const fu = this.usage?.fileUsage(file);
+    if (!fu) return undefined;
+    const h = heatOf(fu.tokens, fu.rate);
+    const held = this.burnHold.get(file);
+    if (held && h.burn < held.burn && now - held.at < HEAT_BURN_HOLD_MS) h.burn = held.burn;
+    else this.burnHold.set(file, { burn: h.burn, at: now });
+    return h.size + h.burn > 0 ? h : undefined;
   }
 
   private attachUsage(file: string, s: SessionState, v: AgentView): void {

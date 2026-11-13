@@ -1,25 +1,31 @@
-// Pure helpers for the token usage signals (size, burn rate, model, big results) of my agents.
-import type { AgentUsage } from '../../../core/src/lan.js';
-import { USAGE_BURN_TIERS, USAGE_SIZE_TIERS } from '../constants.js';
+// Pure helpers for the token usage signals: size and burn (every agent, from `heat`), model and
+// big results (my agents, from `usage`).
+import type { AgentHeat, AgentUsage, AgentView } from '../../../core/src/lan.js';
+import { heatOf } from '../../../core/src/lan.js';
 
 export type SizeTier = 1 | 1.5 | 2;
 export type BurnTier = 0 | 1 | 2 | 3; // none / blue / yellow / red
 export type ModelFamily = 'opus' | 'sonnet' | 'haiku' | null;
 
+const SCALES: readonly SizeTier[] = [1, 1.5, 2];
+
 export function sizeTier(u?: AgentUsage): SizeTier {
-  const n = u?.tokens ?? 0;
-  return n >= USAGE_SIZE_TIERS[1] ? 2 : n >= USAGE_SIZE_TIERS[0] ? 1.5 : 1;
+  return SCALES[heatOf(u?.tokens ?? 0, 0).size];
 }
 
 export function burnTier(u?: AgentUsage): BurnTier {
-  const r = u?.rate ?? 0;
-  return r >= USAGE_BURN_TIERS[2]
-    ? 3
-    : r >= USAGE_BURN_TIERS[1]
-      ? 2
-      : r >= USAGE_BURN_TIERS[0]
-        ? 1
-        : 0;
+  return heatOf(0, u?.rate ?? 0).burn;
+}
+
+/** An agent's character scale and burn effect: its `heat` (sent by its own PC, mine included),
+ *  else — the tour's demo characters — from its `usage`. */
+export function heatSignals(a: Pick<AgentView, 'heat' | 'usage'>): {
+  scale: SizeTier;
+  burn: BurnTier;
+} {
+  const h: AgentHeat =
+    a.heat ?? (a.usage ? heatOf(a.usage.tokens, a.usage.rate) : { size: 0, burn: 0 });
+  return { scale: SCALES[h.size], burn: h.burn };
 }
 
 /** "999", "1.2k", "1.3M" — one decimal, rounded. */

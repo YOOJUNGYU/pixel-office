@@ -411,7 +411,7 @@ const ko = {
     '서브에이전트와 셸은 부모와 같은 방에 있으면 부모 옆자리에 앉아요.\n일을 넘겨받거나 결과를 보고할 때는 부모와 마주 보고 잠깐 이야기를 나눕니다.',
   'tour.signals.title': '내 에이전트의 토큰',
   'tour.signals.body':
-    '내 에이전트는 토큰을 많이 쓸수록 커지고(30만에 1.5배, 100만에 2배), 빨리 쓸수록 파란 테두리, 노란 불꽃, 빨간 불꽃이 붙어요.\n이름표 끝 숫자는 그 세션이 쓴 토큰이에요. 이건 나한테만 보입니다.',
+    '내 에이전트는 토큰을 많이 쓸수록 커지고(30만에 1.5배, 100만에 2배), 빨리 쓸수록 파란 테두리, 노란 불꽃, 빨간 불꽃이 붙어요.\n크기와 불꽃은 다른 사람에게도 보이고, 이름표 끝 토큰 수는 나한테만 보여요.',
   'tour.map.title': '지도 움직이기',
   'tour.map.body':
     '드래그로 지도를 옮기고 휠로 확대·축소해요. 왼쪽 위 + / − 버튼도 있어요.\n한번 해 보세요. 다음으로 넘어가면 원래 화면으로 돌아옵니다.',
@@ -881,7 +881,7 @@ const en: Record<Key, string> = {
     'When an agent starts a subagent or a shell, the helper sits as close to it as it can. If it works in a different room, it goes there on its own.\nWhen they hand work over or report back, they stand face to face and chat for a moment.',
   'tour.signals.title': "Your agents' tokens",
   'tour.signals.body':
-    'Your agents get bigger as a session uses more tokens (1.5× at 300k, 2× at 1M). Burn fast and they light up: a blue outline at 15k a minute, a gold flame at 40k, a red flame at 75k.\nOnly you see this.',
+    'Your agents get bigger as a session uses more tokens (1.5× at 300k, 2× at 1M). Burn fast and they light up: a blue outline at 15k a minute, a gold flame at 40k, a red flame at 75k.\nEveryone sees the size and flames; the token count on the tag is yours alone.',
   'tour.map.title': 'Moving the map',
   'tour.map.body':
     'Drag to pan and scroll to zoom, or use + and − at the top left.\nGo ahead and try it. The view resets when you continue.',

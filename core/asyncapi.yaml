@@ -1173,6 +1173,8 @@ components:
           description: A tool result just failed (sent for a few seconds only).
         diff:
           $ref: '#/components/schemas/AgentDiff'
+        heat:
+          $ref: '#/components/schemas/AgentHeat'
         ctx:
           $ref: '#/components/schemas/AgentContext'
         title:
@@ -1220,6 +1222,23 @@ components:
           description: Main agent with children only - own plus all children billable.
         big:
           $ref: '#/components/schemas/AgentUsageBig'
+
+    AgentHeat:
+      description: Token usage as tiers, shared with peers - the character's size and its burn effect. Absent = none.
+      type: object
+      additionalProperties: false
+      required: [size, burn]
+      properties:
+        size:
+          type: integer
+          minimum: 0
+          maximum: 2
+          description: 0 = normal, 1 = 1.5x (300k billable tokens), 2 = 2x (1M).
+        burn:
+          type: integer
+          minimum: 0
+          maximum: 3
+          description: 0 = none, 1 = blue (15k/min), 2 = gold flame (40k/min), 3 = red flame (75k/min).
 
     AgentUsageBig:
       type: object

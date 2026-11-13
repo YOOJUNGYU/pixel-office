@@ -109,6 +109,8 @@ describe('status signals and quiet views', () => {
     const q = quietView(w);
     for (const k of ['ageSec', 'todo', 'fail', 'diff', 'ctx', 'title', 'usage'])
       expect(q).not.toHaveProperty(k);
+    expect(quietView({ ...w, heat: { size: 2, burn: 3 } }).heat).toEqual({ size: 2, burn: 3 });
+    expect(redactView({ ...w, heat: { size: 1, burn: 0 } }).heat).toEqual({ size: 1, burn: 0 });
     expect(q).toMatchObject({
       act: 'edit',
       room: 'coding',

@@ -673,27 +673,27 @@ test('loungeAgentsOf lists folded lounge agents of that PC only', () => {
   assert.deepEqual(lan.loungeAgentsOf('p3'), []);
 });
 
-test('usage: my agent grows and burns by its tokens; a peer agent never does', () => {
+test("heat: every agent grows and burns by its PC's heat; none → normal", () => {
   const { os, lan } = setup();
   lan.applyPeople([
     { peerId: 'p1', account: 'yoo', palette: 2, hueShift: 30, nickname: '', self: true },
     { peerId: 'p2', account: 'o', palette: 1, hueShift: 0, nickname: '', self: false },
   ]);
-  const usage = { tokens: 1_200_000, rate: 80_000 };
   const other = { ...peer, id: 'p2' };
   lan.apply([
-    agent('a', 'coding', { usage }),
-    { ...agent('b', 'coding', { usage }), key: 'p2:b', peer: other },
+    agent('a', 'coding', { heat: { size: 2, burn: 3 } }),
+    { ...agent('b', 'coding', { heat: { size: 1, burn: 2 } }), key: 'p2:b', peer: other },
   ]);
   const mine = os.characters.get(lan.idFor('p1:a')!)!;
   const theirs = os.characters.get(lan.idFor('p2:b')!)!;
   assert.equal(mine.usageScale, 2);
   assert.equal(mine.burn, 3);
-  assert.equal(theirs.usageScale, undefined);
-  assert.equal(theirs.burn, undefined);
-  lan.apply([agent('a', 'coding')]);
-  assert.equal(mine.usageScale, undefined, 'no usage → back to normal');
+  assert.equal(theirs.usageScale, 1.5);
+  assert.equal(theirs.burn, 2);
+  lan.apply([agent('a', 'coding'), { ...agent('b', 'coding'), key: 'p2:b', peer: other }]);
+  assert.equal(mine.usageScale, undefined, 'no heat → back to normal');
   assert.equal(mine.burn, undefined);
+  assert.equal(theirs.usageScale, undefined);
 });
 
 test('getCharacterAt: a 1.5× character is hit 1.5× higher above its feet', () => {

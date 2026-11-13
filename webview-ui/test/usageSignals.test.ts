@@ -6,6 +6,7 @@ import type { AgentUsage } from '../../core/src/lan.js';
 import {
   bigTrigger,
   burnTier,
+  heatSignals,
   modelFamily,
   modelLabel,
   sizeTier,
@@ -69,4 +70,13 @@ test('tokensText rounds into the next unit', () => {
 test('usageChipText: tokens, plus Σ when a main has children', () => {
   assert.equal(usageChipText({ tokens: 1_200_000, rate: 0 }), '1.2M');
   assert.equal(usageChipText({ tokens: 3_400_000, rate: 0, sum: 4_100_000 }), '3.4M · Σ4.1M');
+});
+
+test("heatSignals: a peer's heat wins, demo usage falls back, none = plain", () => {
+  assert.deepEqual(heatSignals({ heat: { size: 2, burn: 1 }, usage: u(0, 0) }), {
+    scale: 2,
+    burn: 1,
+  });
+  assert.deepEqual(heatSignals({ usage: u(400_000, 80_000) }), { scale: 1.5, burn: 3 });
+  assert.deepEqual(heatSignals({}), { scale: 1, burn: 0 });
 });

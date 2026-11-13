@@ -92,7 +92,7 @@ Each zone has its own plate with a count. Hover it to see what belongs there.
 
 ### Token signals on your agents
 
-Your own agents also show how many tokens they're using. Only you see this; it never leaves your PC. All screenshots below use made-up data.
+Agents also show how many tokens they're using. Size and flames are shared with everyone in the office; the token count, model badge and 📦 are yours alone and never leave your PC. All screenshots below use made-up data.
 
 |                        Screen                        | State               | What you see                                                                                                                                                |
 | :--------------------------------------------------: | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -112,7 +112,7 @@ How the numbers work:
 - **Size** goes by the session's total tokens: normal under 300k, 1.5× from 300k, 2× from 1M. Just three steps, so the pixels stay crisp.
 - **Outline** goes by tokens per minute over the last 2 minutes: blue ring from 15k, low gold flame from 40k, red flame aura from 75k. The red flame looks nothing like a failure (that's a red drop and a blinking PC).
 - **Tokens** means input + output + cache writes. Cache reads are left out and shown separately in the usage panel.
-- Other people's agents in the public office have no bubble at all, just their room, seat, screen and the !. In a team office you see their bubbles, but never their size, flames or tokens.
+- Other people's agents in the public office have no bubble at all, just their room, seat, screen and the !. In a team office you see their bubbles too. Everyone's size and flames show in both offices: other PCs get only the two tiers, never the token counts. A flame stays lit for 30 seconds after the rate drops, so it doesn't flicker at a threshold.
 
 ### Token usage (📊)
 

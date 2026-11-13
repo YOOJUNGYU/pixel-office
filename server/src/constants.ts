@@ -77,6 +77,9 @@ export const CODEX_ENDED_TTL_MS = 10 * 60_000;
 /** A Codex shell nobody polled for this long leaves: Codex records an exit only when the model
  *  polls the process again (write_stdin), so an unpolled one would otherwise run forever. */
 export const CODEX_SHELL_IDLE_MS = 3 * 60_000;
+/** A burn tier (AgentView.heat.burn) stays this long after the rate drops below it, so a rate
+ *  hovering at a threshold neither flickers nor sends a presence change every second. */
+export const HEAT_BURN_HOLD_MS = 30_000;
 
 // ── LAN office wiring ──────────────────────────────────────
 /** `GET /api/ping` answer that marks a running Pixel Office (single-instance check). */

@@ -656,10 +656,7 @@ export const AVATAR_LIST_GAP_PX = 12;
 /** Like a plate popup: above tags, bubbles, plates and the transcript panel (45). */
 export const AVATAR_LIST_Z_INDEX = 46;
 
-/** Token usage: a file's billable size tiers (1.5x from the first, 2x from the second). */
-export const USAGE_SIZE_TIERS = [300_000, 1_000_000] as const;
-/** Burn rate (tokens/min) at which the blue, yellow and red effects start. */
-export const USAGE_BURN_TIERS = [15_000, 40_000, 75_000] as const;
+/** Token usage size/burn thresholds: HEAT_SIZE_TOKENS / HEAT_BURN_RATES in core/src/lan.ts. */
 export const USAGE_MODEL_COLORS = { opus: '#7c5cff', sonnet: '#4a9eff', haiku: '#3fb68b' } as const;
 /** Burn tier 1 only; tiers 2/3 use the flame palettes. */
 export const USAGE_BURN_COLORS = { 1: '#4aa8ff' } as const;

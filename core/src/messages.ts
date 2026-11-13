@@ -202,6 +202,7 @@ export interface OfficeAgentMessage {
   todo?: AgentTodo;
   fail?: boolean;
   diff?: AgentDiff;
+  heat?: AgentHeat;
   ctx?: AgentContext;
   title?: string;
   usage?: AgentUsage;
@@ -239,6 +240,11 @@ export interface AgentTodo {
 export interface AgentDiff {
   add: number;
   del: number;
+}
+
+export interface AgentHeat {
+  size: number;
+  burn: number;
 }
 
 export interface AgentContext {

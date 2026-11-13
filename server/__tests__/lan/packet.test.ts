@@ -64,6 +64,21 @@ describe('parsePeerPacket', () => {
     expect(one({})).toEqual(view());
   });
 
+  it('heat: valid tiers kept, out-of-range or zero dropped', () => {
+    const one = (heat: unknown) =>
+      parse(packet({ views: [{ ...view(), heat } as AgentView] }))?.views[0];
+    expect(one({ size: 2, burn: 3 })?.heat).toEqual({ size: 2, burn: 3 });
+    expect(one({ size: 0, burn: 1 })?.heat).toEqual({ size: 0, burn: 1 });
+    for (const bad of [
+      { size: 3, burn: 0 },
+      { size: 0, burn: 4 },
+      { size: 1.5, burn: 0 },
+      { size: 0, burn: 0 },
+      2,
+    ])
+      expect(one(bad)).not.toHaveProperty('heat');
+  });
+
   it('local-only fields (title, ctx, usage) are never read from a peer', () => {
     const got = parse(
       packet({
