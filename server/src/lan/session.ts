@@ -177,11 +177,52 @@ function bare(seg: string): string {
   return s;
 }
 
+/** Heredoc bodies (`<<'EOF' … EOF`): code inside them is not shell (`a > b` is no redirect). */
+const HEREDOC = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n[\s\S]*?\n\s*\2(?=\n|$)/g;
+/** Quoted text: `echo "a > b"` writes nothing. */
+const QUOTED = /'[^']*'|"(?:[^"\\]|\\.)*"/g;
+/** A write redirect and its target (`> f`, `>> f`, `2> f`; never `>&2`). */
+const WRITE_REDIRECT = /(?:^|[^<>&\d])\d?>>?\s*(?!&)([^\s;|&<>()]+)/g;
+/** Writes that are no code edit: temp files, logs, devices. */
+const SCRATCH = /^(?:\/tmp\/|\/var\/tmp\/|\/dev\/|\$\{?TMP)|\.(?:log|out|tmp)$/;
+/** In-place editors: `sed -i`, `perl -pi -e`. */
+const IN_PLACE = /^(?:g?sed|perl)\s+(?:\S+\s+)*?-[a-zA-Z]*i\b/;
+/** A script (inline or heredoc) that writes files, or a patch tool. */
+const SCRIPT_WRITE =
+  /\bopen\([^)\n]*,\s*['"][wa]|\.write_text\(|\bwriteFileSync\(|\bfs\.writeFile\(|\bapply_patch\b|\bgit\s+apply\b|(?:^|[;&|\n]\s*)patch\s/;
+const SCRIPT_PATH = /\bopen\(\s*['"]([^'"]+)['"]|\bwriteFileSync\(\s*['"]([^'"]+)['"]/;
+const fileName = (p: string): string =>
+  p
+    .replace(/^['"]|['"]$/g, '')
+    .split(/[\\/]/)
+    .pop() ?? '';
+
 /**
- * 자료실 for a command that only reads (every segment a reader, `cd` skipped, no write
- * redirect), else 서버실.
+ * A shell command that edits files (a write redirect, `sed -i`, `tee`, a script writing a
+ * file, `git apply` / `patch`) → the edited file's name ('' when it cannot be told); null =
+ * no edit (scratch writes — /tmp, /dev/null, *.log — are none).
+ */
+export function shellEdit(cmd: string): string | null {
+  const shell = cmd.replace(HEREDOC, (m) => m.slice(0, m.indexOf('\n')));
+  for (const seg of shellSegments(shell)) {
+    const plain = seg.replace(QUOTED, '""');
+    for (const m of plain.matchAll(WRITE_REDIRECT))
+      if (!SCRATCH.test(m[1]) && m[1] !== '""') return fileName(m[1]);
+    if (IN_PLACE.test(seg)) return fileName(seg.split(/\s+/).at(-1) ?? '');
+    const tee = /^tee\s+(?:-\S+\s+)*([^\s|;&]+)/.exec(seg);
+    if (tee && !SCRATCH.test(tee[1])) return fileName(tee[1]);
+  }
+  if (!SCRIPT_WRITE.test(cmd)) return null;
+  const p = SCRIPT_PATH.exec(cmd);
+  return p ? fileName(p[1] ?? p[2] ?? '') : '';
+}
+
+/**
+ * 코딩실 for a command that edits files (shellEdit), 자료실 for one that only reads (every
+ * segment a reader, `cd` skipped, no write redirect), else 서버실.
  */
 export function classifyShell(cmd: string): Room {
+  if (shellEdit(cmd) !== null) return 'coding';
   const segs = shellSegments(cmd).filter((s) => !/^cd\b/.test(s));
   const reads = segs.every(
     (s) => LIBRARY_CMD.test(s) && !s.replace(HARMLESS_REDIRECT, '').includes('>'),

@@ -12,6 +12,7 @@ import {
   setActivity,
   setIdle,
   setThinking,
+  shellEdit,
   shellZone,
   todoOf,
 } from './session.js';
@@ -60,6 +61,7 @@ type Activity = [Room, Act, string, string?];
 
 function shellActivity(cmd: string): Activity {
   const room = classifyShell(cmd);
+  if (room === 'coding') return ['coding', 'edit', shellEdit(cmd) || clip(cmd, 80)];
   return [room, room === 'library' ? 'read' : 'run', clip(cmd, 80), programName(cmd)];
 }
 

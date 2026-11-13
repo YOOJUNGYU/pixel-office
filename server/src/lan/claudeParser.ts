@@ -15,6 +15,7 @@ import {
   setActivity,
   setIdle,
   setThinking,
+  shellEdit,
   shellZone,
   todoOf,
 } from './session.js';
@@ -88,6 +89,11 @@ function describe(name: string, i: Input): [Room, Act, string, boolean, string?]
     case 'Bash':
     case 'PowerShell': {
       const room = name === 'Bash' ? classifyShell(str(i.command)) : 'server';
+      if (room === 'coding') {
+        // editing through the shell: shown like an Edit, by the file when it can be told
+        const file = shellEdit(str(i.command)) || str(i.description);
+        return ['coding', 'edit', file || str(i.command).slice(0, 80), false];
+      }
       return [
         room,
         room === 'library' ? 'read' : 'run',

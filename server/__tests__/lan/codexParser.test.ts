@@ -6,7 +6,14 @@ import { describe, expect, it } from 'vitest';
 import type { Act } from '../../../core/src/lan.js';
 import { CODEX_SHELL_IDLE_MS } from '../../src/constants.js';
 import { applyCodexLine, codexSessionMeta, parseCodexIndex } from '../../src/lan/codexParser.js';
-import { classifyShell, newSession, noteAct, tick, toViews } from '../../src/lan/session.js';
+import {
+  classifyShell,
+  newSession,
+  noteAct,
+  shellEdit,
+  tick,
+  toViews,
+} from '../../src/lan/session.js';
 
 const fixture = (name: string) =>
   readFileSync(join(__dirname, 'fixtures', name), 'utf8')
@@ -250,7 +257,7 @@ describe('applyCodexLine', () => {
 });
 
 describe('classifyShell', () => {
-  it('read-ish commands -> library, others -> server', () => {
+  it('read-ish commands -> library, file edits -> coding, others -> server', () => {
     for (const c of [
       'rg x',
       'ls -la',
@@ -269,15 +276,34 @@ describe('classifyShell', () => {
       expect(classifyShell(c)).toBe('library');
     for (const c of [
       'pnpm build',
-      'sed -i s/a/b/ f',
       'git commit -m x',
       '',
       'cd a',
-      'cat a > b',
       'rg x | node',
       'ls && npm test',
+      'npm test > /tmp/out.txt 2>&1',
+      'node x.js > run.log',
+      'echo "a > b"',
     ])
       expect(classifyShell(c)).toBe('server');
+    for (const c of ['sed -i s/a/b/ f', 'cat a > b', 'cd a && echo x >> notes.md'])
+      expect(classifyShell(c)).toBe('coding');
+  });
+
+  it('shellEdit names the edited file', () => {
+    expect(shellEdit("sed -i 's/a/b/' src/app.ts")).toBe('app.ts');
+    expect(shellEdit("cat > src/x.ts <<'EOF'\nif (a > b) {}\nEOF")).toBe('x.ts');
+    expect(shellEdit('echo hi | tee -a docs/a.md')).toBe('a.md');
+    expect(
+      shellEdit("python3 - <<'EOF'\np='core/lan.ts'\ns=open(p).read()\nopen(p,'w').write(s)\nEOF"),
+    ).toBe('');
+    expect(shellEdit("python3 - <<'EOF'\nopen('a/b.py', 'w').write('x')\nEOF")).toBe('b.py');
+    expect(shellEdit('git apply fix.patch')).toBe('');
+    // no edits: reads, code inside a heredoc, scratch files
+    expect(shellEdit("node - <<'EOF'\nif (a > b) console.log(1)\nEOF")).toBeNull();
+    expect(shellEdit('rg x > /dev/null')).toBeNull();
+    expect(shellEdit('npm test 2>&1 | tee /tmp/t.log')).toBeNull();
+    expect(shellEdit('ls -la')).toBeNull();
   });
 });
 
