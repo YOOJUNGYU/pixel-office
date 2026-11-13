@@ -752,96 +752,96 @@
       "uid": "lan-113",
       "type": "COFFEE_TABLE",
       "col": 32,
-      "row": 23
+      "row": 24
     },
     {
       "uid": "lan-114",
       "type": "COFFEE",
       "col": 32,
-      "row": 24
+      "row": 25
     },
     {
       "uid": "lan-115",
       "type": "SOFA_FRONT",
       "col": 32,
-      "row": 22
+      "row": 23
     },
     {
       "uid": "lan-116",
       "type": "SOFA_BACK",
       "col": 32,
-      "row": 25
+      "row": 26
     },
     {
       "uid": "lan-117",
       "type": "SOFA_SIDE",
       "col": 31,
-      "row": 23
+      "row": 24
     },
     {
       "uid": "lan-118",
       "type": "SOFA_SIDE:left",
       "col": 34,
-      "row": 23
+      "row": 24
     },
     {
       "uid": "lan-119",
       "type": "ARCADE_BREAKER",
-      "col": 28,
+      "col": 26,
       "row": 19
     },
     {
       "uid": "lan-120",
       "type": "CUSHIONED_CHAIR_BACK",
-      "col": 28,
+      "col": 26,
       "row": 21
     },
     {
       "uid": "lan-121",
       "type": "ARCADE_CABLE",
-      "col": 30,
+      "col": 28,
       "row": 19
     },
     {
       "uid": "lan-122",
       "type": "CUSHIONED_CHAIR_BACK",
-      "col": 30,
+      "col": 28,
       "row": 21
     },
     {
       "uid": "lan-123",
       "type": "ARCADE_BUGS",
-      "col": 32,
+      "col": 30,
       "row": 19
     },
     {
       "uid": "lan-124",
       "type": "CUSHIONED_CHAIR_BACK",
-      "col": 32,
+      "col": 30,
       "row": 21
     },
     {
       "uid": "lan-125",
       "type": "ARCADE_DRONE",
-      "col": 34,
+      "col": 35,
       "row": 19
     },
     {
       "uid": "lan-126",
       "type": "CUSHIONED_CHAIR_BACK",
-      "col": 34,
+      "col": 35,
       "row": 21
     },
     {
       "uid": "lan-127",
       "type": "ARCADE_MERGE",
-      "col": 36,
+      "col": 37,
       "row": 19
     },
     {
       "uid": "lan-128",
       "type": "CUSHIONED_CHAIR_BACK",
-      "col": 36,
+      "col": 37,
       "row": 21
     },
     {

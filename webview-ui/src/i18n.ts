@@ -460,7 +460,7 @@ const ko = {
     'Claude Code와 Codex 에이전트가 이 사무실의 캐릭터로 나타납니다. 혼자 볼 수도 있고, 팀이나 다른 사람들과 같이 볼 수도 있어요.\n지금 보이는 캐릭터 몇 명은 설명용 예시라서 안내가 끝나면 사라집니다.',
   'tour.roomCoding.title': '코딩실',
   'tour.roomCoding.body':
-    '에이전트는 하는 일에 따라 방을 옮겨 다녀요. 파일을 고치는 동안에는 코딩실 책상에 앉아 있습니다.\n방 이름표 옆 숫자는 지금 그 방에 있는 에이전트 수예요.',
+    '에이전트는 하는 일에 따라 방을 옮겨 다녀요. 파일을 고치는 동안에는(터미널 명령으로 고칠 때도) 코딩실 책상에 앉아 있습니다.\n방 이름표 옆 숫자는 지금 그 방에 있는 에이전트 수예요.',
   'tour.roomLibrary.title': '자료실',
   'tour.roomLibrary.body': '파일을 읽거나 코드·웹을 검색할 때는 자료실로 갑니다.',
   'tour.roomLibrary.bodyDemo':
@@ -490,13 +490,13 @@ const ko = {
     '한 손가락으로 끌어서 옮기고, 두 손가락으로 벌리거나 오므려서 확대·축소해요.\n한번 해 보세요. 다음으로 넘어가면 원래 화면으로 돌아옵니다.',
   'tour.switcher.title': '오피스 전환',
   'tour.switcher.body':
-    '🌐 공개 오피스에는 앱을 설치한 사람 모두가 보여요. 🔒 팀 오피스는 초대 코드를 가진 같은 망 팀원끼리만 씁니다. 🏠 개인용은 나 혼자 쓰는 사무실이에요.\n팀 오피스에 들어가면 공개 오피스에서는 빠집니다.',
+    '🏠 개인용은 나 혼자 쓰는 사무실로, 처음에는 여기서 시작해요. 🌐 공개 오피스에는 앱을 설치한 사람 모두가 보이고, 🔒 팀 오피스는 초대 코드를 가진 같은 망 팀원끼리만 씁니다.\n마지막에 고른 오피스로 다시 열리고, 팀 오피스에 들어가면 공개 오피스에서는 빠집니다.',
   'tour.people.title': '접속 중인 사람',
   'tour.people.body':
     '지금 이 오피스에 있는 사람이 모두 나와요. 에이전트가 없는 사람까지요.\n❗는 승인을 기다리는 에이전트가 있다는 뜻이고, 이름을 누르면 그 사람 에이전트 쪽으로 화면이 따라갑니다.',
   'tour.chat.title': '내 캐릭터와 채팅',
   'tour.chat.body':
-    '에이전트와 따로 사람마다 캐릭터가 하나 있어요. 방향키로 어디든 걸어 다닐 수 있고, 대기실 의자에는 앉을 수도 있어요.\n아래 채팅창에 쓰고 Enter를 누르면 머리 위에 말풍선이 뜹니다. Space+Enter로 채팅창에 가고, Esc로 빠져나와요.',
+    '에이전트와 따로 사람마다 캐릭터가 하나 있어요. 방향키로 어디든 걸어 다니고, 대기실 의자에 앉을 수 있어요. 대기실 윗벽 게임기 앞 의자에 앉으면 그 게임이 바로 시작되고, 점수는 명예의 전당에 남아요(한 게임기에 한 명씩).\n아래 채팅창에 쓰고 Enter를 누르면 머리 위에 말풍선이 뜹니다. Space+Enter로 채팅창에 가고, Esc로 빠져나와요.',
   'tour.transcript.title': '세션 상세',
   'tour.transcript.body':
     '내 에이전트 캐릭터를 누르면 그 세션의 대화 전체가 새 창으로 열려요. 대기실에 합쳐진 에이전트는 내 캐릭터를 눌러서 고르면 됩니다.',
@@ -528,12 +528,12 @@ const ko = {
   'tour.walls.body': '벽 위치는 바꿀 수 없고 색만 바꿀 수 있어요.',
   'tour.furniture.title': '가구',
   'tour.furniture.body':
-    '목록에서 골라 놓고, 드래그로 옮기고, Alt+드래그로 복사해요.\nR로 돌리고, T로 모니터 같은 걸 켜고 끄고, 색 버튼으로 색을 바꿉니다. 카펫도 여기 있어요.',
+    '목록에서 골라 놓고, 드래그로 옮기고, Alt+드래그로 복사해요. R로 돌리고, 색 버튼으로 색을 바꿉니다. 카펫도 여기 있어요.\n책상, 의자, PC, 게임기는 사무실이 돌아가는 데 필요해서 고정이에요. 옮기거나 지울 수 없고 색만 바꿀 수 있어요.',
   'tour.background.title': '배경',
   'tour.background.body': '사무실 바깥을 단색이나 바닥·카펫 무늬로 채울 수 있어요.',
   'tour.editorMore.title': '지우기 · 실행 취소',
   'tour.editorMore.body':
-    '[지우기]로 가구와 카펫을 지워요. 바닥과 벽은 남습니다.\nCtrl+Z로 되돌리고 Ctrl+Y로 다시 할 수 있어요.',
+    '[지우기]로 가구와 카펫을 지워요. 바닥, 벽, 고정 가구는 남습니다.\nCtrl+Z로 되돌리고 Ctrl+Y로 다시 할 수 있어요.',
   'tour.save.title': '저장',
   'tour.save.body':
     '고친 내용은 [저장]을 눌러야 반영돼요. 공개·팀 오피스에서는 저장하면 같은 오피스 사람 모두에게 보입니다.\n[취소]나 Esc를 누르면 고친 걸 다 버리고, [초기화]는 처음 배치로 되돌려요.',
@@ -1000,7 +1000,7 @@ const en: Record<Key, string> = {
     'Every Claude Code and Codex session on your PC shows up here as a character. You can keep the office to yourself, share it with your team, or join everyone in the public office.\nA few of the characters you see are just for this tour. They leave when it ends.',
   'tour.roomCoding.title': 'Coding room',
   'tour.roomCoding.body':
-    "Agents go to the room that matches what they are doing. Editing files means a desk in the coding room.\nThe plate in each room's corner counts the agents inside.",
+    "Agents go to the room that matches what they are doing. Editing files (shell commands that write files too) means a desk in the coding room.\nThe plate in each room's corner counts the agents inside.",
   'tour.roomLibrary.title': 'Library',
   'tour.roomLibrary.body':
     'Reading files, searching code or looking things up on the web happens in the library.',
@@ -1031,13 +1031,13 @@ const en: Record<Key, string> = {
     'Drag with one finger to pan, pinch to zoom.\nGo ahead and try it. The view resets when you continue.',
   'tour.switcher.title': 'Office switcher',
   'tour.switcher.body':
-    "🌐 The public office has everyone running the app, on any network. 🔒 A team office is for people with your invite code on the same network. While you're in it, you're not in the public office.\n🏠 Personal is just you.",
+    "🏠 Personal is just you, and where you start. 🌐 The public office has everyone running the app, on any network. 🔒 A team office is for people with your invite code on the same network; while you're in it, you're not in the public office.\nThe app reopens the office you used last.",
   'tour.people.title': "Who's online",
   'tour.people.body':
     "Everyone in this office is listed here, agents or not. A ❗ means one of their agents is waiting for them.\nClick a name and the view follows that person's agents.",
   'tour.chat.title': 'Your character and chat',
   'tour.chat.body':
-    'You have a character too. Walk it around with the arrow keys, and sit down on a lounge chair if you like.\nType in the bar at the bottom and press Enter to put a bubble over your head. Space+Enter jumps to the chat bar, Esc leaves it.',
+    'You have a character too. Walk it around with the arrow keys and sit down on a lounge chair. Sit in front of an arcade cabinet on the lounge top wall and its game starts at once; scores go to the hall of fame (one player per cabinet).\nType in the bar at the bottom and press Enter to put a bubble over your head. Space+Enter jumps to the chat bar, Esc leaves it.',
   'tour.transcript.title': 'Session details',
   'tour.transcript.body':
     'Click one of your agents to open the whole session in its own window. For agents resting in the lounge, click your own character and pick one.',
@@ -1069,13 +1069,13 @@ const en: Record<Key, string> = {
   'tour.walls.body': 'Walls stay where they are. You can only change their colour.',
   'tour.furniture.title': 'Furniture',
   'tour.furniture.body':
-    'Pick something and place it. Drag to move, Alt+drag to copy.\nR rotates, T turns things like monitors on and off. Carpets are in here too.',
+    'Pick something and place it. Drag to move, Alt+drag to copy, R rotates, the colour button recolours. Carpets are in here too.\nDesks, chairs, PCs and arcade cabinets keep the office working, so they are fixed: you can recolour them but not move or remove them.',
   'tour.background.title': 'Background',
   'tour.background.body':
     'Fill the space around the office with a solid colour, a floor pattern or a carpet.',
   'tour.editorMore.title': 'Erase · Undo',
   'tour.editorMore.body':
-    '[Erase] removes furniture and carpets but leaves floors and walls alone. Ctrl+Z and Ctrl+Y undo and redo.\nEditing never moves the characters.',
+    '[Erase] removes furniture and carpets but leaves floors, walls and fixed furniture alone. Ctrl+Z and Ctrl+Y undo and redo.\nEditing never moves the characters.',
   'tour.save.title': 'Save',
   'tour.save.body':
     'Nothing is saved until you press [Save]. In the public or a team office, everyone there gets your layout, and the last save wins. [Cancel] or Esc throws your changes away, [Reset] brings back the default.\nTo keep a copy, use Settings → [Export layout].',

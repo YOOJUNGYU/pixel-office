@@ -16,7 +16,7 @@
   <a href="#development">Development</a>
 </p>
 
-Pixel Office turns the Claude Code and Codex sessions on your PC into characters in a pixel-art office. Each agent walks to the room that fits what it's doing: the coding room when it edits files, the library when it reads or searches, the server room (split into test, build, git and run zones) when it runs commands, and the lounge when it's done or waiting for you. A bubble over its head says what it's working on. You can run the office alone, share it with your team over the LAN, or join the public office where everyone with the app shows up. There's also a token usage panel, people avatars with chat, a window with each session's full conversation, desktop notifications, a layout editor, and Windows/Mac installers that update themselves. It started as a fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents); the differences are [below](#how-it-differs-from-the-original).
+Pixel Office turns the Claude Code and Codex sessions on your PC into characters in a pixel-art office. Each agent walks to the room that fits what it's doing: the coding room when it edits files, the library when it reads or searches, the server room (split into test, build, git and run zones) when it runs commands, and the lounge when it's done or waiting for you. A bubble over its head says what it's working on. You can run the office alone, share it with your team over the LAN, or join the public office where everyone with the app shows up. There's also a token usage panel, people avatars with chat, a small lounge arcade with a shared hall of fame, a window with each session's full conversation, desktop notifications, a layout editor, and Windows/Mac installers that update themselves. It started as a fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents); the differences are [below](#how-it-differs-from-the-original).
 
 ![The public office with ten people](docs/images/office-en.png)
 
@@ -64,12 +64,12 @@ If PCs don't find each other or you want to uninstall, see the [install guide](d
 
 An agent moves once a new activity has lasted about 3 seconds, then takes a free seat. Hover a room's name plate to see what sends agents there and who's inside. The `Agents N` chip counts everyone in the room, subagents and shells included.
 
-| Room           | What sends an agent there                                                       |
-| -------------- | ------------------------------------------------------------------------------- |
-| 🖥️ Coding Room | Editing files (Claude `Edit`/`Write`, Codex `apply_patch`)                      |
-| 📚 Library     | Reading files, searching code or the web, read-only commands like `rg` or `cat` |
-| 🗄️ Server Room | Running commands (`Bash`, the Codex shell) and background shells                |
-| 🛋️ Lounge      | Waiting for you or finished. The agent merges into its owner's person character |
+| Room           | What sends an agent there                                                                                                |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 🖥️ Coding Room | Editing files (Claude `Edit`/`Write`, Codex `apply_patch`, shell commands that write files such as `sed -i` or `> file`) |
+| 📚 Library     | Reading files, searching code or the web, read-only commands like `rg` or `cat`                                          |
+| 🗄️ Server Room | Running commands (`Bash`, the Codex shell) and background shells                                                         |
+| 🛋️ Lounge      | Waiting for you or finished. The agent merges into its owner's person character                                          |
 
 The server room has four zones marked with tape on the floor. An agent sits in the zone that matches its command, or anywhere in the room if that zone is full:
 
@@ -135,6 +135,8 @@ This one borrows its idea from [token-dashboard](https://github.com/nateherkai/t
 
 ### Offices
 
+The tabs at the top switch offices: 🏠 Personal, 🌐 Public office, then your 🔒 team. A new install starts in Personal; after that the app reopens the office you used last.
+
 The people panel on the right is split into Public office, Team and Personal, so you can see who's around even in the offices you're not looking at. The Team area only appears once you've joined a team.
 
 **🌐 Public office.** Everyone with the app ends up here, at home, at work or in a café. PCs on the same network find each other directly; the rest go through a Cloudflare relay over one outbound `wss` connection on port 443. There's nothing to set up.
@@ -153,6 +155,23 @@ The people panel on the right is split into Public office, Team and Personal, so
 - Everyone has one person character besides their agents. Walk it anywhere with the arrow keys and sit on lounge chairs. It remembers where you left it.
 - Type in the chat bar at the bottom and press Enter to put a bubble over your head. A new message replaces the old one and × removes it. There's no history. Messages are up to 100 characters, one every 2 seconds.
 - Space+Enter (with nothing focused) jumps to the chat bar. Esc gives the arrow keys back.
+
+### Arcade
+
+Five cabinets stand against the lounge's top wall. Sit on the chair in front of one and its game starts at once, with how to play on the left and the hall of fame on the right. Esc stops; the arrow keys then stand you up.
+
+| Game             | How it plays                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| Firewall Breaker | Bounce the ball off your paddle to break bricks; tough and steel bricks, power-up capsules |
+| Cable Run        | Steer the cable to eat packets and grow; gold bursts, firewalls                            |
+| Bug Squash       | Squash bugs popping up on 9 monitors; leave the green patches alone; 45 s                  |
+| Drone Delivery   | Space flaps; fly through the gaps between server racks                                     |
+| Merge            | Arrow keys slide the tiles; equal numbers merge                                            |
+
+- One player per cabinet. If someone is sitting there you get a "… is playing" notice and can sit once the seat is free.
+- The hall of fame keeps each person's best per game, top 50, including people who are offline. People online now get a ●.
+- Scores can't be faked: your PC sends the run's inputs, not a score, and the relay replays the game itself to score it.
+- Without internet you can still play, but nothing is recorded. M or the 🔊 button mutes the sound.
 
 ### Session details
 
@@ -174,7 +193,7 @@ Pixel Office can also send desktop notifications on Windows and Mac. They work w
 
 - **Profile**: pick a character (six people, or the pets Claudio and Gitcat), a colour, a nickname and your name tag colours. Your PC account name always comes first and can't be changed. Nicknames are unique; whoever took one second gets a short suffix like `· a1b2`.
 - **Language and theme**: Korean or English, dark, light or system, set per browser. The sun/moon button at the top left flips the theme.
-- **Layout editor**: the Layout button at the top left. You can paint floors (a click fills a whole room, or one zone in the server room), recolour walls, place furniture and fill the background. The four rooms and the office size are fixed.
+- **Layout editor**: the Layout button at the top left. You can paint floors (a click fills a whole room, or one zone in the server room), recolour walls, place furniture and fill the background. The four rooms and the office size are fixed, and so are desks, chairs, PCs and arcade cabinets (they keep the office working): you can recolour them but not move or remove them. When a new version changes the default layout, those pieces update in your saved layout by themselves.
   - Nothing is saved until you press **Save**. Reset brings back the default layout, Undo and Redo are Ctrl+Z and Ctrl+Y, and Cancel or Esc drops your changes.
   - In the public office or a team office, anyone can edit and everyone there gets the saved layout. If two people save, the last one wins. A layout saved per PC by older versions (`layout.json`) isn't used anymore; import it if you want to share it.
   - In 🏠 Personal the layout stays on your PC.
@@ -187,7 +206,7 @@ Pixel Office can also send desktop notifications on Windows and Mac. They work w
 
 - PCs only share status. Nobody can reach your terminal, your agents or your settings, and the UI only opens in your own PC's browser.
 - Everything between PCs is encrypted. In the public office each pair of PCs agrees on its own key (X25519, then AES-256-GCM). A team office uses AES-256-GCM with a key derived from the invite code. Codes never go over the network, and a known PC whose key suddenly changes is ignored.
-- The relay only forwards encrypted messages. It sees peer ids, public keys and who a message is for. It doesn't store IP addresses; it only keeps a hashed tag for the network badge. Cloudflare, which hosts it, does see your IP. Everyone in the public office can see where your avatar is and where it walks. Team and personal PCs never connect to the relay.
+- The relay only forwards encrypted messages. It sees peer ids, public keys and who a message is for. It doesn't store IP addresses; it only keeps a hashed tag for the network badge. Cloudflare, which hosts it, does see your IP. Everyone in the public office can see where your avatar is and where it walks. Team and personal PCs never connect to the relay for the office; the arcade is the one exception, from any office: it sends your peer id and display name (account and nickname) to the relay to keep your scores.
 - File paths, user names, IPs and host names, URL paths, anything that looks like a token, and AI reply text never leave your PC. Commands go out as just the program name. Your PC account name is your name tag, so that one is always visible.
 - The public office only gets your agents' room, kind of work and the waiting !. A team office gets more detail, like program and file names, within the rules above.
 - Pixel Office never touches your Claude Code or Codex settings. It only reads their transcript files.

@@ -44,7 +44,8 @@ const V = PERSONAL
       // Two tables per 서버실 work zone (quadrant), four PCs each: 8 seats per zone. Not
       // lifted: the zones stay symmetric about the divider.
       server: { cols: 2, rows: 1, gap: [1, 1], zoneGap: [6, 2], seatRows: [0, 2], lift: 0 },
-      lounge: { cols: 1, rows: 1, gap: 0 },
+      // Not lifted: a tile of floor between the arcade chairs and the sofa.
+      lounge: { cols: 1, rows: 1, gap: 0, lift: 0 },
       extraDoors: false,
       wallDeco: {
         coding: [
@@ -74,7 +75,8 @@ const V = PERSONAL
       // Per work zone 4×2 tables (8), 1 tile apart; zones `zoneGap` apart (empty floor between).
       server: { cols: 4, rows: 2, gap: [1, 1], zoneGap: [6, 6], seatRows: [0, 2] },
       // A centred block with one gap both ways (spread to the walls it looked scattered).
-      lounge: { cols: 4, rows: 2, gap: [5, 3] },
+      // The middle columns hold one group each, centred top to bottom (6 groups).
+      lounge: { cols: 4, rows: 2, gap: [5, 3], singleMiddle: true },
       extraDoors: true,
       lift: 0,
       wallDeco: {
@@ -326,34 +328,61 @@ roomGrid(
 }
 for (const [type, x] of V.wallDeco.server) put(type, SERVER.x + x, TOP_WALL - 1);
 
-// ── 대기실: sofa lounges around a coffee table, 8 seats each (group 4×4); open floor between ──
-roomGrid(
-  LOUNGE,
-  pad.lounge,
-  { w: 4, h: 4, ox: 1, oy: 1 },
-  lg.cols,
-  lg.rows,
-  (c, y, k) => {
-    put('COFFEE_TABLE', c, y);
-    put('COFFEE', c + (k % 2), y + 1);
-    put('SOFA_FRONT', c, y - 1);
-    put('SOFA_BACK', c, y + 2);
-    put('SOFA_SIDE', c - 1, y);
-    put('SOFA_SIDE:left', c + 2, y);
-  },
-  lg.gap,
-);
+// ── 대기실: sofa lounges around a coffee table, 8 seats each (group 4×4); open floor between.
+// `singleMiddle`: the inner columns keep one group, halfway between the two rows. ──
+{
+  const groups = [];
+  roomGrid(
+    LOUNGE,
+    pad.lounge,
+    { w: 4, h: 4, ox: 1, oy: 1 },
+    lg.cols,
+    lg.rows,
+    (c, y, k) => groups.push({ c, y, k }),
+    lg.gap,
+    lg.lift,
+  );
+  const inner = (k) => lg.singleMiddle && k % lg.cols > 0 && k % lg.cols < lg.cols - 1;
+  const lastRowY = groups.at(-1).y;
+  for (const { c, y, k } of groups) {
+    if (inner(k) && y === lastRowY) continue;
+    const gy = inner(k) ? Math.round((y + lastRowY) / 2) : y;
+    put('COFFEE_TABLE', c, gy);
+    put('COFFEE', c + (k % 2), gy + 1);
+    put('SOFA_FRONT', c, gy - 1);
+    put('SOFA_BACK', c, gy + 2);
+    put('SOFA_SIDE', c - 1, gy);
+    put('SOFA_SIDE:left', c + 2, gy);
+  }
+}
 
 // ── 대기실 arcade: a cabinet on the first floor row (its top over the wall), a chair facing it.
 // Each cabinet is one game (mirrored: rack cable bugs | bugs cable rack). ──
-// Arcade: one cabinet per game against 대기실's top wall, centred (an odd count in an even-wide
-// room sits half a tile left), 2 tiles apart; a chair in front of each (sitting there starts
-// its game, one player per cabinet).
+// Arcade: one cabinet per game against 대기실's top wall, a chair in front of each (sitting
+// there starts its game, one player per cabinet). Never in a doorway: the wall pieces on
+// either side of the middle door take them (left ⌈n/2⌉, right the rest), packed towards
+// that door with one free tile beside it, 2 tiles apart; the corner pieces keep their decor.
 const ARCADE_GAMES = ['BREAKER', 'CABLE', 'BUGS', 'DRONE', 'MERGE'];
-const arcadeX0 = LOUNGE.x + Math.floor((LOUNGE.w - 1) / 2) - (ARCADE_GAMES.length - 1);
-for (const [i, game] of ARCADE_GAMES.entries()) {
-  put(`ARCADE_${game}`, arcadeX0 + 2 * i, LOUNGE.y - 1);
-  put('CUSHIONED_CHAIR_BACK', arcadeX0 + 2 * i, LOUNGE.y + 1);
+const LOUNGE_TOP_DOORS = [
+  mid(LOUNGE),
+  ...(V.extraDoors
+    ? [RIGHT_X + Math.floor(RIGHT_W / 4), RIGHT_X + Math.floor((3 * RIGHT_W) / 4) - 1]
+    : []),
+];
+{
+  const segs = wallSegments(LOUNGE, LOUNGE_TOP_DOORS);
+  const right = segs.findIndex(([a]) => a > mid(LOUNGE));
+  const [l, r] = [segs[right - 1], segs[right]];
+  const nL = Math.ceil(ARCADE_GAMES.length / 2);
+  const cols = ARCADE_GAMES.map((_, i) =>
+    i < nL ? l[1] - 1 - 2 * (nL - 1 - i) : r[0] + 1 + 2 * (i - nL),
+  );
+  for (const [i, game] of ARCADE_GAMES.entries()) {
+    if (cols[i] < (i < nL ? l[0] : r[0]) || cols[i] > (i < nL ? l[1] : r[1]))
+      throw new Error(`arcade ${game} does not fit its wall piece`);
+    put(`ARCADE_${game}`, cols[i], LOUNGE.y - 1);
+    put('CUSHIONED_CHAIR_BACK', cols[i], LOUNGE.y + 1);
+  }
 }
 
 // ── Plants: the free floor corners (inside the `pad` border, away from the doors) ──
@@ -374,12 +403,7 @@ if (LOUNGE.h >= 12) {
   put('CACTUS', LOUNGE.x + LOUNGE.w - 1, midY);
 }
 {
-  const segs = wallSegments(LOUNGE, [
-    mid(LOUNGE),
-    ...(V.extraDoors
-      ? [RIGHT_X + Math.floor(RIGHT_W / 4), RIGHT_X + Math.floor((3 * RIGHT_W) / 4) - 1]
-      : []),
-  ]);
+  const segs = wallSegments(LOUNGE, LOUNGE_TOP_DOORS);
   const c = (seg, w) => Math.floor((seg[0] + seg[1] + 1 - w) / 2);
   const [first, last] = [segs[0], segs[segs.length - 1]];
   put('LARGE_PAINTING', c(first, 2), LOUNGE.y - 2);

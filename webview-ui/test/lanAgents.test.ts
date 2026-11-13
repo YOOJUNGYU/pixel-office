@@ -148,23 +148,17 @@ test('a pet profile: main, subagent and shell all wear the same pet; switching b
   assert.equal(main.palette, 2);
 });
 
-test('more lounge agents than lounge seats all land inside 대기실', () => {
+test('lounge agents with no avatar to fold into stand in 대기실, never on a seat', () => {
   const { os, lan } = setup();
-  let seats = 0;
-  for (const uid of os.seats.keys()) if (os.seatZone(uid) === '대기실') seats++;
-  const agents = Array.from({ length: seats + 5 }, (_, i) => agent(`m${i}`, 'lounge'));
+  const agents = Array.from({ length: 12 }, (_, i) => agent(`m${i}`, 'lounge'));
   lan.apply(agents);
-  assert.equal(os.characters.size, seats + 5);
-  const standing = [...os.characters.values()].filter((c) => !c.seatId).length;
-  assert.equal(standing, 5);
+  for (let i = 0; i < 400; i++) os.update(0.05);
+  assert.equal(os.characters.size, 12);
   for (const ch of os.characters.values()) {
+    assert.equal(ch.seatId, null);
     assert.equal(areaOf({ col: ch.tileCol, row: ch.tileRow }), '대기실');
-    assert.equal(areaOf(target(os, ch)), '대기실');
   }
 });
-
-const cheb = (a: Character, b: Character) =>
-  Math.max(Math.abs(a.tileCol - b.tileCol), Math.abs(a.tileRow - b.tileRow));
 
 test("a child in the parent's room sits at the free seat closest to the parent", () => {
   const { os, lan } = setup();
@@ -273,7 +267,7 @@ test('a child in another room has no leader and no ghost exists; it sits by the 
   assert.equal(os.characters.size, 3);
 });
 
-test('nobody wanders: a parked lounge agent and its seated children stay put', () => {
+test('nobody wanders: a parked lounge agent and its children stand still in 대기실', () => {
   const { os, lan } = setup();
   lan.apply([agent('a', 'lounge'), child('s1', 'a', 'lounge'), child('s2', 'a', 'lounge')]);
   for (let i = 0; i < 2000; i++) os.update(0.05);
@@ -286,10 +280,10 @@ test('nobody wanders: a parked lounge agent and its seated children stay put', (
   for (let i = 0; i < 6000; i++) os.update(0.05);
   assert.deepEqual([p, s1, s2].map(at), before);
   assert.equal(p.path.length, 0);
-  assert.equal(areaOf({ col: p.tileCol, row: p.tileRow }), '대기실');
-  assert.ok(cheb(s1, p) <= 4, `s1 near parent (${cheb(s1, p)})`);
-  assert.ok(cheb(s2, p) <= 4, `s2 near parent (${cheb(s2, p)})`);
-  assert.equal(os.seatZone(s1.seatId!), '대기실');
+  for (const c of [p, s1, s2]) {
+    assert.equal(c.seatId, null, 'no lounge seat for an agent');
+    assert.equal(areaOf({ col: c.tileCol, row: c.tileRow }), '대기실');
+  }
 });
 
 test('a vanished parent is removed; the orphan acts on its own in its room', () => {

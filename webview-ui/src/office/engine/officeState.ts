@@ -374,7 +374,7 @@ export class OfficeState {
     let best: string | null = null;
     let bestDist = Infinity;
     for (const [uid, seat] of this.seats) {
-      if (seat.assigned || this.seatZone(uid) !== areaLabel) continue;
+      if (seat.assigned || this.seatZone(uid) !== areaLabel || !this.agentMaySit(uid)) continue;
       // Another zone's seat counts only once this zone has none free.
       const d =
         Math.abs(seat.seatCol - at.col) +
@@ -465,7 +465,7 @@ export class OfficeState {
     const electronicsTiles = this.buildElectronicsTileSet();
     const freeSeats: string[] = [];
     for (const [uid, seat] of this.seats) {
-      if (!seat.assigned) freeSeats.push(uid);
+      if (!seat.assigned && this.agentMaySit(uid)) freeSeats.push(uid);
     }
     if (freeSeats.length === 0) return null;
 
@@ -562,7 +562,12 @@ export class OfficeState {
       }
     }
     if (!seatId && anchorAt) {
-      seatId = closestFreeSeat(this.seats, anchorAt.col, anchorAt.row);
+      seatId = closestFreeSeat(
+        this.seats,
+        anchorAt.col,
+        anchorAt.row,
+        (uid) => !this.agentMaySit(uid),
+      );
     }
     if (!seatId) {
       seatId = this.findFreeSeat();
@@ -745,7 +750,12 @@ export class OfficeState {
     if (!teammate || !lead) return;
     const anchorAt = anchorTile(lead, this.seats);
     if (!anchorAt) return;
-    const target = closestFreeSeat(this.seats, anchorAt.col, anchorAt.row);
+    const target = closestFreeSeat(
+      this.seats,
+      anchorAt.col,
+      anchorAt.row,
+      (uid) => !this.agentMaySit(uid),
+    );
     if (!target || target === teammate.seatId) return;
     const targetSeat = this.seats.get(target)!;
     const targetDist =
@@ -953,6 +963,13 @@ export class OfficeState {
       ch.frame = 0;
       ch.frameTimer = 0;
     }
+  }
+
+  /** 대기실 is people's: an agent there is folded into its PC's avatar (LanAgents), and with
+   *  no avatar to fold into (tour demos, very old peers) it stands — it never takes a lounge
+   *  seat (sofas and arcade chairs are for avatars). */
+  private agentMaySit(uid: string): boolean {
+    return this.seatZone(uid) !== ROOM_LABELS.lounge;
   }
 
   /** The game of the arcade cabinet a seat faces; else null. */

@@ -3074,73 +3074,73 @@
       "uid": "lan-493",
       "type": "COFFEE_TABLE",
       "col": 48,
-      "row": 38
+      "row": 42
     },
     {
       "uid": "lan-494",
       "type": "COFFEE",
       "col": 49,
-      "row": 39
+      "row": 43
     },
     {
       "uid": "lan-495",
       "type": "SOFA_FRONT",
       "col": 48,
-      "row": 37
+      "row": 41
     },
     {
       "uid": "lan-496",
       "type": "SOFA_BACK",
       "col": 48,
-      "row": 40
+      "row": 44
     },
     {
       "uid": "lan-497",
       "type": "SOFA_SIDE",
       "col": 47,
-      "row": 38
+      "row": 42
     },
     {
       "uid": "lan-498",
       "type": "SOFA_SIDE:left",
       "col": 50,
-      "row": 38
+      "row": 42
     },
     {
       "uid": "lan-499",
       "type": "COFFEE_TABLE",
       "col": 57,
-      "row": 38
+      "row": 42
     },
     {
       "uid": "lan-500",
       "type": "COFFEE",
       "col": 57,
-      "row": 39
+      "row": 43
     },
     {
       "uid": "lan-501",
       "type": "SOFA_FRONT",
       "col": 57,
-      "row": 37
+      "row": 41
     },
     {
       "uid": "lan-502",
       "type": "SOFA_BACK",
       "col": 57,
-      "row": 40
+      "row": 44
     },
     {
       "uid": "lan-503",
       "type": "SOFA_SIDE",
       "col": 56,
-      "row": 38
+      "row": 42
     },
     {
       "uid": "lan-504",
       "type": "SOFA_SIDE:left",
       "col": 59,
-      "row": 38
+      "row": 42
     },
     {
       "uid": "lan-505",
@@ -3217,239 +3217,167 @@
     {
       "uid": "lan-517",
       "type": "COFFEE_TABLE",
-      "col": 48,
+      "col": 66,
       "row": 45
     },
     {
       "uid": "lan-518",
       "type": "COFFEE",
-      "col": 49,
+      "col": 67,
       "row": 46
     },
     {
       "uid": "lan-519",
       "type": "SOFA_FRONT",
-      "col": 48,
+      "col": 66,
       "row": 44
     },
     {
       "uid": "lan-520",
       "type": "SOFA_BACK",
-      "col": 48,
+      "col": 66,
       "row": 47
     },
     {
       "uid": "lan-521",
       "type": "SOFA_SIDE",
-      "col": 47,
+      "col": 65,
       "row": 45
     },
     {
       "uid": "lan-522",
       "type": "SOFA_SIDE:left",
-      "col": 50,
-      "row": 45
-    },
-    {
-      "uid": "lan-523",
-      "type": "COFFEE_TABLE",
-      "col": 57,
-      "row": 45
-    },
-    {
-      "uid": "lan-524",
-      "type": "COFFEE",
-      "col": 57,
-      "row": 46
-    },
-    {
-      "uid": "lan-525",
-      "type": "SOFA_FRONT",
-      "col": 57,
-      "row": 44
-    },
-    {
-      "uid": "lan-526",
-      "type": "SOFA_BACK",
-      "col": 57,
-      "row": 47
-    },
-    {
-      "uid": "lan-527",
-      "type": "SOFA_SIDE",
-      "col": 56,
-      "row": 45
-    },
-    {
-      "uid": "lan-528",
-      "type": "SOFA_SIDE:left",
-      "col": 59,
-      "row": 45
-    },
-    {
-      "uid": "lan-529",
-      "type": "COFFEE_TABLE",
-      "col": 66,
-      "row": 45
-    },
-    {
-      "uid": "lan-530",
-      "type": "COFFEE",
-      "col": 67,
-      "row": 46
-    },
-    {
-      "uid": "lan-531",
-      "type": "SOFA_FRONT",
-      "col": 66,
-      "row": 44
-    },
-    {
-      "uid": "lan-532",
-      "type": "SOFA_BACK",
-      "col": 66,
-      "row": 47
-    },
-    {
-      "uid": "lan-533",
-      "type": "SOFA_SIDE",
-      "col": 65,
-      "row": 45
-    },
-    {
-      "uid": "lan-534",
-      "type": "SOFA_SIDE:left",
       "col": 68,
       "row": 45
     },
     {
-      "uid": "lan-535",
+      "uid": "lan-523",
       "type": "ARCADE_BREAKER",
+      "col": 47,
+      "row": 34
+    },
+    {
+      "uid": "lan-524",
+      "type": "CUSHIONED_CHAIR_BACK",
+      "col": 47,
+      "row": 36
+    },
+    {
+      "uid": "lan-525",
+      "type": "ARCADE_CABLE",
       "col": 49,
       "row": 34
+    },
+    {
+      "uid": "lan-526",
+      "type": "CUSHIONED_CHAIR_BACK",
+      "col": 49,
+      "row": 36
+    },
+    {
+      "uid": "lan-527",
+      "type": "ARCADE_BUGS",
+      "col": 51,
+      "row": 34
+    },
+    {
+      "uid": "lan-528",
+      "type": "CUSHIONED_CHAIR_BACK",
+      "col": 51,
+      "row": 36
+    },
+    {
+      "uid": "lan-529",
+      "type": "ARCADE_DRONE",
+      "col": 56,
+      "row": 34
+    },
+    {
+      "uid": "lan-530",
+      "type": "CUSHIONED_CHAIR_BACK",
+      "col": 56,
+      "row": 36
+    },
+    {
+      "uid": "lan-531",
+      "type": "ARCADE_MERGE",
+      "col": 58,
+      "row": 34
+    },
+    {
+      "uid": "lan-532",
+      "type": "CUSHIONED_CHAIR_BACK",
+      "col": 58,
+      "row": 36
+    },
+    {
+      "uid": "lan-533",
+      "type": "LARGE_PLANT",
+      "col": 1,
+      "row": 27
+    },
+    {
+      "uid": "lan-534",
+      "type": "LARGE_PLANT",
+      "col": 23,
+      "row": 27
+    },
+    {
+      "uid": "lan-535",
+      "type": "LARGE_PLANT",
+      "col": 1,
+      "row": 48
     },
     {
       "uid": "lan-536",
-      "type": "CUSHIONED_CHAIR_BACK",
-      "col": 49,
-      "row": 36
+      "type": "LARGE_PLANT",
+      "col": 23,
+      "row": 48
     },
     {
       "uid": "lan-537",
-      "type": "ARCADE_CABLE",
-      "col": 51,
-      "row": 34
+      "type": "LARGE_PLANT",
+      "col": 26,
+      "row": 48
     },
     {
       "uid": "lan-538",
-      "type": "CUSHIONED_CHAIR_BACK",
-      "col": 51,
-      "row": 36
+      "type": "LARGE_PLANT",
+      "col": 80,
+      "row": 48
     },
     {
       "uid": "lan-539",
-      "type": "ARCADE_BUGS",
-      "col": 53,
-      "row": 34
+      "type": "LARGE_PLANT",
+      "col": 26,
+      "row": 35
     },
     {
       "uid": "lan-540",
-      "type": "CUSHIONED_CHAIR_BACK",
-      "col": 53,
-      "row": 36
+      "type": "LARGE_PLANT",
+      "col": 80,
+      "row": 35
     },
     {
       "uid": "lan-541",
-      "type": "ARCADE_DRONE",
-      "col": 55,
-      "row": 34
-    },
-    {
-      "uid": "lan-542",
-      "type": "CUSHIONED_CHAIR_BACK",
-      "col": 55,
-      "row": 36
-    },
-    {
-      "uid": "lan-543",
-      "type": "ARCADE_MERGE",
-      "col": 57,
-      "row": 34
-    },
-    {
-      "uid": "lan-544",
-      "type": "CUSHIONED_CHAIR_BACK",
-      "col": 57,
-      "row": 36
-    },
-    {
-      "uid": "lan-545",
-      "type": "LARGE_PLANT",
-      "col": 1,
-      "row": 27
-    },
-    {
-      "uid": "lan-546",
-      "type": "LARGE_PLANT",
-      "col": 23,
-      "row": 27
-    },
-    {
-      "uid": "lan-547",
-      "type": "LARGE_PLANT",
-      "col": 1,
-      "row": 48
-    },
-    {
-      "uid": "lan-548",
-      "type": "LARGE_PLANT",
-      "col": 23,
-      "row": 48
-    },
-    {
-      "uid": "lan-549",
-      "type": "LARGE_PLANT",
-      "col": 26,
-      "row": 48
-    },
-    {
-      "uid": "lan-550",
-      "type": "LARGE_PLANT",
-      "col": 80,
-      "row": 48
-    },
-    {
-      "uid": "lan-551",
-      "type": "LARGE_PLANT",
-      "col": 26,
-      "row": 35
-    },
-    {
-      "uid": "lan-552",
-      "type": "LARGE_PLANT",
-      "col": 80,
-      "row": 35
-    },
-    {
-      "uid": "lan-553",
       "type": "CACTUS",
       "col": 26,
       "row": 42
     },
     {
-      "uid": "lan-554",
+      "uid": "lan-542",
       "type": "CACTUS",
       "col": 81,
       "row": 42
     },
     {
-      "uid": "lan-555",
+      "uid": "lan-543",
       "type": "LARGE_PAINTING",
       "col": 32,
       "row": 33
     },
     {
-      "uid": "lan-556",
+      "uid": "lan-544",
       "type": "LARGE_PAINTING",
       "col": 74,
       "row": 33
