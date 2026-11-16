@@ -95,6 +95,24 @@ export const GAME_DRONE_PASS_POINTS = 10;
 /** A packet floats in some gaps (%), worth more. */
 export const GAME_DRONE_PACKET_PCT = 35;
 export const GAME_DRONE_PACKET_POINTS = 25;
+/** Tower (one button): a unit slides across, a drop keeps only what overlaps the unit below. */
+export const GAME_TOWER_W = 240;
+export const GAME_TOWER_H = 186;
+export const GAME_TOWER_UNIT_H = 10;
+export const GAME_TOWER_START_W = 96;
+/** × GAME_FP per tick; faster every floor. */
+export const GAME_TOWER_SPEED = 200;
+export const GAME_TOWER_SPEED_STEP = 6;
+export const GAME_TOWER_SPEED_MAX = 640;
+/** A drop within this many px of the unit below is perfect: nothing is cut. */
+export const GAME_TOWER_PERFECT_PX = 2;
+/** From this many perfects in a row on, each one widens the unit by GROW_PX (≤ START_W). */
+export const GAME_TOWER_GROW_FROM = 3;
+export const GAME_TOWER_GROW_PX = 4;
+export const GAME_TOWER_POINTS = 10;
+/** A perfect adds PERFECT_POINTS × the streak (≤ STREAK_MAX). */
+export const GAME_TOWER_PERFECT_POINTS = 5;
+export const GAME_TOWER_STREAK_MAX = 10;
 /** Merge (sliding tiles): 4 × 4, a new 2 (else 4: NEW_FOUR_PCT %) after every move. */
 export const GAME_MERGE_SIZE = 4;
 export const GAME_MERGE_NEW_FOUR_PCT = 10;

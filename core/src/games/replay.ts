@@ -9,8 +9,9 @@ import { type CableState, cableStep, cableTurn, type Dir, newCable } from './cab
 import { droneFlap, type DroneState, droneStep, newDrone } from './drone.js';
 import type { Rng } from './fx.js';
 import { mergeMove, type MergeState, newMerge } from './merge.js';
+import { newTower, towerDrop, type TowerState, towerStep } from './tower.js';
 
-/** Inputs per game: cable up down left right; bugs monitor 0–8; breaker BREAKER_ACT; drone flap; merge MERGE_ACT. */
+/** Inputs per game: cable up down left right; bugs monitor 0–8; breaker BREAKER_ACT; drone flap; merge MERGE_ACT; tower drop. */
 export const CABLE_ACT: readonly Dir[] = ['up', 'down', 'left', 'right'];
 export const GAME_ACTIONS: Record<GameId, number> = {
   cable: 4,
@@ -18,6 +19,7 @@ export const GAME_ACTIONS: Record<GameId, number> = {
   breaker: 5,
   drone: 1,
   merge: 5,
+  tower: 1,
 };
 /** Longest run a replay may claim (ticks) and most inputs it may carry. */
 export const REPLAY_MAX_TICKS = (4 * 3600 * 1000) / GAME_TICK_MS;
@@ -28,7 +30,8 @@ export type Run =
   | { game: 'bugs'; s: BugsState; ticks: number }
   | { game: 'breaker'; s: BreakerState; ticks: number }
   | { game: 'drone'; s: DroneState; ticks: number }
-  | { game: 'merge'; s: MergeState; ticks: number };
+  | { game: 'merge'; s: MergeState; ticks: number }
+  | { game: 'tower'; s: TowerState; ticks: number };
 
 /** mulberry32: a 32-bit seeded generator, identical in every JS engine. */
 export function seededRng(seed: number): Rng {
@@ -55,6 +58,8 @@ export function newRun(game: GameId, seed: number): Run {
       return { game, s: newDrone(rng), ticks: 0 };
     case 'merge':
       return { game, s: newMerge(rng), ticks: 0 };
+    case 'tower':
+      return { game, s: newTower(rng), ticks: 0 };
   }
 }
 
@@ -65,6 +70,7 @@ export function act(run: Run, a: number): void {
   else if (run.game === 'bugs') bugsWhack(run.s, a);
   else if (run.game === 'breaker') breakerAct(run.s, a);
   else if (run.game === 'drone') droneFlap(run.s);
+  else if (run.game === 'tower') towerDrop(run.s);
   else mergeMove(run.s, a);
 }
 
@@ -76,6 +82,7 @@ export function tick(run: Run): void {
   else if (run.game === 'bugs') bugsStep(run.s, GAME_TICK_MS);
   else if (run.game === 'breaker') breakerStep(run.s, GAME_TICK_MS);
   else if (run.game === 'drone') droneStep(run.s, GAME_TICK_MS);
+  else if (run.game === 'tower') towerStep(run.s, GAME_TICK_MS);
 }
 
 /** Records a run's inputs as flat [ticks since the previous input, action, ...]. */

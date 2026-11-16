@@ -222,7 +222,7 @@ export type PetId = (typeof PET_IDS)[number];
 export const isPetId = (x: unknown): x is PetId => (PET_IDS as readonly unknown[]).includes(x);
 
 /** Arcade games in the lounge (`core/src/games/`); scores are refereed and kept by the relay. */
-export const GAME_IDS = ['cable', 'bugs', 'breaker', 'drone', 'merge'] as const;
+export const GAME_IDS = ['cable', 'bugs', 'breaker', 'drone', 'merge', 'tower'] as const;
 export type GameId = (typeof GAME_IDS)[number];
 export const isGameId = (x: unknown): x is GameId => (GAME_IDS as readonly unknown[]).includes(x);
 /** Highest score a board row may hold (larger ones are dropped). */

@@ -363,6 +363,14 @@ const ko = {
   'game.merge.rules':
     '합쳐진 숫자만큼 점수 (4+4 → 8점)\n한 번 밀 때마다 새 타일(2, 가끔 4)이 생겨요\n한 번 밀 때 같은 타일은 한 번만 합쳐져요\n큰 숫자를 한쪽 구석에 모아 두면 유리해요\n시간 제한 없음',
   'game.merge.moves': '이동',
+  'game.tower.name': '랙 쌓기',
+  'game.tower.goal':
+    '좌우로 움직이는 서버 유닛을 아래 유닛 위에 정확히 떨어뜨려 높이 쌓으세요. 삐져나온 부분은 잘려 나가고, 완전히 빗나가면 끝.',
+  'game.tower.keys': 'Space / ↑ / 클릭|떨어뜨리기',
+  'game.tower.rules':
+    '한 층 쌓을 때마다 10점\n거의 딱 맞추면(2px 이내) 퍼펙트: 안 잘리고 +5 × 연속 횟수 (최대 +50)\n퍼펙트 3연속부터는 유닛이 조금씩 다시 넓어져요\n층이 올라갈수록 빨라져요',
+  'game.tower.floors': '층',
+  'game.tower.perfect': '퍼펙트',
   'arcade.busy': '{name}님이 하는 중이에요. 자리가 비면 앉을 수 있어요',
   'arcade.taken': '{name}님이 먼저 앉았어요. 자리가 비면 다시 앉아 주세요',
   'game.combo': '콤보',
@@ -911,6 +919,14 @@ const en: Record<Key, string> = {
   'game.merge.rules':
     'A merge scores its new number (4+4 → 8)\nEvery slide adds a new tile (2, sometimes 4)\nA tile merges at most once per slide\nKeep the big numbers in one corner\nNo time limit',
   'game.merge.moves': 'Moves',
+  'game.tower.name': 'Rack Stack',
+  'game.tower.goal':
+    'Drop the sliding server unit right on top of the one below and build as high as you can. What hangs over is cut off; miss completely and it is over.',
+  'game.tower.keys': 'Space / ↑ / Click|Drop',
+  'game.tower.rules':
+    '10 points per floor\nA near-exact drop (within 2 px) is perfect: nothing is cut, +5 × the streak (up to +50)\nFrom 3 perfects in a row the unit grows back a little each time\nIt speeds up as the tower grows',
+  'game.tower.floors': 'Floors',
+  'game.tower.perfect': 'Perfect',
   'arcade.busy': '{name} is playing. You can sit once the seat is free',
   'arcade.taken': '{name} sat down first. Sit again once the seat is free',
   'game.combo': 'Combo',

@@ -160,7 +160,7 @@ describe('parsers', () => {
       parseArcadeBoard({
         boards: { breaker: [row('a', 10), { id: 'b', name: 'b', score: -1, at: 1 }] },
       }),
-    ).toEqual({ cable: [], bugs: [], breaker: [row('a', 10)], drone: [], merge: [] });
+    ).toEqual({ cable: [], bugs: [], breaker: [row('a', 10)], drone: [], merge: [], tower: [] });
     expect(parseArcadeBoard({})).toBeNull();
   });
 });

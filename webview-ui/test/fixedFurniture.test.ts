@@ -26,6 +26,7 @@ test('fixed types: seats, desks, tables, PCs, cabinets; decor is free', () => {
     'SOFA_SIDE',
     'COFFEE_TABLE',
     'ARCADE_DRONE',
+    'ARCADE_TOWER',
     'WOODEN_BENCH',
   ])
     assert.ok(isFixedFurniture(t), t);

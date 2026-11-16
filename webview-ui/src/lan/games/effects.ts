@@ -111,21 +111,22 @@ export class Effects {
 
 let audio: AudioContext | null = null;
 
-/** A short synth blip (GAME_SFX[kind]); silently nothing where Web Audio is missing. */
-export function playSfx(kind: string): void {
+/** A short synth blip (GAME_SFX[kind], frequencies × pitch); silently nothing where Web Audio is missing. */
+export function playSfx(kind: string, pitch = 1): void {
   const spec = GAME_SFX[kind];
   if (!spec) return;
   try {
     audio ??= new AudioContext();
     if (audio.state === 'suspended') void audio.resume();
     const [from, to, ms, wave] = spec;
+    const [f0, f1] = [from * pitch, to * pitch];
     const t0 = audio.currentTime;
     const t1 = t0 + ms / 1000;
     const osc = audio.createOscillator();
     const gain = audio.createGain();
     osc.type = wave;
-    osc.frequency.setValueAtTime(from, t0);
-    osc.frequency.exponentialRampToValueAtTime(to, t1);
+    osc.frequency.setValueAtTime(f0, t0);
+    osc.frequency.exponentialRampToValueAtTime(f1, t1);
     gain.gain.setValueAtTime(GAME_SOUND_VOLUME, t0);
     gain.gain.exponentialRampToValueAtTime(GAME_SOUND_VOLUME / 100, t1);
     osc.connect(gain).connect(audio.destination);

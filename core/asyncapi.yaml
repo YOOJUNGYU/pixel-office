@@ -1401,7 +1401,7 @@ components:
 
     GameId:
       type: string
-      enum: [cable, bugs, breaker, drone, merge]
+      enum: [cable, bugs, breaker, drone, merge, tower]
 
     ArcadeTicket:
       type: object
@@ -1437,7 +1437,7 @@ components:
     ArcadeBoards:
       type: object
       additionalProperties: false
-      required: [cable, bugs, breaker, drone, merge]
+      required: [cable, bugs, breaker, drone, merge, tower]
       properties:
         cable:
           type: array
@@ -1456,6 +1456,10 @@ components:
           items:
             $ref: '#/components/schemas/ArcadeRow'
         merge:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArcadeRow'
+        tower:
           type: array
           items:
             $ref: '#/components/schemas/ArcadeRow'

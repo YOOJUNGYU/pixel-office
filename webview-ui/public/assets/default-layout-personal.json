@@ -846,62 +846,74 @@
     },
     {
       "uid": "lan-129",
-      "type": "LARGE_PLANT",
-      "col": 1,
-      "row": 13
+      "type": "ARCADE_TOWER",
+      "col": 39,
+      "row": 19
     },
     {
       "uid": "lan-130",
-      "type": "LARGE_PLANT",
-      "col": 14,
-      "row": 13
+      "type": "CUSHIONED_CHAIR_BACK",
+      "col": 39,
+      "row": 21
     },
     {
       "uid": "lan-131",
       "type": "LARGE_PLANT",
       "col": 1,
-      "row": 27
+      "row": 13
     },
     {
       "uid": "lan-132",
       "type": "LARGE_PLANT",
       "col": 14,
-      "row": 27
+      "row": 13
     },
     {
       "uid": "lan-133",
       "type": "LARGE_PLANT",
-      "col": 17,
+      "col": 1,
       "row": 27
     },
     {
       "uid": "lan-134",
       "type": "LARGE_PLANT",
-      "col": 47,
+      "col": 14,
       "row": 27
     },
     {
       "uid": "lan-135",
       "type": "LARGE_PLANT",
       "col": 17,
-      "row": 20
+      "row": 27
     },
     {
       "uid": "lan-136",
       "type": "LARGE_PLANT",
       "col": 47,
-      "row": 20
+      "row": 27
     },
     {
       "uid": "lan-137",
-      "type": "LARGE_PAINTING",
-      "col": 23,
-      "row": 18
+      "type": "LARGE_PLANT",
+      "col": 17,
+      "row": 20
     },
     {
       "uid": "lan-138",
+      "type": "LARGE_PLANT",
+      "col": 47,
+      "row": 20
+    },
+    {
+      "uid": "lan-139",
       "type": "LARGE_PAINTING",
-      "col": 40,
+      "col": 20,
+      "row": 18
+    },
+    {
+      "uid": "lan-140",
+      "type": "LARGE_PAINTING",
+      "col": 44,
       "row": 18
     }
   ],

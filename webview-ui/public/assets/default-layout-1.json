@@ -3312,72 +3312,84 @@
     },
     {
       "uid": "lan-533",
-      "type": "LARGE_PLANT",
-      "col": 1,
-      "row": 27
+      "type": "ARCADE_TOWER",
+      "col": 60,
+      "row": 34
     },
     {
       "uid": "lan-534",
-      "type": "LARGE_PLANT",
-      "col": 23,
-      "row": 27
+      "type": "CUSHIONED_CHAIR_BACK",
+      "col": 60,
+      "row": 36
     },
     {
       "uid": "lan-535",
       "type": "LARGE_PLANT",
       "col": 1,
-      "row": 48
+      "row": 27
     },
     {
       "uid": "lan-536",
       "type": "LARGE_PLANT",
       "col": 23,
-      "row": 48
+      "row": 27
     },
     {
       "uid": "lan-537",
       "type": "LARGE_PLANT",
-      "col": 26,
+      "col": 1,
       "row": 48
     },
     {
       "uid": "lan-538",
       "type": "LARGE_PLANT",
-      "col": 80,
+      "col": 23,
       "row": 48
     },
     {
       "uid": "lan-539",
       "type": "LARGE_PLANT",
       "col": 26,
-      "row": 35
+      "row": 48
     },
     {
       "uid": "lan-540",
       "type": "LARGE_PLANT",
       "col": 80,
-      "row": 35
+      "row": 48
     },
     {
       "uid": "lan-541",
+      "type": "LARGE_PLANT",
+      "col": 26,
+      "row": 35
+    },
+    {
+      "uid": "lan-542",
+      "type": "LARGE_PLANT",
+      "col": 80,
+      "row": 35
+    },
+    {
+      "uid": "lan-543",
       "type": "CACTUS",
       "col": 26,
       "row": 42
     },
     {
-      "uid": "lan-542",
+      "uid": "lan-544",
       "type": "CACTUS",
       "col": 81,
       "row": 42
     },
     {
-      "uid": "lan-543",
+      "uid": "lan-545",
       "type": "LARGE_PAINTING",
       "col": 32,
       "row": 33
     },
     {
-      "uid": "lan-544",
+      "uid": "lan-546",
       "type": "LARGE_PAINTING",
       "col": 74,
       "row": 33

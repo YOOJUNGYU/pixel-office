@@ -307,7 +307,27 @@ export {
   GAME_DRONE_X,
   GAME_FP,
   GAME_MERGE_SIZE,
+  GAME_TOWER_H,
+  GAME_TOWER_UNIT_H,
 } from '../../core/src/constants.js';
+/** Tower: floors shown at once (the view scrolls up as the stack grows). */
+export const GAME_TOWER_VIEW_FLOORS = 13;
+/** Tower look (never part of a run): the newest unit's white flash, a perfect's ring (ms). */
+export const GAME_TOWER_FLASH_MS = 160;
+export const GAME_TOWER_RING_MS = 360;
+/** The view glides up to the stack: share of the gap closed per ms. */
+export const GAME_TOWER_CAMERA_RATE = 0.012;
+/** Cut-off pieces fall (px/ms²) and drift sideways (px/ms). */
+export const GAME_TOWER_DEBRIS_GRAVITY = 0.0006;
+export const GAME_TOWER_DEBRIS_DRIFT = 0.03;
+/** The back wall darkens from the machine room to the night sky: altitude px per colour band; stars above STAR_FROM. */
+export const GAME_TOWER_SKY_BAND_PX = 240;
+export const GAME_TOWER_STAR_FROM_PX = 600;
+/** A height mark every MARK_EVERY floors; a milestone burst every MILESTONE floors. */
+export const GAME_TOWER_MARK_EVERY = 5;
+export const GAME_TOWER_MILESTONE = 10;
+/** A perfect's blip rises a semitone per streak step, up to this many. */
+export const GAME_TOWER_PITCH_STEPS = 12;
 /** Canvas text, in logical px (scaled with the canvas). */
 export const GAME_FONT = '7px Pretendard';
 export const GAME_FONT_TINY = 'bold 5px Pretendard';
@@ -359,6 +379,9 @@ export const GAME_COLORS = {
   prop: '#b8bfd0',
   ground: '#1c2133',
   groundLine: '#2e3550',
+  /** Tower: back wall by altitude (machine room → night sky), stars. */
+  towerSky: ['#0a0d17', '#0d1226', '#121a36', '#1b1a3e', '#120f2e', '#08081a', '#04040c'],
+  star: '#cdd6f4',
   /** Merge: board, empty cell, tiles by exponent (1 = 2, 2 = 4, …; last = beyond). */
   board: '#161a26',
   cellEmpty: '#1f2433',
@@ -446,6 +469,8 @@ export const GAME_SFX: Readonly<
   over: [440, 110, 600, 'sawtooth'],
   count: [660, 660, 80, 'square'],
   go: [990, 990, 160, 'square'],
+  stack: [260, 180, 70, 'triangle'],
+  perfect: [880, 1320, 140, 'square'],
 };
 /** Merge: board (px) and its tile fonts by digit count (≤ 2, 3, 4+). */
 export const GAME_MERGE_CELL = 41;

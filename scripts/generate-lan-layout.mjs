@@ -362,21 +362,23 @@ for (const [type, x] of V.wallDeco.server) put(type, SERVER.x + x, TOP_WALL - 1)
 // there starts its game, one player per cabinet). Never in a doorway: the wall pieces on
 // either side of the middle door take them (left ⌈n/2⌉, right the rest), packed towards
 // that door with one free tile beside it, 2 tiles apart; the corner pieces keep their decor.
-const ARCADE_GAMES = ['BREAKER', 'CABLE', 'BUGS', 'DRONE', 'MERGE'];
+const ARCADE_GAMES = ['BREAKER', 'CABLE', 'BUGS', 'DRONE', 'MERGE', 'TOWER'];
 const LOUNGE_TOP_DOORS = [
   mid(LOUNGE),
   ...(V.extraDoors
     ? [RIGHT_X + Math.floor(RIGHT_W / 4), RIGHT_X + Math.floor((3 * RIGHT_W) / 4) - 1]
     : []),
 ];
+/** The cabinets' columns. */
+let ARCADE_COLS;
 {
   const segs = wallSegments(LOUNGE, LOUNGE_TOP_DOORS);
   const right = segs.findIndex(([a]) => a > mid(LOUNGE));
   const [l, r] = [segs[right - 1], segs[right]];
   const nL = Math.ceil(ARCADE_GAMES.length / 2);
-  const cols = ARCADE_GAMES.map((_, i) =>
+  const cols = (ARCADE_COLS = ARCADE_GAMES.map((_, i) =>
     i < nL ? l[1] - 1 - 2 * (nL - 1 - i) : r[0] + 1 + 2 * (i - nL),
-  );
+  ));
   for (const [i, game] of ARCADE_GAMES.entries()) {
     if (cols[i] < (i < nL ? l[0] : r[0]) || cols[i] > (i < nL ? l[1] : r[1]))
       throw new Error(`arcade ${game} does not fit its wall piece`);
@@ -405,7 +407,10 @@ if (LOUNGE.h >= 12) {
 {
   const segs = wallSegments(LOUNGE, LOUNGE_TOP_DOORS);
   const c = (seg, w) => Math.floor((seg[0] + seg[1] + 1 - w) / 2);
-  const [first, last] = [segs[0], segs[segs.length - 1]];
+  // a corner piece shared with cabinets (no side doors) keeps one free tile beside them
+  const [lo, hi] = [Math.min(...ARCADE_COLS), Math.max(...ARCADE_COLS)];
+  const first = [segs[0][0], Math.min(segs[0][1], lo - 2)];
+  const last = [Math.max(segs.at(-1)[0], hi + 2), segs.at(-1)[1]];
   put('LARGE_PAINTING', c(first, 2), LOUNGE.y - 2);
   put('LARGE_PAINTING', c(last, 2), LOUNGE.y - 2);
   // (the middle of the wall is the arcade's)

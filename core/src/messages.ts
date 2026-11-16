@@ -411,7 +411,7 @@ export interface ArcadeTicketMessage {
   ticket?: ArcadeTicket;
 }
 
-export type GameId = 'cable' | 'bugs' | 'breaker' | 'drone' | 'merge';
+export type GameId = 'cable' | 'bugs' | 'breaker' | 'drone' | 'merge' | 'tower';
 
 export interface ArcadeTicket {
   seed: number;
@@ -442,6 +442,7 @@ export interface ArcadeBoards {
   breaker: ArcadeRow[];
   drone: ArcadeRow[];
   merge: ArcadeRow[];
+  tower: ArcadeRow[];
 }
 
 export interface ArcadeRow {

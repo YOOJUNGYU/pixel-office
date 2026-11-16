@@ -158,7 +158,7 @@ The people panel on the right is split into Public office, Team and Personal, so
 
 ### Arcade
 
-Five cabinets stand against the lounge's top wall. Sit on the chair in front of one and its game starts at once, with how to play on the left and the hall of fame on the right. Esc stops; the arrow keys then stand you up.
+Six cabinets stand against the lounge's top wall, three on each side of the middle door. Sit on the chair in front of one and its game starts at once, with how to play on the left and the hall of fame on the right. Esc stops; the arrow keys then stand you up.
 
 | Game             | How it plays                                                                               |
 | ---------------- | ------------------------------------------------------------------------------------------ |
@@ -167,6 +167,7 @@ Five cabinets stand against the lounge's top wall. Sit on the chair in front of 
 | Bug Squash       | Squash bugs popping up on 9 monitors; leave the green patches alone; 45 s                  |
 | Drone Delivery   | Space flaps; fly through the gaps between server racks                                     |
 | Merge            | Arrow keys slide the tiles; equal numbers merge                                            |
+| Rack Stack       | Space drops the sliding server unit; what hangs over is cut off                            |
 
 - One player per cabinet. If someone is sitting there you get a "… is playing" notice and can sit once the seat is free.
 - The hall of fame keeps each person's best per game, top 50, including people who are offline. People online now get a ●.

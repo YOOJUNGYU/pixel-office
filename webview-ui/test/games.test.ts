@@ -27,6 +27,8 @@ import { cableTick, cableTurn, newCable } from '../../core/src/games/cable.js';
 import { droneFlap, droneStep, newDrone } from '../../core/src/games/drone.js';
 import { MERGE_ACT, mergeMove, newMerge } from '../../core/src/games/merge.js';
 import { GAME_ACTIONS, newRun, Recorder, replay, tick } from '../../core/src/games/replay.js';
+import { newTower, towerDrop, towerStep } from '../../core/src/games/tower.js';
+import { GAME_IDS } from '../../core/src/lan.js';
 
 const always = (v: number) => () => v;
 
@@ -262,9 +264,48 @@ describe('merge', () => {
   });
 });
 
+describe('tower', () => {
+  it('a perfect drop keeps the width and scores the streak; an offset drop cuts', () => {
+    const s = newTower(always(0)); // enters from the right, moving left
+    const base = s.stack[0];
+    s.x = base.x * GAME_FP;
+    towerDrop(s);
+    expect(s.stack[1]).toEqual(base);
+    expect(s.score).toBe(15);
+    s.x = (base.x + 10) * GAME_FP;
+    towerDrop(s);
+    expect(s.stack[2]).toEqual({ x: base.x + 10, w: base.w - 10 });
+    expect(s.streak).toBe(0);
+    expect(s.w).toBe(base.w - 10);
+  });
+
+  it('slides between the walls and ends on a miss', () => {
+    const s = newTower(always(0));
+    for (let k = 0; k < 5000; k++) towerStep(s, 10);
+    expect(s.x).toBeGreaterThanOrEqual(0);
+    s.x = 0;
+    towerDrop(s); // base is centred, 96 wide: x 0..95 overlaps by 24
+    s.x = 200 * GAME_FP;
+    towerDrop(s);
+    expect(s.over).toBe(true);
+  });
+
+  it('a streak of perfects grows a cut unit back', () => {
+    const s = newTower(always(0));
+    s.x = (s.stack[0].x + 20) * GAME_FP;
+    towerDrop(s);
+    const w = s.w;
+    for (let i = 0; i < 3; i++) {
+      s.x = s.stack.at(-1)!.x * GAME_FP;
+      towerDrop(s);
+    }
+    expect(s.w).toBe(w + 4);
+  });
+});
+
 describe('replay', () => {
   it('a recorded run replays to the same score; a different seed does not reproduce it', () => {
-    for (const game of ['cable', 'bugs', 'breaker', 'drone', 'merge'] as const) {
+    for (const game of GAME_IDS) {
       const rec = new Recorder(newRun(game, 12345));
       let i = 0;
       while (!rec.run.s.over && rec.run.ticks < 200_000) {

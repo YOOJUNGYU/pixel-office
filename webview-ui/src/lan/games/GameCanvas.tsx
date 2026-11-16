@@ -24,6 +24,8 @@ import {
   GAME_SCALE_MAX,
   GAME_SCALE_MIN,
   GAME_SCANLINE_ALPHA,
+  GAME_TOWER_MILESTONE,
+  GAME_TOWER_PITCH_STEPS,
   GAME_VIEW_H,
   GAME_VIEW_W,
 } from '../../constants.js';
@@ -40,7 +42,9 @@ import {
 import { breakerAt, brickColor, drawBreaker } from './drawBreaker.js';
 import { drawDrone, droneAt } from './drawDrone.js';
 import { drawMerge, mergeAt } from './drawMerge.js';
+import { drawTower } from './drawTower.js';
 import { Effects, playSfx } from './effects.js';
+import { TowerView } from './towerView.js';
 
 /** A finished run: its ticket (null = unranked, the relay was unreachable) and inputs. */
 export interface FinishedRun {
@@ -81,6 +85,7 @@ function downAction(game: GameId, e: KeyboardEvent): number {
       if (dir === 3) return BREAKER_ACT.rightDown;
       return k === ' ' || dir === 0 ? BREAKER_ACT.launch : -1;
     case 'drone':
+    case 'tower':
       return k === ' ' || dir === 0 ? 0 : -1;
   }
 }
@@ -104,7 +109,7 @@ function fitScale(): number {
 const randomSeed = (): number => Math.floor(Math.random() * 2 ** 32);
 
 /** Where an effect happens on screen (logical px). */
-function fxAt(run: Run, f: Fx): [number, number] {
+function fxAt(run: Run, f: Fx, tower: TowerView): [number, number] {
   switch (run.game) {
     case 'cable':
       return cableAt(f);
@@ -116,6 +121,8 @@ function fxAt(run: Run, f: Fx): [number, number] {
       return droneAt(f.x, f.y);
     case 'merge':
       return mergeAt(f.x);
+    case 'tower':
+      return tower.at(f);
   }
 }
 
@@ -132,8 +139,8 @@ const FX_COLOR: Record<string, string> = {
 };
 
 /** Turn one game event into particles, floating points and shake (the caller plays its sound). */
-function visual(fx: Effects, run: Run, f: Fx): void {
-  const [x, y] = fxAt(run, f);
+function visual(fx: Effects, run: Run, f: Fx, tower: TowerView): void {
+  const [x, y] = fxAt(run, f, tower);
   const color = FX_COLOR[f.k] ?? C.accent;
   switch (f.k) {
     case 'eat':
@@ -182,6 +189,18 @@ function visual(fx: Effects, run: Run, f: Fx): void {
       return;
     case 'merge':
       fx.float(x, y - 10, `+${f.n}`);
+      return;
+    case 'stack':
+    case 'perfect':
+      if (f.k === 'perfect') {
+        fx.burst(x, y, C.accent, 14);
+        fx.float(x, y - 8, `+${f.n}`, C.accent);
+      } else fx.burst(x, y + 4, C.brickRows[f.y % C.brickRows.length], 6, 0.04);
+      if (f.y % GAME_TOWER_MILESTONE === 0) {
+        fx.burst(GAME_VIEW_W / 2, y, C.good, 30, 0.12);
+        fx.float(GAME_VIEW_W / 2, y - 18, `${f.y} ${t('game.tower.floors')}!`, C.good);
+        fx.shake(2);
+      }
       return;
     case 'big':
       fx.burst(x, y, C.accent, 24);
@@ -238,9 +257,10 @@ export function GameCanvas(props: {
     /** merge: the last move's seq and when it was seen (slide animation). */
     let mergeSeq = -1;
     let mergeSince = 0;
+    let tower = new TowerView();
     const fx = new Effects();
-    const sound = (k: string) => {
-      if (!cb.current.muted) playSfx(k);
+    const sound = (k: string, pitch?: number) => {
+      if (!cb.current.muted) playSfx(k, pitch);
     };
 
     const start = () => {
@@ -248,6 +268,7 @@ export function GameCanvas(props: {
       reported = false;
       paused = false;
       mergeSeq = -1;
+      tower = new TowerView();
       fx.clear();
       startBest = cb.current.best;
       void cb.current.requestTicket().then((tk) => {
@@ -264,8 +285,14 @@ export function GameCanvas(props: {
     const drain = (run: Run) => {
       const q = run.s.fx;
       for (const f of q.splice(0, q.length)) {
-        sound(f.k);
-        visual(fx, run, f);
+        if (run.game === 'tower') {
+          tower.onFx(run.s, f);
+          // a perfect streak climbs the scale; a milestone floor rings the level jingle
+          const step = Math.min(run.s.streak - 1, GAME_TOWER_PITCH_STEPS);
+          sound(f.k, f.k === 'perfect' ? 2 ** (step / 12) : 1);
+          if (f.k !== 'over' && f.y % GAME_TOWER_MILESTONE === 0) sound('level');
+        } else sound(f.k);
+        visual(fx, run, f, tower);
       }
     };
 
@@ -300,6 +327,7 @@ export function GameCanvas(props: {
       }
       drain(run);
       fx.update(dt);
+      if (run.game === 'tower') tower.update(run.s, dt);
       if (run.s.over && !reported) {
         reported = true;
         if (run.s.score > 0)
@@ -322,6 +350,9 @@ export function GameCanvas(props: {
           break;
         case 'drone':
           drawDrone(ctx, run.s, best, now);
+          break;
+        case 'tower':
+          drawTower(ctx, run.s, tower, best, now);
           break;
         case 'merge':
           if (run.s.last.seq !== mergeSeq) {
@@ -405,7 +436,7 @@ export function GameCanvas(props: {
 
     const onPointer = (e: PointerEvent) => {
       if (!rec || !playing()) return;
-      if (game === 'drone') return rec.act(0);
+      if (game === 'drone' || game === 'tower') return rec.act(0);
       if (game !== 'bugs') return;
       const r = canvas.getBoundingClientRect();
       const lx = ((e.clientX - r.left) / r.width) * GAME_VIEW_W;
@@ -440,7 +471,12 @@ export function GameCanvas(props: {
         display: 'block',
         imageRendering: 'pixelated',
         border: '2px solid var(--color-border)',
-        cursor: game === 'bugs' ? 'crosshair' : game === 'drone' ? 'pointer' : undefined,
+        cursor:
+          game === 'bugs'
+            ? 'crosshair'
+            : game === 'drone' || game === 'tower'
+              ? 'pointer'
+              : undefined,
       }}
     />
   );
