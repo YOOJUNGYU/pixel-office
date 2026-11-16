@@ -48,6 +48,9 @@ A ban is per peer id: deleting `profile.json` gets a new id. No IP bans (a whole
 The hub also referees the lounge arcade's cumulative leaderboard (`src/arcade.ts`, types and
 parsers shared with the PC in `core/src/arcade.ts`). Scores are never taken from clients: the
 relay replays the recorded inputs on its own seed with the shared engine (`core/src/games/`).
+Personal, public and team offices all use the same leaderboard and player id, so a player's
+best score carries across office switches. Personal mode disables peer networking, while
+arcade record requests remain available whenever the relay is reachable.
 
 | Request                                                           | Answer                                         |
 | ----------------------------------------------------------------- | ---------------------------------------------- |

@@ -1,6 +1,8 @@
 // The lounge arcade's hall of fame lives on the internet relay (relay/src/arcade.ts): this
 // PC's server asks it for run tickets, hands it finished runs (seed + inputs, which it
 // replays itself) and reads the boards. The browser never talks to the relay.
+// Personal, public and team offices share these boards and the profile's stable peer id.
+// Personal mode stops peer networking only; arcade HTTP requests stay available.
 import type { ArcadeBoards, ArcadeError, ArcadeTicket } from '../../../core/src/arcade.js';
 import {
   ARCADE_BOARD_PATH,

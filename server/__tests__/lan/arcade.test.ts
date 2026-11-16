@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { PERSONAL_VIEW, PUBLIC_VIEW } from '../../../core/src/lan.js';
 import { handleClientMessage } from '../../src/clientMessageHandler.js';
 import { FileStateAdapter } from '../../src/fileStateAdapter.js';
 import { arcadeClient } from '../../src/lan/arcade.js';
@@ -78,6 +79,7 @@ describe('arcade (this PC ↔ relay)', () => {
           drone: [],
           merge: [],
           bugs: [],
+          tower: [],
         },
       },
     ]);
@@ -97,6 +99,74 @@ describe('arcade (this PC ↔ relay)', () => {
       ok: false,
       reason: 'bad',
     });
+  });
+
+  it.each([
+    [PERSONAL_VIEW, PUBLIC_VIEW],
+    [PUBLIC_VIEW, PERSONAL_VIEW],
+  ])('shares records from %s to %s, including a run started before switching', async (from, to) => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-arcade-'));
+    const lan = new LanService(loadProfile(dir), { views: () => [] }, dir);
+    const id = lan.self().id;
+    const boards = {
+      breaker: [{ id, name: 'me', score: 300, at: 5 }],
+      cable: [],
+      drone: [],
+      merge: [],
+      bugs: [],
+      tower: [],
+    };
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async (url) => {
+      const json = url.endsWith('/arcade/start')
+        ? TICKET
+        : url.endsWith('/arcade/submit')
+          ? { score: 120, best: 300, rank: 1 }
+          : { boards };
+      return new Response(JSON.stringify(json), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const sent: Array<Record<string, unknown>> = [];
+    const ctx = {
+      adapter: new FileStateAdapter(),
+      cache: null,
+      lan,
+      privileged: true,
+      arcade: arcadeClient('wss://r.example.dev/ws'),
+    };
+    const send = (m: Record<string, unknown>) => sent.push(m);
+    expect(lan.setActiveView(from)).toBe(true);
+    handleClientMessage({ type: 'openArcade' }, send, ctx);
+    handleClientMessage({ type: 'arcadeStart', game: 'breaker', req: 1 }, send, ctx);
+    await flush();
+    expect(sent).toContainEqual({ type: 'arcadeBoard', boards });
+    expect(sent).toContainEqual({
+      type: 'arcadeTicket',
+      game: 'breaker',
+      req: 1,
+      ticket: TICKET,
+    });
+
+    expect(lan.setActiveView(to)).toBe(true);
+    handleClientMessage(
+      { type: 'submitScore', game: 'breaker', ticket: TICKET, inputs: [0, 1, 5, 4] },
+      send,
+      ctx,
+    );
+    await flush();
+    await flush();
+    expect(sent.slice(-2)).toEqual([
+      { type: 'arcadeResult', game: 'breaker', ok: true, score: 120, best: 300, rank: 1 },
+      { type: 'arcadeBoard', boards },
+    ]);
+    // The same endpoint and stable player id are used even with peer networking offline.
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      'https://r.example.dev/arcade/board',
+      'https://r.example.dev/arcade/start',
+      'https://r.example.dev/arcade/submit',
+      'https://r.example.dev/arcade/board',
+    ]);
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({ id, game: 'breaker' });
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toMatchObject({ id, ...TICKET });
   });
 
   it('no relay / unreachable: no ticket, unranked', async () => {
