@@ -403,6 +403,7 @@ describe('/ws usage panel', () => {
   const usage = {
     report,
     today: () => 42,
+    limits: () => [],
     scanning: false,
     fileOf: (key: string) =>
       key === 'k1' ? { file, provider: 'claude', title: 'T', folder: 'f' } : undefined,

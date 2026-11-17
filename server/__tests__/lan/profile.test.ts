@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PERSONAL_VIEW, PUBLIC_VIEW } from '../../../core/src/lan.js';
+import { parsePeerPacket, PERSONAL_VIEW, PUBLIC_VIEW } from '../../../core/src/lan.js';
 import { ACCOUNT_FALLBACK, MAX_KNOWN_PEERS } from '../../src/constants.js';
 import { createIdentity, newInviteCode, publicKeyOf } from '../../src/lan/crypto.js';
 import {
@@ -236,6 +236,41 @@ describe('validateProfileUpdate', () => {
       expect(r).not.toBeNull();
       expect(r).not.toHaveProperty('tagColors');
     }
+  });
+  it('outfit: ids and hex colours kept, unknown slots/keys and bad values dropped; bad body ignored', () => {
+    const r = validateProfileUpdate({
+      ...ok,
+      outfit: {
+        body: 'bust',
+        eyes: 'lashes',
+        parts: { hair: 'bob', top: 'tshirt', evil: 'x', pants: '../x', shoes: 3 },
+        colors: { hair: '#AB12CD', top: 'red', bogus: '#000000' },
+        extra: 1,
+      },
+    });
+    expect(r?.outfit).toEqual({
+      body: 'bust',
+      eyes: 'lashes',
+      parts: { hair: 'bob', top: 'tshirt' },
+      colors: { hair: '#ab12cd' },
+    });
+    for (const bad of [{ body: 'Bad Body' }, { parts: {} }, 'flat', null]) {
+      const x = validateProfileUpdate({ ...ok, outfit: bad });
+      expect(x).not.toBeNull();
+      expect(x).not.toHaveProperty('outfit');
+    }
+  });
+  it("a peer's outfit survives parsePeerPacket; a malformed one is dropped alone", () => {
+    const peer = { id: 'p1', account: 'a', nickname: '', palette: 1, hueShift: 0 };
+    const pkt = (outfit: unknown) =>
+      parsePeerPacket(JSON.stringify({ v: 1, peer: { ...peer, outfit }, views: [] }));
+    expect(pkt({ body: 'flat', parts: { hat: 'plain_cap' } })?.peer.outfit).toEqual({
+      body: 'flat',
+      parts: { hat: 'plain_cap' },
+    });
+    const bad = pkt({ body: 42 });
+    expect(bad?.peer.palette).toBe(1);
+    expect(bad?.peer).not.toHaveProperty('outfit');
   });
   it.each([
     [{ ...ok, nickname: 'x'.repeat(21) }],

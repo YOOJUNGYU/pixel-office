@@ -711,6 +711,36 @@ components:
         scanning:
           type: boolean
           description: The history scan is still running.
+        limits:
+          type: array
+          description: The provider's own rate-limit windows, as last written in this PC's transcripts (Codex token_count rate_limits; Claude writes none). Absent = none known.
+          items:
+            $ref: '#/components/schemas/UsageLimit'
+
+    UsageLimit:
+      type: object
+      additionalProperties: false
+      required: [provider, windowMin, usedPct, resetsInSec, ageSec]
+      properties:
+        provider:
+          type: string
+          enum: [claude, codex]
+        windowMin:
+          type: integer
+          minimum: 1
+          description: Window length in minutes (300 = 5 h, 10080 = 7 d).
+        usedPct:
+          type: number
+          minimum: 0
+          description: Percent of the window used, as the provider reported it.
+        resetsInSec:
+          type: integer
+          minimum: 1
+          description: Seconds until the window resets (relative, no client clock needed).
+        ageSec:
+          type: integer
+          minimum: 0
+          description: Seconds since the provider reported it.
 
     UsageRange:
       type: string
@@ -1041,6 +1071,8 @@ components:
           $ref: '#/components/schemas/PetId'
         tagColors:
           $ref: '#/components/schemas/TagColors'
+        outfit:
+          $ref: '#/components/schemas/Outfit'
         ver:
           $ref: '#/components/schemas/AppVersion'
         net:
@@ -1080,6 +1112,8 @@ components:
           $ref: '#/components/schemas/PetId'
         tagColors:
           $ref: '#/components/schemas/TagColors'
+        outfit:
+          $ref: '#/components/schemas/Outfit'
         ver:
           $ref: '#/components/schemas/AppVersion'
         net:
@@ -1175,6 +1209,8 @@ components:
           $ref: '#/components/schemas/PetId'
         tagColors:
           $ref: '#/components/schemas/TagColors'
+        outfit:
+          $ref: '#/components/schemas/Outfit'
         manualPeers:
           type: array
           description: Extra peer IPv4 addresses or hostnames to send to.
@@ -1286,6 +1322,10 @@ components:
           description: Main agent with children only - own plus all children billable.
         big:
           $ref: '#/components/schemas/AgentUsageBig'
+        cache:
+          type: integer
+          minimum: 1
+          description: Claude only - seconds until the prompt cache written by the last call expires (5 min or 1 h TTL); absent once expired. The next turn after that reads the whole context at full price.
 
     AgentHeat:
       description: Token usage as tiers, shared with peers - the character's size and its burn effect. Absent = none.
@@ -1374,6 +1414,8 @@ components:
           $ref: '#/components/schemas/PetId'
         tagColors:
           $ref: '#/components/schemas/TagColors'
+        outfit:
+          $ref: '#/components/schemas/Outfit'
         ver:
           $ref: '#/components/schemas/AppVersion'
 
@@ -1383,6 +1425,35 @@ components:
       description: >-
         The person's app version. Absent = a peer at 1.0.44 or older (or a
         malformed value, dropped on receive).
+
+    Outfit:
+      type: object
+      description: >-
+        The person's wardrobe look (character customisation, ported from pixel-agents):
+        a body, an eye shape, a wardrobe part id per slot and a colour per colour key.
+        Part ids mean something only to the webview's wardrobe (an unknown one draws
+        nothing). Optional; absent = the palette character. Older peers ignore it.
+      additionalProperties: false
+      required: [body]
+      properties:
+        body:
+          type: string
+          pattern: '^[a-z0-9_-]{1,32}$'
+        eyes:
+          type: string
+          pattern: '^[a-z0-9_-]{1,32}$'
+        parts:
+          type: object
+          description: Slot (hair, top, jacket, pants, shoes, full, hat, beard, accessories) → part id.
+          additionalProperties:
+            type: string
+            pattern: '^[a-z0-9_-]{1,32}$'
+        colors:
+          type: object
+          description: Colour key (skin, eyes, lashes, tie or a slot) → '#rrggbb'.
+          additionalProperties:
+            type: string
+            pattern: '^#[0-9A-Fa-f]{6}$'
 
     TagColors:
       type: object

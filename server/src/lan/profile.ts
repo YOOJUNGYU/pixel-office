@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import type { AvatarPos, PeerChat, PetId, TagColors } from '../../../core/src/lan.js';
+import type { AvatarPos, Outfit, PeerChat, PetId, TagColors } from '../../../core/src/lan.js';
 import {
   cleanAccount,
   isPetId,
@@ -11,6 +11,7 @@ import {
   MAX_ACCOUNT,
   parseAvatar,
   parseChat,
+  parseOutfit,
   parseTagColors,
   PERSONAL_VIEW,
   PUBLIC_VIEW,
@@ -44,6 +45,8 @@ export interface Profile {
   pet?: PetId;
   /** Avatar name tag colours; absent = the default tag. */
   tagColors?: TagColors;
+  /** Wardrobe look (≥ 1.0.64); absent = the palette character. */
+  outfit?: Outfit;
   manualPeers: string[];
   identity: { publicKey: string; privateKeyPem: string };
   offices: TeamOffice[];
@@ -78,7 +81,7 @@ function parseSavedAvatars(raw: unknown): SavedAvatars | undefined {
 /** What saveProfile may change; identity/offices/views change only via their own messages. */
 export type EditableProfile = Pick<
   Profile,
-  'nickname' | 'palette' | 'hueShift' | 'pet' | 'tagColors' | 'manualPeers'
+  'nickname' | 'palette' | 'hueShift' | 'pet' | 'tagColors' | 'outfit' | 'manualPeers'
 >;
 
 const PROFILE_FILE_NAME = 'profile.json';
@@ -169,6 +172,7 @@ export function validateProfileUpdate(x: unknown): EditableProfile | null {
   if (!isInt(o.palette, 0, 5) || !isInt(o.hueShift, 0, 360)) return null;
   if (!Array.isArray(o.manualPeers) || o.manualPeers.length > MAX_MANUAL_PEERS) return null;
   const tagColors = parseTagColors(o.tagColors);
+  const outfit = parseOutfit(o.outfit);
   const manualPeers: string[] = [];
   for (const p of o.manualPeers) {
     if (typeof p !== 'string') return null;
@@ -183,6 +187,7 @@ export function validateProfileUpdate(x: unknown): EditableProfile | null {
     hueShift: o.hueShift,
     ...(isPetId(o.pet) && { pet: o.pet }),
     ...(tagColors && { tagColors }),
+    ...(outfit && { outfit }),
     manualPeers,
   };
 }

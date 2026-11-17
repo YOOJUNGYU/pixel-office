@@ -324,15 +324,13 @@ function App() {
   // again when personal mode is switched (another office): from the default zoom.
   const personal = isPersonal(offices);
   const fittedRef = useRef<boolean | null>(null);
-  useEffect(() => {
+  /** The zoom that shows the whole office below the office switcher (top centre), so the room
+   *  names along the top edge are never under it, and that band's height (device px). */
+  const fitNow = () => {
     const box = containerRef.current?.getBoundingClientRect();
-    if (!layoutReady || fittedRef.current === personal || !box) return;
-    const switched = fittedRef.current !== null;
-    fittedRef.current = personal;
+    if (!box) return null;
     const dpr = window.devicePixelRatio || 1;
     const layout = getOfficeState().getLayout();
-    // Fit below the office switcher (top centre) so the room names along the
-    // top edge are never under it: fit in the height left, then pan down.
     const top = FIT_TOP_MARGIN_PX * dpr;
     const fit = fitZoom(
       { w: layout.cols * TILE_SIZE, h: layout.rows * TILE_SIZE },
@@ -341,10 +339,26 @@ function App() {
       ZOOM_MIN,
       ZOOM_MAX,
     );
+    return { fit, top };
+  };
+  /** The fit button: the whole office centred in the window, whatever the zoom was. */
+  const fitToScreen = () => {
+    const v = fitNow();
+    if (!v) return;
+    panRef.current = { x: 0, y: v.top / 2 };
+    handleZoomChange(v.fit);
+    requestRender('fit');
+  };
+  useEffect(() => {
+    if (!layoutReady || fittedRef.current === personal) return;
+    const v = fitNow();
+    if (!v) return;
+    const switched = fittedRef.current !== null;
+    fittedRef.current = personal;
     const start = switched ? defaultZoom() : zoom;
-    if (fit < start || switched) {
-      panRef.current = { x: 0, y: top / 2 };
-      handleZoomChange(Math.min(fit, start));
+    if (v.fit < start || switched) {
+      panRef.current = { x: 0, y: v.top / 2 };
+      handleZoomChange(Math.min(v.fit, start));
     }
   }, [layoutReady, personal, zoom, handleZoomChange, panRef]);
 
@@ -623,6 +637,7 @@ function App() {
           panRef={editor.panRef}
           personal={personal}
           wrap={wrapsActivity(offices)}
+          onOpen={(a) => openPopout(a.id)}
         />
 
         <ChatLayer
@@ -651,6 +666,7 @@ function App() {
           zoom={editor.zoom}
           onZoomChange={editor.handleZoomChange}
           showZoom={!isMobile}
+          onFit={fitToScreen}
           leading={
             <MenuButtons
               isEditMode={editor.isEditMode}
@@ -875,6 +891,7 @@ const sameProfile = (a: ProfileMessage, b: ProfileMessage): boolean =>
   a.palette === b.palette &&
   a.hueShift === b.hueShift &&
   a.pet === b.pet &&
+  JSON.stringify(a.outfit ?? null) === JSON.stringify(b.outfit ?? null) &&
   a.manualPeers.join('\n') === b.manualPeers.join('\n');
 
 export default App;

@@ -1,7 +1,9 @@
 // Finds live Claude/Codex transcripts on this PC, tails them into session state.
+import { createReadStream } from 'node:fs';
 import type { FileHandle } from 'node:fs/promises';
 import { open, readdir, stat } from 'node:fs/promises';
 import * as path from 'node:path';
+import * as readline from 'node:readline';
 import { StringDecoder } from 'node:string_decoder';
 
 import type {
@@ -117,6 +119,32 @@ async function lastPermissionMode(file: string, end: number): Promise<string | n
   } finally {
     await fh.close();
   }
+}
+
+/** Lines that can start or end a background shell (a Bash call, its "running in background"
+ *  result, a `<task-notification>`): cheap substring checks before any JSON parse. */
+const SHELL_LINE =
+  /"name":"Bash"|in background with ID|moved to the background|backgrounded by user|<task-id>/;
+
+/**
+ * The background shells still running as of byte `end` (the tail's start): a restart reads
+ * only the tail, and a long session's dev server was started far before it. Streams [0, end)
+ * once, replaying only the lines that can start or end a shell into a scratch session.
+ * ponytail: reads the whole head of every long live session at start; cache shells across
+ * restarts if that ever shows up.
+ */
+async function earlierShells(
+  file: string,
+  end: number,
+  now: number,
+): Promise<SessionState['shells']> {
+  const scratch = newSession('claude', 'scan', 'main', now);
+  const lines = readline.createInterface({
+    input: createReadStream(file, { start: 0, end: end - 1, encoding: 'utf8' }),
+    crlfDelay: Infinity,
+  });
+  for await (const line of lines) if (SHELL_LINE.test(line)) applyClaudeLine(scratch, line, now);
+  return scratch.shells;
 }
 
 async function firstLine(file: string): Promise<string> {
@@ -455,6 +483,7 @@ export class Scanner {
     const u: AgentUsage = { tokens: fu.tokens, rate: fu.rate };
     if (fu.model) u.model = fu.model;
     if (fu.big.n > 0) u.big = fu.big;
+    if (fu.cache > 0) u.cache = fu.cache;
     if (s.kind === 'main') {
       const kids = [...this.files.values()].some(
         (o) => o.s.kind === 'subagent' && o.s.parentId === s.id,
@@ -593,6 +622,8 @@ export class Scanner {
     if (c.provider === 'claude' && start > 0) {
       const mode = await lastPermissionMode(c.file, start);
       if (mode) setPermissionMode(s, mode);
+      // Shells started before the tail and not yet ended (the tail may still end them).
+      for (const [id, sh] of await earlierShells(c.file, start, now)) s.shells.set(id, sh);
     }
     const t: Tracked = {
       s,

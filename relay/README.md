@@ -1,8 +1,11 @@
 # Pixel Office relay
 
-Cloudflare Worker + one Durable Object (`Hub`) that relays the public office's sealed `pub`
-datagrams between PCs on different networks. It sees only peer ids, public keys and recipient
-ids — never the content. Routing, budget and ban decisions live in `src/hub.ts` (tested by
+Cloudflare Worker + one Durable Object (`Hub`) that lists who is online across networks
+(since app 1.0.64; the office itself stays on each LAN). Each PC tells it who it is once per
+connection and per change (`{t:'me', p}`: account, nickname, look, version, personal mode);
+the hub keeps that in the socket attachment and hands it to everyone (roster, `person`).
+These person records are plaintext to the relay by design. Older PCs' sealed `pub` datagrams
+are still routed (it sees only their ids). Arcade scores are refereed here too. Routing, budget and ban decisions live in `src/hub.ts` (tested by
 `npm run test:relay` at the repo root); `src/index.ts` is the thin Worker/DO shell.
 
 ## Deploy

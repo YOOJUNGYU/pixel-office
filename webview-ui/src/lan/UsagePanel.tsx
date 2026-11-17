@@ -5,10 +5,12 @@ import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 import type { OfficeAgent } from '../../../core/src/lan.js';
-import type { UsageLoaded, UsageRange } from '../../../core/src/messages.js';
+import type { UsageLimit, UsageLoaded, UsageRange } from '../../../core/src/messages.js';
 import {
   LAN_PROVIDER_BADGE_FG,
   LAN_PROVIDER_COLORS,
+  LIMIT_PACE_WARN_PTS,
+  LIMIT_STALE_SEC,
   USAGE_BURN_DOT,
   USAGE_CACHE_H,
   USAGE_DAILY_H,
@@ -26,6 +28,7 @@ import { providerName, tagBadge } from './lanAgents.js';
 import { openPopout } from './transcriptWindows.js';
 import { DayBars, HBars, ShareBar, Swatch } from './UsageCharts.js';
 import { hitRate } from './usageCharts.js';
+import { cacheChipText, limitPace, spanText, windowName } from './usageLimits.js';
 import type { Grip as GripKind, Size } from './usagePanelSize.js';
 import { clampSize, dragSize, storedSize, storeSize } from './usagePanelSize.js';
 import { burnTier, modelFamily, modelLabel, tokensText } from './usageSignals.js';
@@ -50,7 +53,9 @@ export function UsagePanel({ onClose }: { onClose: () => void }) {
   useLang();
   const [range, setRange] = useState<UsageRange>(storedRange);
   const rangeRef = useRef(range);
-  const [now, setNow] = useState<{ today: number; scanning?: boolean }>({ today: 0 });
+  const [now, setNow] = useState<{ today: number; scanning?: boolean; limits?: UsageLimit[] }>({
+    today: 0,
+  });
   const [data, setData] = useState<UsageLoaded | null>(null);
   const [agents, setAgents] = useState<OfficeAgent[]>([]);
   const box = useResizable();
@@ -58,7 +63,8 @@ export function UsagePanel({ onClose }: { onClose: () => void }) {
   useEffect(
     () =>
       transport.onMessage((msg) => {
-        if (msg.type === 'usageNow') setNow({ today: msg.today, scanning: msg.scanning });
+        if (msg.type === 'usageNow')
+          setNow({ today: msg.today, scanning: msg.scanning, limits: msg.limits });
         else if (msg.type === 'usageLoaded') {
           if (msg.range === rangeRef.current) setData(msg);
         } else if (msg.type === 'officeSnapshot') {
@@ -132,6 +138,7 @@ export function UsagePanel({ onClose }: { onClose: () => void }) {
       <div className="flex-1 min-h-0 overflow-y-auto pixel-scrollbar">
         <div className="flex flex-col gap-10 p-12">
           <NowPanel agents={agents} today={now.today} scanning={scanning} />
+          {!!now.limits?.length && <Limits limits={now.limits} />}
           {data && <History data={data} />}
         </div>
       </div>
@@ -280,6 +287,66 @@ function NowPanel({
   );
 }
 
+/** The provider's own rate-limit windows: used %, pace against an even spend, forecast. */
+function Limits({ limits }: { limits: UsageLimit[] }) {
+  const age = Math.max(...limits.map((l) => l.ageSec));
+  return (
+    <section data-usage-limits className="pixel-panel px-10 py-8">
+      <h2 className="flex items-baseline gap-8 m-0 mb-6 text-sm font-bold">
+        <span>{t('limit.title', { p: 'Codex' })}</span>
+        {age >= LIMIT_STALE_SEC && (
+          <span className="text-xs text-text-muted font-normal">
+            {t('limit.age', { t: spanText(age) })}
+          </span>
+        )}
+      </h2>
+      {limits.map((l) => (
+        <LimitRow key={l.windowMin} l={l} />
+      ))}
+    </section>
+  );
+}
+
+function LimitRow({ l }: { l: UsageLimit }) {
+  const pace = limitPace(l);
+  const pct = Math.min(100, l.usedPct);
+  const over = pace.delta !== null && pace.delta >= LIMIT_PACE_WARN_PTS;
+  return (
+    <div data-limit={l.windowMin} className="flex flex-col gap-2 py-2 text-sm">
+      <div className="flex items-center gap-8">
+        <span className="shrink-0 w-[40px] font-bold">{windowName(l.windowMin)}</span>
+        <span
+          className="flex-1 h-8"
+          style={{
+            background: `linear-gradient(to right, ${over || pace.hitInSec !== null ? 'var(--ctx-warn)' : 'var(--ctx-fill)'} ${pct}%, var(--ctx-track) ${pct}%)`,
+          }}
+        />
+        <span className="shrink-0 w-[44px] text-right font-mono">{Math.round(l.usedPct)}%</span>
+      </div>
+      <div className="flex flex-wrap gap-x-8 pl-[48px] text-xs text-text-muted">
+        <span>{t('limit.resets', { t: spanText(l.resetsInSec) })}</span>
+        {pace.delta !== null && (
+          <span
+            title={t('limit.paceTip')}
+            style={{ color: over ? 'var(--elapsed-warn-fg)' : undefined }}
+          >
+            {pace.delta >= 0
+              ? t('limit.paceOver', { n: String(pace.delta) })
+              : t('limit.paceUnder', { n: String(-pace.delta) })}
+          </span>
+        )}
+        {pace.hitInSec !== null && (
+          <span className="font-bold" style={{ color: 'var(--elapsed-warn-fg)' }}>
+            {pace.hitInSec === 0
+              ? t('limit.reached')
+              : t('limit.hit', { t: spanText(pace.hitInSec) })}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function NowRow({ a, parent }: { a: OfficeAgent; parent?: OfficeAgent }) {
   const u = a.usage;
   const family = modelFamily(u?.model);
@@ -316,6 +383,11 @@ function NowRow({ a, parent }: { a: OfficeAgent; parent?: OfficeAgent }) {
         {family && (
           <span className="text-xs font-bold" style={{ color: USAGE_MODEL_COLORS[family] }}>
             {modelLabel(u?.model)}
+          </span>
+        )}
+        {cacheChipText(a) && (
+          <span data-cache className="font-mono text-text-muted" title={t('cache.tip')}>
+            {cacheChipText(a)}
           </span>
         )}
         <span className="font-mono">{tokensText(u?.tokens ?? 0)}</span>

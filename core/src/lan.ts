@@ -327,6 +327,7 @@ export interface AgentUsage {
   model?: string; // last assistant model id
   sum?: number; // main only, when it has children: own + all children billable
   big?: { n: number; last: number }; // count of results >= threshold so far, size of the last
+  cache?: number; // Claude: seconds until the prompt cache expires (absent = expired/unknown)
 }
 export interface AgentDiff {
   add: number;
@@ -412,6 +413,64 @@ export interface PeerInfo {
   tagColors?: TagColors;
   /** App version (`1.0.45`); absent = a peer ≤ 1.0.44 or a malformed value. */
   ver?: string;
+  /** Wardrobe look (≥ 1.0.64); absent = the palette character. Older peers ignore it. */
+  outfit?: Outfit;
+}
+
+/** Wardrobe slots an outfit names a part for (the underwear follows the body). */
+export const OUTFIT_SLOTS = [
+  'hair',
+  'beard',
+  'top',
+  'jacket',
+  'pants',
+  'shoes',
+  'full',
+  'hat',
+  'necklace',
+  'lanyard',
+  'earrings',
+  'shades',
+  'hairshades',
+  'watch',
+] as const;
+export type OutfitSlot = (typeof OUTFIT_SLOTS)[number];
+/** Colour keys an outfit may set: the body's, the eyes' and an outfit's tie, then every slot. */
+export const OUTFIT_COLOR_KEYS = ['skin', 'eyes', 'lashes', 'tie', ...OUTFIT_SLOTS] as const;
+export type OutfitColorKey = (typeof OUTFIT_COLOR_KEYS)[number];
+
+/** A person's wardrobe look: part ids and colours only (what they mean is the webview's). */
+export interface Outfit {
+  body: string;
+  eyes?: string;
+  parts?: Partial<Record<OutfitSlot, string>>;
+  colors?: Partial<Record<OutfitColorKey, string>>;
+}
+
+const OUTFIT_ID = /^[a-z0-9_-]{1,32}$/;
+
+/** Untrusted outfit → a fresh, valid one (unknown slots/keys and bad values dropped), else undefined. */
+export function parseOutfit(raw: unknown): Outfit | undefined {
+  if (!isObj(raw) || typeof raw.body !== 'string' || !OUTFIT_ID.test(raw.body)) return undefined;
+  const out: Outfit = { body: raw.body };
+  if (typeof raw.eyes === 'string' && OUTFIT_ID.test(raw.eyes)) out.eyes = raw.eyes;
+  if (isObj(raw.parts)) {
+    const parts: Outfit['parts'] = {};
+    for (const k of OUTFIT_SLOTS) {
+      const v = raw.parts[k];
+      if (typeof v === 'string' && OUTFIT_ID.test(v)) parts[k] = v;
+    }
+    if (Object.keys(parts).length) out.parts = parts;
+  }
+  if (isObj(raw.colors)) {
+    const colors: Outfit['colors'] = {};
+    for (const k of OUTFIT_COLOR_KEYS) {
+      const v = raw.colors[k];
+      if (typeof v === 'string' && HEX_COLOR.test(v)) colors[k] = v.toLowerCase();
+    }
+    if (Object.keys(colors).length) out.colors = colors;
+  }
+  return out;
 }
 
 /** A semver-like app version as sent in PeerInfo.ver. */
@@ -464,6 +523,8 @@ export interface PeerPacket {
   avatar?: AvatarPos;
   /** Which shared layout of this channel the PC has (≥ 1.0.14; absent = an older PC). */
   layout?: LayoutRev;
+  /** Over the relay: the sender is in personal mode (listed in that area). Older PCs ignore it. */
+  personal?: true;
 }
 
 /**
@@ -697,6 +758,8 @@ export function parsePeerInfo(raw: unknown): PeerInfo | null {
   if (isPetId(raw.pet)) peer.pet = raw.pet;
   const tagColors = parseTagColors(raw.tagColors);
   if (tagColors) peer.tagColors = tagColors;
+  const outfit = parseOutfit(raw.outfit);
+  if (outfit) peer.outfit = outfit;
   const since = raw.nickSince;
   if (typeof since === 'number' && Number.isSafeInteger(since) && since >= 0) {
     peer.nickSince = since;
@@ -729,8 +792,16 @@ export function parsePeerPacket(text: string): PeerPacket | null {
       ...(chat && { chat }),
       ...(avatar && { avatar }),
       ...(layout && { layout }),
+      ...(raw.personal === true && { personal: true as const }),
     };
   } catch {
     return null;
   }
 }
+
+/** A user line someone typed: not an injected tag (`<task-notification>`, `<command-…>`,
+ *  `<system-reminder>` …), an interrupt marker, a caveat or an AGENTS.md dump. */
+export const isPrompt = (text: string): boolean => {
+  const t = text.trim();
+  return !!t && !/^(<|\[Request interrupted|Caveat:|# AGENTS\.md)/.test(t);
+};

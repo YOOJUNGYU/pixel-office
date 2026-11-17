@@ -264,6 +264,7 @@ export interface AgentUsage {
   model?: string;
   sum?: number;
   big?: AgentUsageBig;
+  cache?: number;
 }
 
 export interface AgentUsageBig {
@@ -280,6 +281,7 @@ export interface PeerInfoMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
+  outfit?: Outfit;
   ver?: string;
 }
 
@@ -288,6 +290,13 @@ export type PetId = 'claudio' | 'gitcat';
 export interface TagColors {
   bg: string;
   fg: string;
+}
+
+export interface Outfit {
+  body: string;
+  eyes?: string;
+  parts?: Record<string, string>;
+  colors?: Record<string, string>;
 }
 
 export interface OfficePersonMessage {
@@ -299,6 +308,7 @@ export interface OfficePersonMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
+  outfit?: Outfit;
   ver?: string;
   net?: string;
   via?: ConnPath;
@@ -338,6 +348,7 @@ export interface DirectoryPersonMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
+  outfit?: Outfit;
   ver?: string;
   net?: string;
   via?: ConnPath;
@@ -364,6 +375,7 @@ export interface ProfileMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
+  outfit?: Outfit;
   manualPeers: string[];
 }
 
@@ -552,7 +564,18 @@ export interface UsageNow {
   type: 'usageNow';
   today: number;
   scanning: boolean;
+  limits?: UsageLimit[];
 }
+
+export interface UsageLimit {
+  provider: AnonymousSchema_267;
+  windowMin: number;
+  usedPct: number;
+  resetsInSec: number;
+  ageSec: number;
+}
+
+export type AnonymousSchema_267 = 'claude' | 'codex';
 
 export interface UsageLoaded {
   type: 'usageLoaded';

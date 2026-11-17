@@ -541,6 +541,22 @@ describe('session lifecycle', () => {
   const note = (id: string) =>
     `<task-notification> <task-id>${id}</task-id> <status>failed</status> </task-notification>`;
 
+  it('a restart finds shells started before the tail; ended ones stay gone', async () => {
+    const f = join(proj, 'long.jsonl');
+    const pad = line({ type: 'system', content: 'x'.repeat(TAIL_BYTES) });
+    writeFileSync(
+      f,
+      bg('t1', 'devsrv') +
+        bg('t2', 'done1') +
+        line({ type: 'queue-operation', operation: 'enqueue', content: note('done1') }) +
+        pad +
+        pad +
+        edit('a.ts'),
+    );
+    await scanner.discover();
+    expect(scanner.views().map((v) => v.id)).toEqual(['long', 'long/sh/devsrv']);
+  });
+
   it('a shell that ends mid-turn (queued notification, no user message) leaves', async () => {
     const f = join(proj, 's.jsonl');
     writeFileSync(f, bg('t1', 'bga') + bg('t2', 'bgb'));
@@ -821,6 +837,7 @@ describe('WSL liveness checks only for shown sessions', () => {
         rate: 20_000,
         model: 'claude-opus-4-7',
         big: { n: 0, last: 0 },
+        cache: 0,
       }),
       sumOf: (k: string) => (k === 'sid' ? 777 : 0),
       keyOf: () => 'sid',
@@ -873,6 +890,17 @@ describe('WSL liveness checks only for shown sessions', () => {
       expect(scanner.views(true).every((v) => v.usage === undefined)).toBe(true);
       expect(scanner.liveFiles()).toHaveLength(2);
       expect(scanner.rootsNow().claude).toEqual([join(dir, 'claude')]);
+    });
+
+    it('the prompt cache countdown is local only, absent once expired', async () => {
+      writeFileSync(join(proj, 'sid.jsonl'), edit('a.ts'));
+      let cache = 90;
+      scanner.usage = { ...stub, fileUsage: () => ({ ...stub.fileUsage(), cache }) };
+      await scanner.discover();
+      expect(scanner.views()[0].usage?.cache).toBe(90);
+      expect(scanner.views(true)[0].usage).toBeUndefined();
+      cache = 0;
+      expect(scanner.views()[0].usage).not.toHaveProperty('cache');
     });
 
     it('heat goes to peers too; the burn tier is held for HEAT_BURN_HOLD_MS', async () => {

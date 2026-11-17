@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type { PetId } from '../../../core/src/lan.js';
+import type { Outfit, PetId } from '../../../core/src/lan.js';
 import { isValidManualPeer, nicknameKey, PET_IDS } from '../../../core/src/lan.js';
 import type { ProfileErrorReason, ProfileMessage, TagColors } from '../../../core/src/messages.js';
+import { DEFAULT_OUTFIT, onWardrobe, outfitFrames, outfitKey } from '../characters/outfit.js';
 import { Button } from '../components/ui/Button.js';
 import { Modal } from '../components/ui/Modal.js';
 import {
@@ -17,6 +18,7 @@ import { adjustSprite } from '../office/colorize.js';
 import { getPetSprites, tintPetSprite } from '../office/sprites/petSpriteData.js';
 import { getCharacterSprites } from '../office/sprites/spriteData.js';
 import { Direction } from '../office/types.js';
+import { OutfitEditor } from './OutfitEditor.js';
 
 const MAX_NICKNAME = 20;
 const MAX_MANUAL_PEERS = 20;
@@ -28,37 +30,46 @@ const IME_KEYCODE = 229;
 const SWATCH_SCALE = 2;
 
 /** One standing frame of a character, drawn at an integer scale (pixel-perfect):
- *  the pet's front idle frame when `pet` is a loaded pet, else the palette human.
+ *  the pet's front idle frame when `pet` is a loaded pet, else the wardrobe look when `outfit`
+ *  is set and the wardrobe has loaded, else the palette human.
  *  `crop` = only sprite rows [top, top + rows) (the people panel's face). */
 export function CharacterPreview({
   palette,
   hueShift,
   pet,
+  outfit,
   scale,
   crop,
 }: {
   palette: number;
   hueShift: number;
   pet?: string;
+  outfit?: Outfit;
   scale: number;
   crop?: { top: number; rows: number };
 }) {
   const top = crop?.top ?? 0;
   const rows = crop?.rows;
   const ref = useRef<HTMLCanvasElement>(null);
+  const [ready, setReady] = useState(0);
+  useEffect(() => onWardrobe(() => setReady((n) => n + 1)), []);
+  const look = outfit ? outfitKey(outfit) : '';
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
+    const worn = !pet && outfit ? outfitFrames(outfit) : null;
     // Shift just this frame, uncached: slider ticks must not fill the shared sprite cache.
     const petFrames = pet ? getPetSprites(pet) : null;
     const sprite = (
-      pet && petFrames
-        ? tintPetSprite(petFrames.idleDown[0], pet, hueShift)
-        : adjustSprite(
-            getCharacterSprites(palette).walk[Direction.DOWN][1],
-            { h: hueShift, s: 0, b: 0, c: 0 },
-            CHARACTER_SKIN_COLORS,
-          )
+      worn
+        ? worn.down[1]
+        : pet && petFrames
+          ? tintPetSprite(petFrames.idleDown[0], pet, hueShift)
+          : adjustSprite(
+              getCharacterSprites(palette).walk[Direction.DOWN][1],
+              { h: hueShift, s: 0, b: 0, c: 0 },
+              CHARACTER_SKIN_COLORS,
+            )
     ).slice(top, rows === undefined ? undefined : top + rows);
     canvas.width = sprite[0].length * scale;
     canvas.height = sprite.length * scale;
@@ -71,7 +82,8 @@ export function CharacterPreview({
         ctx.fillRect(x * scale, y * scale, scale, scale);
       }),
     );
-  }, [palette, hueShift, pet, scale, top, rows]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `look` is the outfit's content
+  }, [palette, hueShift, pet, look, ready, scale, top, rows]);
   return <canvas ref={ref} style={{ imageRendering: 'pixelated' }} />;
 }
 
@@ -104,6 +116,7 @@ export function ProfileModal({
   const [hueShift, setHueShift] = useState(profile.hueShift);
   const [pet, setPet] = useState<PetId | undefined>(profile.pet);
   const [tagColors, setTagColors] = useState<TagColors | undefined>(profile.tagColors);
+  const [outfit, setOutfit] = useState<Outfit | undefined>(profile.outfit);
   const [peersText, setPeersText] = useState(profile.manualPeers.join('\n'));
   // Advanced (manual peers) starts collapsed unless some are already set.
   const [peersOpen] = useState(profile.manualPeers.length > 0);
@@ -140,6 +153,7 @@ export function ProfileModal({
       hueShift,
       ...(pet && { pet }),
       ...(tagColors && { tagColors }),
+      ...(outfit && !pet && { outfit }),
       manualPeers,
     });
   };
@@ -159,6 +173,7 @@ export function ProfileModal({
               palette={palette}
               hueShift={hueShift}
               pet={pet}
+              outfit={outfit}
               scale={PREVIEW_SCALE}
             />
           </div>
@@ -200,12 +215,13 @@ export function ProfileModal({
               key={i}
               type="button"
               aria-label={`${t('profile.character')} ${i + 1}`}
-              aria-pressed={!pet && palette === i}
+              aria-pressed={!pet && !outfit && palette === i}
               onClick={() => {
                 setPalette(i);
                 setPet(undefined);
+                setOutfit(undefined);
               }}
-              className={`p-2 rounded-none cursor-pointer bg-bg-dark border-2 ${!pet && palette === i ? 'border-accent-bright' : 'border-border'}`}
+              className={`p-2 rounded-none cursor-pointer bg-bg-dark border-2 ${!pet && !outfit && palette === i ? 'border-accent-bright' : 'border-border'}`}
             >
               <CharacterPreview palette={i} hueShift={hueShift} scale={SWATCH_SCALE} />
             </button>
@@ -219,7 +235,10 @@ export function ProfileModal({
               title={t(`profile.pet.${id}`)}
               aria-pressed={pet === id}
               data-testid={`profile-pet-${id}`}
-              onClick={() => setPet(id)}
+              onClick={() => {
+                setPet(id);
+                setOutfit(undefined);
+              }}
               className={`p-2 rounded-none cursor-pointer bg-bg-dark border-2 flex items-end ${pet === id ? 'border-accent-bright' : 'border-border'}`}
             >
               <CharacterPreview
@@ -232,34 +251,59 @@ export function ProfileModal({
           ))}
         </div>
 
-        <div>{t('profile.color')}</div>
-        <div className="flex gap-4 flex-wrap">
-          {HUE_PRESETS.map((h) => (
-            <button
-              key={h}
-              type="button"
-              aria-label={`${t('profile.color')} ${h}°`}
-              aria-pressed={hueShift === h}
-              onClick={() => setHueShift(h)}
-              className={`p-2 rounded-none cursor-pointer bg-bg-dark border-2 ${hueShift === h ? 'border-accent-bright' : 'border-border'}`}
-            >
-              <CharacterPreview palette={palette} hueShift={h} pet={pet} scale={SWATCH_SCALE} />
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-8">
-          <input
-            type="range"
-            min={0}
-            max={MAX_HUE_DEG}
-            step={1}
-            value={hueShift}
-            aria-label={t('profile.color')}
-            onChange={(e) => setHueShift(Number(e.target.value))}
-            className="flex-1 min-w-0"
+        {/* My own look from the wardrobe: older PCs show the palette character above. */}
+        <button
+          type="button"
+          data-testid="profile-outfit"
+          aria-pressed={!!outfit && !pet}
+          onClick={() => {
+            setPet(undefined);
+            setOutfit((o) => o ?? DEFAULT_OUTFIT);
+          }}
+          className={`self-start flex items-end gap-6 p-2 pr-8 rounded-none cursor-pointer bg-bg-dark border-2 text-text ${outfit && !pet ? 'border-accent-bright' : 'border-border'}`}
+        >
+          <CharacterPreview
+            palette={palette}
+            hueShift={0}
+            outfit={outfit ?? DEFAULT_OUTFIT}
+            scale={SWATCH_SCALE}
           />
-          <span className="w-30 text-right text-text-muted">{hueShift}°</span>
-        </div>
+          <span className="pb-4">{t('profile.outfit')}</span>
+        </button>
+        {outfit && !pet ? (
+          <OutfitEditor outfit={outfit} onChange={setOutfit} />
+        ) : (
+          <>
+            <div>{t('profile.color')}</div>
+            <div className="flex gap-4 flex-wrap">
+              {HUE_PRESETS.map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  aria-label={`${t('profile.color')} ${h}°`}
+                  aria-pressed={hueShift === h}
+                  onClick={() => setHueShift(h)}
+                  className={`p-2 rounded-none cursor-pointer bg-bg-dark border-2 ${hueShift === h ? 'border-accent-bright' : 'border-border'}`}
+                >
+                  <CharacterPreview palette={palette} hueShift={h} pet={pet} scale={SWATCH_SCALE} />
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-8">
+              <input
+                type="range"
+                min={0}
+                max={MAX_HUE_DEG}
+                step={1}
+                value={hueShift}
+                aria-label={t('profile.color')}
+                onChange={(e) => setHueShift(Number(e.target.value))}
+                className="flex-1 min-w-0"
+              />
+              <span className="w-30 text-right text-text-muted">{hueShift}°</span>
+            </div>
+          </>
+        )}
 
         {/* My avatar's name tag: colours picked here, else the theme's default tag. */}
         <div>{t('profile.tagColors')}</div>

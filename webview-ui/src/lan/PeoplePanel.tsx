@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 
 import type { DirectoryPersonMessage } from '../../../core/src/messages.js';
 import {
@@ -8,15 +9,24 @@ import {
   PEOPLE_FACE_CROP,
   PEOPLE_FACE_SCALE,
   PEOPLE_HINT_MS,
+  PEOPLE_OVERSCAN,
+  PEOPLE_PAGE,
   PEOPLE_PET_FACE_CROP,
+  PEOPLE_ROW_PX,
   PEOPLE_WIDE_MIN_PX,
-  VIA_BADGE_COLORS,
 } from '../constants.js';
 import type { RelayStatus } from '../hooks/useExtensionMessages.js';
 import { type Key, t, useLang } from '../i18n.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { transport } from '../transport/index.js';
-import { type AreaSection, totalPeople, viewedExtras, viewedRows } from './directoryModel.js';
+import {
+  type AreaSection,
+  pagedCount,
+  rowWindow,
+  totalPeople,
+  viewedExtras,
+  viewedRows,
+} from './directoryModel.js';
 import type { LanAgents } from './lanAgents.js';
 import { netNumbers } from './netBadges.js';
 import { peerLabel } from './nicknames.js';
@@ -69,6 +79,7 @@ function Face({ person }: { person: DirectoryPersonMessage }) {
         palette={person.palette}
         hueShift={person.hueShift}
         pet={person.pet}
+        outfit={person.outfit}
         scale={PEOPLE_FACE_SCALE}
         crop={person.pet ? PEOPLE_PET_FACE_CROP : PEOPLE_FACE_CROP}
       />
@@ -102,21 +113,6 @@ function NetBadge({ n }: { n: number | undefined }) {
       style={{ background: c.bg, color: c.fg }}
     >
       {t('people.net', { n: String(n) })}
-    </span>
-  );
-}
-
-/** Public office, other people: LAN (UDP) or 인터넷 (relay), whatever the networks. */
-function ViaBadge({ via }: { via: DirectoryPersonMessage['via'] }) {
-  if (!via) return null;
-  const c = VIA_BADGE_COLORS[via];
-  return (
-    <span
-      title={t(via === 'lan' ? 'people.via.lanTitle' : 'people.via.relayTitle')}
-      className="shrink-0 px-2 text-2xs font-bold leading-normal"
-      style={{ background: c.bg, color: c.fg }}
-    >
-      {t(via === 'lan' ? 'people.via.lan' : 'people.via.relay')}
     </span>
   );
 }
@@ -162,15 +158,18 @@ function PlainRow({
   net,
   kick,
   mine,
+  style,
 }: {
   person: DirectoryPersonMessage;
   net?: number;
   kick?: boolean;
   /** My own app version (VerMark). */
   mine: string | undefined;
+  style?: CSSProperties;
 }) {
   return (
     <li
+      style={style}
       title={verTitle(person)}
       className={`flex items-center gap-8 py-3 px-8 text-text${kick ? ' relative group' : ''}`}
     >
@@ -180,7 +179,6 @@ function PlainRow({
         {person.self && ` ${t('people.you')}`}
         <VerMark person={person} mine={mine} />
       </span>
-      <ViaBadge via={person.via} />
       <NetBadge n={net} />
       {kick && <KickButton person={person} />}
     </li>
@@ -188,6 +186,61 @@ function PlainRow({
 }
 
 const AREA_HEADING = 'text-xs font-bold py-3 px-8 border-t-2 border-border';
+
+/**
+ * An area's rows: the first PEOPLE_PAGE, a page more each time the end of the loaded ones
+ * scrolls into view; at most PEOPLE_PAGE rows tall, and only the rows in view (± overscan)
+ * are rendered (fixed PEOPLE_ROW_PX rows, absolutely placed).
+ */
+function PagedRows({
+  rows,
+}: {
+  rows: { key: string; row: (style: CSSProperties) => ReactNode }[];
+}) {
+  const [loaded, setLoaded] = useState(PEOPLE_PAGE);
+  const [top, setTop] = useState(0);
+  const { n, more } = pagedCount(rows.length, loaded);
+  const count = n + (more ? 1 : 0); // + the "more" row
+  const viewH = Math.min(count, PEOPLE_PAGE) * PEOPLE_ROW_PX;
+  const { first, last } = rowWindow(top, viewH, PEOPLE_ROW_PX, count, PEOPLE_OVERSCAN);
+  const place = (i: number): CSSProperties => ({
+    position: 'absolute',
+    top: i * PEOPLE_ROW_PX,
+    left: 0,
+    right: 0,
+    height: PEOPLE_ROW_PX,
+  });
+  return (
+    <div
+      data-people-list
+      className="overflow-y-auto pixel-scrollbar"
+      style={{ height: viewH }}
+      onScroll={(e) => {
+        const el = e.currentTarget;
+        setTop(el.scrollTop);
+        if (more && el.scrollTop + el.clientHeight >= n * PEOPLE_ROW_PX)
+          setLoaded((l) => l + PEOPLE_PAGE);
+      }}
+    >
+      <ul className="relative m-0 p-0 list-none" style={{ height: count * PEOPLE_ROW_PX }}>
+        {Array.from({ length: last - first }, (_, k) => first + k).map((i) =>
+          i < n ? (
+            <Fragment key={rows[i].key}>{rows[i].row(place(i))}</Fragment>
+          ) : (
+            <li
+              key="more"
+              data-people-more
+              className="flex items-center justify-center text-xs text-text-muted"
+              style={place(i)}
+            >
+              {t('people.more', { n: String(rows.length - n) })}
+            </li>
+          ),
+        )}
+      </ul>
+    </div>
+  );
+}
 
 interface PeoplePanelProps {
   rows: PersonRow[];
@@ -259,13 +312,18 @@ export function PeoplePanel({
 
   const count = t('people.title', { n: String(totalPeople(sections, live)) });
 
-  // Same-network numbers: public area only (the viewed one = live rows + its extras).
+  // Same-network numbers: public office, mine and other LANs' (the viewed one = live rows +
+  // its extras).
   const pub = sections.find((s) => s.area === 'public');
-  const pubPeople = pub
-    ? pub.viewed
-      ? [...live.map((r) => r.person), ...viewedExtras(pub, live)]
-      : pub.people
-    : [];
+  const pubLike = (s: AreaSection) => s.area === 'public' || s.area === 'internet';
+  const pubPeople = [
+    ...(pub
+      ? pub.viewed
+        ? [...live.map((r) => r.person), ...viewedExtras(pub, live)]
+        : pub.people
+      : []),
+    ...(sections.find((s) => s.area === 'internet')?.people ?? []),
+  ];
   const nets = netNumbers(pubPeople, pubPeople.find((p) => p.self)?.net);
   const publicViewed = pub?.viewed === true;
   const netOf = (p: DirectoryPersonMessage) => (p.net === undefined ? undefined : nets.get(p.net));
@@ -273,42 +331,44 @@ export function PeoplePanel({
     (p) => p.self,
   )?.ver;
 
-  const liveRows = rows.map((r) => (
-    <li
-      key={r.person.peerId}
-      title={verTitle(r.person)}
-      className="relative group flex items-center gap-4 pr-8 hover:bg-btn-hover"
-    >
-      <button
-        type="button"
-        onClick={() => focus(r)}
-        onMouseEnter={() => (lan.highlightPeer = r.person.peerId)}
-        onMouseLeave={() => (lan.highlightPeer = null)}
-        onFocus={() => (lan.highlightPeer = r.person.peerId)}
-        onBlur={() => (lan.highlightPeer = null)}
-        className="flex-1 min-w-0 flex items-center gap-8 py-3 pl-8 bg-transparent border-0 text-left text-text cursor-pointer"
+  const liveRows = rows.map((r) => ({
+    key: r.person.peerId,
+    row: (style: CSSProperties) => (
+      <li
+        style={style}
+        title={verTitle(r.person)}
+        className="relative group flex items-center gap-4 pr-8 hover:bg-btn-hover"
       >
-        <Face person={r.person} />
-        <span className="flex-1 min-w-0 flex flex-col">
-          <span className="truncate">
-            {r.person.account}
-            {r.person.nickname && <span className="text-text-muted"> ({r.person.nickname})</span>}
-            {r.person.self && ` ${t('people.you')}`}
-            <VerMark person={r.person} mine={myVer} />
+        <button
+          type="button"
+          onClick={() => focus(r)}
+          onMouseEnter={() => (lan.highlightPeer = r.person.peerId)}
+          onMouseLeave={() => (lan.highlightPeer = null)}
+          onFocus={() => (lan.highlightPeer = r.person.peerId)}
+          onBlur={() => (lan.highlightPeer = null)}
+          className="flex-1 min-w-0 flex items-center gap-8 py-3 pl-8 bg-transparent border-0 text-left text-text cursor-pointer"
+        >
+          <Face person={r.person} />
+          <span className="flex-1 min-w-0 flex flex-col">
+            <span className="truncate">
+              {r.person.account}
+              {r.person.nickname && <span className="text-text-muted"> ({r.person.nickname})</span>}
+              {r.person.self && ` ${t('people.you')}`}
+              <VerMark person={r.person} mine={myVer} />
+            </span>
+            <span
+              className={`text-xs truncate ${hint === r.person.peerId ? 'text-warning' : 'text-text-muted'}`}
+            >
+              {hint === r.person.peerId ? t(focusHintKey(r)) : counts(r)}
+            </span>
           </span>
-          <span
-            className={`text-xs truncate ${hint === r.person.peerId ? 'text-warning' : 'text-text-muted'}`}
-          >
-            {hint === r.person.peerId ? t(focusHintKey(r)) : counts(r)}
-          </span>
-        </span>
-        <StatusMark status={r.status} />
-      </button>
-      {publicViewed && <ViaBadge via={r.person.via} />}
-      {publicViewed && <NetBadge n={netOf(r.person)} />}
-      {publicViewed && canKick && !r.person.self && <KickButton person={r.person} />}
-    </li>
-  ));
+          <StatusMark status={r.status} />
+        </button>
+        {publicViewed && <NetBadge n={netOf(r.person)} />}
+        {publicViewed && canKick && !r.person.self && <KickButton person={r.person} />}
+      </li>
+    ),
+  }));
 
   /** One area: its people (the viewed one = live rows + directory people missing from them). */
   const area = (s: AreaSection, heading: Key) => {
@@ -320,23 +380,29 @@ export function PeoplePanel({
           <span className="shrink-0">
             {t(heading, { n: String(n), name: s.name || t('office.unnamed') })}
           </span>
-          {s.area === 'public' && s.viewed && <RelayChip relay={relay} />}
+          {s.area === 'internet' && <RelayChip relay={relay} />}
         </div>
-        <ul className="m-0 p-0 list-none">
-          {s.viewed && liveRows}
-          {extras.map((p) => (
-            <PlainRow
-              key={p.peerId}
-              person={p}
-              net={s.area === 'public' ? netOf(p) : undefined}
-              kick={s.area === 'public' && s.viewed && canKick && !p.self}
-              mine={myVer}
-            />
-          ))}
-          {n === 0 && (
-            <li className="py-3 px-8 text-xs text-text-muted">{t('people.area.empty')}</li>
-          )}
-        </ul>
+        {n === 0 ? (
+          <div className="py-3 px-8 text-xs text-text-muted">{t('people.area.empty')}</div>
+        ) : (
+          <PagedRows
+            rows={[
+              ...(s.viewed ? liveRows : []),
+              ...extras.map((p) => ({
+                key: p.peerId,
+                row: (style: CSSProperties) => (
+                  <PlainRow
+                    style={style}
+                    person={p}
+                    net={pubLike(s) ? netOf(p) : undefined}
+                    kick={pubLike(s) && canKick && !p.self && (s.viewed || s.area === 'internet')}
+                    mine={myVer}
+                  />
+                ),
+              })),
+            ]}
+          />
+        )}
       </li>
     );
   };
@@ -373,7 +439,7 @@ export function PeoplePanel({
           >
             {sections.flatMap((s) =>
               s.area !== 'team'
-                ? area(s, s.area === 'public' ? 'people.area.public' : 'people.area.personal')
+                ? area(s, `people.area.${s.area}`)
                 : [
                     s === teams[0] && (
                       <li key="team" className={AREA_HEADING}>

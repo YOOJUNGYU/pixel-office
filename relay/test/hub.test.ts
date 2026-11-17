@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { RELAY_PERSON_MAX_BYTES } from '../../core/src/relay.js';
 import {
   admit,
   authorized,
@@ -23,13 +24,13 @@ import {
 const NOW = Date.parse('2026-11-06T12:00:00Z');
 const PK = 'A'.repeat(42) + 'A=';
 const PK2 = 'A'.repeat(42) + 'E=';
-const conn = (id: string, pk = PK): Conn => ({ id, pk, frames: [] });
+const conn = (id: string, pk = PK): Conn => ({ id, pk, win: 0, n: 0 });
 const wire = (from: string, to: string) =>
   JSON.stringify({ t: 'send', w: [{ v: 2, t: 'pub', from, to, n: 'n', c: 'c' }] });
 
 describe('admit', () => {
-  it('rejects the 21st peer as full', () => {
-    const conns = Array.from({ length: 20 }, (_, i) => conn(`p${i}`));
+  it('rejects the peer past maxPeers as full', () => {
+    const conns = Array.from({ length: L.maxPeers }, (_, i) => conn(`p${i}`));
     expect(admit(newState(NOW), conns, 'new', PK, NOW, L)).toEqual({ ok: false, kind: 'full' });
     expect(admit(newState(NOW), conns.slice(1), 'new', PK, NOW, L)).toEqual({ ok: true });
   });
@@ -106,6 +107,22 @@ describe('onFrame', () => {
     expect('deliver' in r && [...r.deliver.keys()]).toEqual(['b']);
     expect('deliver' in r && r.deliver.get('b')).toHaveLength(2);
   });
+  it('me: kept on the connection as its person; only with its own peer id, within the size cap', () => {
+    const a = conn('a');
+    const me = (p: unknown) => JSON.stringify({ t: 'me', p });
+    const person = { peer: { id: 'a', account: 'x' }, personal: true };
+    expect(onFrame(newState(NOW), a, me(person), [a], NOW, L)).toEqual({ person });
+    expect(a.p).toEqual(person);
+    for (const bad of [
+      { peer: { id: 'b' } },
+      { peer: 'a' },
+      { peer: { id: 'a', pad: 'x'.repeat(RELAY_PERSON_MAX_BYTES) } },
+    ]) {
+      const r = onFrame(newState(NOW), a, me(bad), [a], NOW, L);
+      expect('deliver' in r && r.deliver.size).toBe(0);
+    }
+    expect(a.p).toEqual(person);
+  });
   it('forged from or junk delivers nothing', () => {
     const a = conn('a');
     const b = conn('b');
@@ -177,8 +194,8 @@ describe('netTag', () => {
 describe('silent sockets', () => {
   it('last activity = newest of ping, last frame, accept', () => {
     expect(lastActive({ ...conn('a'), at: 5 }, undefined)).toBe(5);
-    expect(lastActive({ ...conn('a'), at: 5, frames: [7, 9] }, 8)).toBe(9);
-    expect(lastActive({ ...conn('a'), at: 5, frames: [7] }, 20)).toBe(20);
+    expect(lastActive({ ...conn('a'), at: 5, last: 9 }, 8)).toBe(9);
+    expect(lastActive({ ...conn('a'), at: 5, last: 7 }, 20)).toBe(20);
     expect(lastActive(conn('a'), undefined)).toBe(0);
   });
   it('silent only after SILENT_DROP_MS', () => {

@@ -282,8 +282,6 @@ export const RELAY_URL_ENV = 'PIXEL_OFFICE_RELAY_URL';
 /** setRelayAdminToken: longest token accepted (asyncapi maxLength). */
 export const RELAY_ADMIN_TOKEN_MAX = 256;
 export const RELAY_MIN_SEND_MS = 1_000;
-/** Frames sent to the relay in one tick at most (each is one billed message); the rest wait. */
-export const RELAY_MAX_FRAMES_PER_TICK = 2;
 export const RELAY_RETRY_MIN_MS = 5_000;
 export const RELAY_RETRY_MAX_MS = 5 * 60_000;
 export const RELAY_RETRY_FULL_MS = 5 * 60_000;
@@ -303,6 +301,10 @@ export const USAGE_RATE_WINDOW_MS = 120_000;
 /** Token usage: a tool result of at least this many tokens (chars / USAGE_CHARS_PER_TOKEN) is "big". */
 export const USAGE_BIG_RESULT_TOKENS = 50_000;
 export const USAGE_CHARS_PER_TOKEN = 4;
+/** Claude prompt cache lifetimes: the default, and the 1-hour one (a call that wrote
+ *  `cache_creation.ephemeral_1h_input_tokens`). */
+export const CLAUDE_CACHE_TTL_MS = 5 * 60_000;
+export const CLAUDE_CACHE_TTL_LONG_MS = 60 * 60_000;
 /** Token usage: Claude message ids kept per file whatever their age (snapshots of one message). */
 export const USAGE_MSG_KEEP = 64;
 /** Token usage index: file name in the data dir, full rescan period, stored format, write coalescing. */

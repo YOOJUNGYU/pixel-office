@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import type { Provider } from '../../../core/src/lan.js';
-import type { UsageLoaded } from '../../../core/src/messages.js';
+import type { UsageLimit, UsageLoaded } from '../../../core/src/messages.js';
 import {
   USAGE_FILE,
   USAGE_RATE_WINDOW_MS,
@@ -18,7 +18,15 @@ import type { Roots } from './roots.js';
 import type { TranscriptSource } from './scanner.js';
 import { folderOf } from './session.js';
 import { addDays, dayKey, dayRange, dayStart } from './usageDays.js';
-import { billable, type FileFold, foldLine, newFold, rateOf, type Tally } from './usageLine.js';
+import {
+  billable,
+  cacheLeft,
+  type FileFold,
+  foldLine,
+  newFold,
+  rateOf,
+  type Tally,
+} from './usageLine.js';
 
 export type UsageRange = '7d' | '30d' | 'all';
 export interface FileUsage {
@@ -26,6 +34,8 @@ export interface FileUsage {
   rate: number;
   model: string;
   big: { n: number; last: number };
+  /** Claude: seconds the prompt cache has left, 0 = expired/unknown. */
+  cache: number;
 }
 
 interface FileEntry {
@@ -281,7 +291,27 @@ export class UsageIndex {
       rate: Math.max(0, rateOf(e.fold, this.now())),
       model: e.fold.model,
       big: e.fold.big,
+      cache: cacheLeft(e.fold, this.now()),
     };
+  }
+
+  /** The newest rate-limit windows any transcript reported (Codex), still open now.
+   *  ponytail: scans every file per call (1/s while the panel is open); index it if that shows. */
+  limits(): UsageLimit[] {
+    let best: FileFold['limits'];
+    for (const e of Object.values(this.files))
+      if (!e.skip && (e.fold.limits?.ts ?? 0) > (best?.ts ?? 0)) best = e.fold.limits;
+    if (!best || !Array.isArray(best.windows)) return [];
+    const now = this.now();
+    return best.windows
+      .filter((w) => w && w.resetsAt > now && w.min > 0 && Number.isFinite(w.pct))
+      .map((w) => ({
+        provider: 'codex' as const,
+        windowMin: Math.floor(w.min),
+        usedPct: Math.max(0, w.pct),
+        resetsInSec: Math.max(1, Math.round((w.resetsAt - now) / 1000)),
+        ageSec: Math.max(0, Math.round((now - best.ts) / 1000)),
+      }));
   }
 
   sumOf(key: string): number {

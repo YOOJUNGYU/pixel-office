@@ -800,6 +800,11 @@ export const PEOPLE_FACE_CROP = { top: PEOPLE_FACE_TOP, rows: PEOPLE_FACE_ROWS }
 export const PEOPLE_PET_FACE_CROP = { top: PEOPLE_PET_FACE_TOP, rows: PEOPLE_FACE_ROWS };
 /** How long the "no agents" hint stays after clicking an agentless row. */
 export const PEOPLE_HINT_MS = 2_000;
+/** People panel lists: rows shown at first and loaded per scroll to the end; every row's fixed
+ *  height (virtualized: only the rows in view ± PEOPLE_OVERSCAN are rendered). */
+export const PEOPLE_PAGE = 10;
+export const PEOPLE_ROW_PX = 42;
+export const PEOPLE_OVERSCAN = 4;
 /** Settings → 관리자 토큰: longest token the server accepts (asyncapi setRelayAdminToken maxLength). */
 export const RELAY_ADMIN_TOKEN_MAX = 256;
 /** Same-network badges in the public area (망 1, 망 2, …), cycled by number. */
@@ -810,11 +815,6 @@ export const NET_BADGE_COLORS: ReadonlyArray<{ bg: string; fg: string }> = [
   { bg: '#9b4dca', fg: '#ffffff' },
   { bg: '#d14249', fg: '#ffffff' },
 ];
-/** Connection-path badge in the public area (LAN = over UDP, 인터넷 = through the relay). */
-export const VIA_BADGE_COLORS: Readonly<Record<'lan' | 'relay', { bg: string; fg: string }>> = {
-  lan: { bg: '#2e7d32', fg: '#ffffff' },
-  relay: { bg: '#5c6bc0', fg: '#ffffff' },
-};
 /** Top-right stack (update banner, install popup, people panel): room kept clear below it, CSS px. */
 export const TOP_RIGHT_BOTTOM_RESERVE_PX = 64;
 /** Top-right stack: above name tags, bubbles and room plates, below plate popups (46) and modals (50). */
@@ -847,6 +847,11 @@ export const VOID_TILE_OUTLINE_COLORS = {
 
 /** Transcript panel: within this many px of the bottom counts as "at the bottom" (keeps following new entries). */
 export const TRANSCRIPT_FOLLOW_SLACK_PX = 24;
+/** Alt+↑/↓ in a transcript puts the prompt this far below the view's top (px). */
+export const TRANSCRIPT_JUMP_MARGIN_PX = 8;
+/** The transcript's minimap strip on the right: width; a mark is drawn at least this tall (px). */
+export const TRANSCRIPT_MINIMAP_WIDTH_PX = 10;
+export const TRANSCRIPT_MINIMAP_MIN_MARK_PX = 2;
 /** Transcript panel (left side, my agents only): default width; narrow screens use `100vw - 16px`. */
 export const TRANSCRIPT_PANEL_WIDTH_PX = 480;
 /** Transcript content zoom (%), separate from the office zoom: slider range, step, default. */
@@ -856,6 +861,14 @@ export const TRANSCRIPT_ZOOM_STEP = 10;
 export const TRANSCRIPT_ZOOM_DEFAULT = 100;
 /** The session window's context use turns to the warning colour from this full (%). */
 export const CONTEXT_WARN_PCT = 80;
+/** My idle main agent's prompt cache chip turns to the warning colour below this many seconds. */
+export const CACHE_WARN_SEC = 60;
+/** A rate-limit window's pace and forecast need this share of it gone by first (too noisy before). */
+export const LIMIT_PACE_MIN_ELAPSED = 0.05;
+/** Pace this many points over the even line or more shows as overspending (warning colour). */
+export const LIMIT_PACE_WARN_PTS = 10;
+/** A limit report older than this is labelled with its age (another PC may have used more since). */
+export const LIMIT_STALE_SEC = 600;
 /** The session window's activity strip: this many minutes, one cell each; its height (px). */
 export const ACTIVITY_STRIP_MINUTES = 30;
 export const ACTIVITY_STRIP_HEIGHT_PX = 6;

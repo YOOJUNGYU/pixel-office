@@ -5,7 +5,9 @@ import type { DirectoryPersonMessage, PeopleDirectory } from '../../../core/src/
 import { peerLabel, tieBreak } from './nicknames.js';
 import type { PersonRow } from './peopleModel.js';
 
-export type AreaKey = 'public' | 'team' | 'personal';
+/** `public` = the public office on my LAN (the office itself); `internet` = people in the
+ *  public office of another LAN, heard over the relay (listed only). */
+export type AreaKey = 'public' | 'internet' | 'team' | 'personal';
 
 export interface AreaSection {
   area: AreaKey;
@@ -82,8 +84,16 @@ export function areaSections(
             fallback: true,
           },
         ];
+  // The office stays on the LAN: the relay's public people are another LAN's office.
+  const internet = dir.public.filter((p) => p.via === 'relay');
   return [
-    section('public', PUBLIC_VIEW, '', dir.public),
+    section(
+      'public',
+      PUBLIC_VIEW,
+      '',
+      dir.public.filter((p) => p.via !== 'relay'),
+    ),
+    { ...section('internet', '', '', internet), viewed: false },
     ...teams.map((t) => section('team', t.tag, t.name, t.people)),
     ...pending,
     section('personal', PERSONAL_VIEW, '', dir.personal),
@@ -119,4 +129,25 @@ export function totalPeople(sections: AreaSection[], rows: PersonRow[]): number 
     ...sections.flatMap((s) => s.people.map((p) => p.peerId)),
     ...rows.map((r) => r.person.peerId),
   ]).size;
+}
+
+/** The rows a paged list shows: the first `page`, then a page more each time the end of the
+ *  loaded ones scrolls into view (`more` = a "load more" row follows the loaded ones). */
+export function pagedCount(total: number, loaded: number): { n: number; more: boolean } {
+  const n = Math.min(total, loaded);
+  return { n, more: n < total };
+}
+
+/** Rows [first, last) to render in a list of `count` fixed-height rows scrolled to `top`
+ *  in a `viewH` px tall box, `overscan` rows each side (virtualized). */
+export function rowWindow(
+  top: number,
+  viewH: number,
+  rowPx: number,
+  count: number,
+  overscan: number,
+): { first: number; last: number } {
+  const first = Math.max(0, Math.floor(top / rowPx) - overscan);
+  const last = Math.min(count, Math.ceil((top + viewH) / rowPx) + overscan);
+  return { first, last: Math.max(first, last) };
 }

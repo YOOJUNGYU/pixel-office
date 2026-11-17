@@ -72,8 +72,6 @@ const SALT_KEY = 'salt';
 const SALT_BYTES = 32;
 /** Longest `hours` for /admin/kick: keeps `until` finite. */
 const MAX_KICK_HOURS = 8760;
-/** Ceiling for a MAX_FRAMES_PER_MIN override: the frames array lives in the 2 KB socket attachment. */
-const MAX_FRAMES_CEILING = 150;
 /** Close code for a socket the hub dropped as silent (WebSocket "going away"). */
 const SILENT_CLOSE = 1001;
 const ADMIN = '/admin/';
@@ -99,7 +97,7 @@ function limits(env: Env): Limits {
   return {
     maxPeers: pick(env.MAX_PEERS, d.maxPeers),
     dailyBudget: pick(env.DAILY_BUDGET, d.dailyBudget),
-    maxFramesPerMin: Math.min(pick(env.MAX_FRAMES_PER_MIN, d.maxFramesPerMin), MAX_FRAMES_CEILING),
+    maxFramesPerMin: pick(env.MAX_FRAMES_PER_MIN, d.maxFramesPerMin),
     abuseBanMin: pick(env.ABUSE_BAN_MIN, d.abuseBanMin),
     kickHours: pick(env.KICK_HOURS, d.kickHours),
   };
@@ -309,12 +307,17 @@ export class Hub extends DurableObject<Env> {
     }
     const [client, server] = Object.values(new WebSocketPair()) as [WebSocket, WebSocket];
     this.ctx.acceptWebSocket(server);
-    const me: Att = { id, pk, frames: [], at: now, ...(net && { net }) };
+    const me: Att = { id, pk, win: now, n: 0, at: now, ...(net && { net }) };
     server.serializeAttachment(me);
     send(server, {
       t: 'roster',
       ...(net && { you: net }),
-      peers: live.map((x) => ({ id: x.c.id, pk: x.c.pk, ...(x.c.net && { net: x.c.net }) })),
+      peers: live.map((x) => ({
+        id: x.c.id,
+        pk: x.c.pk,
+        ...(x.c.net && { net: x.c.net }),
+        ...(x.c.p && { p: x.c.p }),
+      })),
     });
     for (const o of live) send(o.ws, { t: 'join', id, pk, ...(net && { net }) });
     return new Response(null, { status: 101, webSocket: client });
@@ -386,6 +389,10 @@ export class Hub extends DurableObject<Env> {
       return;
     }
     ws.serializeAttachment(me);
+    if ('person' in r) {
+      for (const o of live) if (o.ws !== ws) send(o.ws, { t: 'person', id: me.id, p: r.person });
+      return;
+    }
     for (const [to, w] of r.deliver) {
       const target = live.find((x) => x.c.id === to);
       if (target) send(target.ws, { t: 'w', w });

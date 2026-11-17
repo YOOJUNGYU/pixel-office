@@ -8,6 +8,7 @@ import {
   parseUp,
   RELAY_CLOSE,
   RELAY_MAX_FRAME_BYTES,
+  RELAY_PERSON_MAX_BYTES,
 } from '../../../core/src/relay.js';
 
 const pk = Buffer.alloc(32, 7).toString('base64');
@@ -101,5 +102,40 @@ describe('close reason', () => {
   it('falls back', () => {
     expect(parseCloseReason(1006, '')).toEqual({ kind: 'other' });
     expect(parseCloseReason(4021, '{bad')).toEqual({ kind: 'budget' });
+  });
+});
+
+describe('who is online (1.0.64)', () => {
+  const person = { peer: { id: 'a', account: 'x' }, personal: true };
+  it('me up: only with the sender as its peer id', () => {
+    expect(parseUp(JSON.stringify({ t: 'me', p: person }), 'a')).toEqual({ t: 'me', p: person });
+    expect(parseUp(JSON.stringify({ t: 'me', p: person }), 'b')).toBeNull();
+    expect(parseUp(JSON.stringify({ t: 'me', p: { peer: 'a' } }), 'a')).toBeNull();
+    const big = { peer: { id: 'a', pad: 'x'.repeat(RELAY_PERSON_MAX_BYTES) } };
+    expect(parseUp(JSON.stringify({ t: 'me', p: big }), 'a')).toBeNull();
+  });
+  it('roster/join carry a person; person down; a mismatched person is left out, not fatal', () => {
+    const roster = parseDown(
+      JSON.stringify({
+        t: 'roster',
+        peers: [
+          { id: 'a', pk, p: person },
+          { id: 'b', pk, p: person },
+        ],
+      }),
+    );
+    expect(roster).toEqual({
+      t: 'roster',
+      peers: [
+        { id: 'a', pk, p: person },
+        { id: 'b', pk },
+      ],
+    });
+    expect(parseDown(JSON.stringify({ t: 'person', id: 'a', p: person }))).toEqual({
+      t: 'person',
+      id: 'a',
+      p: person,
+    });
+    expect(parseDown(JSON.stringify({ t: 'person', id: 'b', p: person }))).toBeNull();
   });
 });

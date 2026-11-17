@@ -510,7 +510,7 @@ export function renderScene(
       ? ch.matrixEffect
         ? pet.idleDown[0] // 16 px wide, like the matrix effect's column sweep
         : getPetCharacterSprite(ch, pet, nowSec)
-      : getCharacterSprite(ch, getCharacterSprites(ch.palette, ch.hueShift));
+      : getCharacterSprite(ch, getCharacterSprites(ch.palette, ch.hueShift, ch.outfit));
     // My agents grow with their tokens: a whole number of device pixels per sprite pixel.
     const sz = ch.usageScale ? Math.round(zoom * ch.usageScale) : zoom;
     const cached = getCachedSprite(spriteData, sz);

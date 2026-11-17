@@ -171,6 +171,35 @@ describe('UsageIndex', () => {
     expect(r.totals.billable).toBe(50);
   });
 
+  it('limits: the newest report across files, open windows only, relative times', async () => {
+    const day = path.join(tmp, 'codex', '2026', '11', '12');
+    fs.mkdirSync(day, { recursive: true });
+    const rl = (ts: number, pct: number, resetsAt: number) =>
+      JSON.stringify({
+        type: 'event_msg',
+        timestamp: new Date(ts).toISOString(),
+        payload: {
+          type: 'token_count',
+          rate_limits: {
+            primary: { used_percent: pct, window_minutes: 300, resets_at: resetsAt / 1000 },
+            secondary: { used_percent: 90, window_minutes: 10080, resets_at: (NOW - 1000) / 1000 },
+          },
+        },
+      }) + '\n';
+    fs.writeFileSync(path.join(day, 'rollout-a.jsonl'), rl(NOW - 120_000, 10, NOW + 60_000));
+    fs.writeFileSync(path.join(day, 'rollout-b.jsonl'), rl(NOW - 60_000, 30, NOW + 3_600_000));
+    const u = new UsageIndex({
+      dir,
+      roots: () => ({ claude: [], codex: [path.join(tmp, 'codex')] }),
+      now: () => NOW,
+    });
+    expect(u.limits()).toEqual([]);
+    await u.scanAll();
+    expect(u.limits()).toEqual([
+      { provider: 'codex', windowMin: 300, usedPct: 30, resetsInSec: 3600, ageSec: 60 },
+    ]);
+  });
+
   it('scanning is true while scanAll runs', async () => {
     let during = false;
     const u: UsageIndex = mk(() => {

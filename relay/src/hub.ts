@@ -7,6 +7,7 @@ import {
   parseUp,
   type PubWire,
   type RelayCloseKind,
+  type RelayPerson,
 } from '../../core/src/relay.js';
 
 export interface Limits {
@@ -17,7 +18,10 @@ export interface Limits {
   kickHours: number;
 }
 export const DEFAULT_LIMITS: Limits = {
-  maxPeers: 20,
+  // Who is online only (≥ 1.0.64): a PC sends one `me` frame per connect and per profile
+  // change, the hub fans the roster and `person` out (outgoing is free), so the cost grows
+  // with joins, not joins x people. A safety cap, far below a DO's WebSocket limit.
+  maxPeers: 1_000,
   dailyBudget: 1_900_000,
   maxFramesPerMin: 120,
   abuseBanMin: 60,
@@ -41,13 +45,18 @@ export interface HubState {
 export interface Conn {
   id: string;
   pk: string;
-  /** receive times within the last minute */
-  frames: number[];
-  /** accept time (ms epoch, hub clock); with frames' last element and the ping
-   *  auto-response time it says when the socket was last heard (lastActive). */
+  /** Frames in the current one-minute window (`win` = its start) and the newest frame's time:
+   *  a counter, not a list, so the 2 KB socket attachment has room for the person. */
+  win: number;
+  n: number;
+  last?: number;
+  /** accept time (ms epoch, hub clock); with `last` and the ping auto-response time it says
+   *  when the socket was last heard (lastActive). */
   at?: number;
   /** same-network tag (8 hex of HMAC(salt, ip)); none = unknown. The IP itself is never kept. */
   net?: string;
+  /** Who it is (its `me` frame): shown to everyone in the roster and `person` frames. */
+  p?: RelayPerson;
 }
 
 const HEX_BYTE_CHARS = 2;
@@ -117,7 +126,9 @@ export function admit(
 }
 
 export type FrameResult =
-  { deliver: Map<string, PubWire[]> } | { close: RelayCloseKind; ms: number; ban: true };
+  | { deliver: Map<string, PubWire[]> }
+  | { person: RelayPerson }
+  | { close: RelayCloseKind; ms: number; ban: true };
 
 export function onFrame(
   s: HubState,
@@ -127,9 +138,14 @@ export function onFrame(
   now: number,
   l: Limits,
 ): FrameResult {
-  c.frames = c.frames.filter((t) => now - t < MS_MIN);
-  c.frames.push(now);
-  if (c.frames.length > l.maxFramesPerMin) {
+  // ponytail: a fixed window lets up to 2x the limit through across a boundary; fine for abuse.
+  if (now - c.win >= MS_MIN) {
+    c.win = now;
+    c.n = 0;
+  }
+  c.n++;
+  c.last = now;
+  if (c.n > l.maxFramesPerMin) {
     const ms = l.abuseBanMin * MS_MIN;
     setBan(s, c.id, now + ms);
     return { close: 'kicked', ms, ban: true };
@@ -137,6 +153,10 @@ export function onFrame(
   const deliver = new Map<string, PubWire[]>();
   const up = parseUp(text, c.id);
   if (!up) return { deliver };
+  if (up.t === 'me') {
+    c.p = up.p;
+    return { person: up.p };
+  }
   for (const w of up.w) {
     if (w.to === c.id || !conns.some((o) => o.id === w.to)) continue;
     const list = deliver.get(w.to);
@@ -151,7 +171,7 @@ export const SILENT_DROP_MS = 90_000;
 
 /** When `c` was last heard: its newest ping (`pingAt`, the auto-response time), frame or accept. */
 export const lastActive = (c: Conn, pingAt: number | undefined): number =>
-  Math.max(pingAt ?? 0, c.frames.at(-1) ?? 0, c.at ?? 0);
+  Math.max(pingAt ?? 0, c.last ?? 0, c.at ?? 0);
 
 export const isSilent = (last: number, now: number): boolean => now - last > SILENT_DROP_MS;
 

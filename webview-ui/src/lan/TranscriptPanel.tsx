@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, ReactNode, RefObject } from 'react';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import type { OfficeAgent } from '../../../core/src/lan.js';
@@ -12,6 +12,9 @@ import {
   LAN_PROVIDER_BADGE_FG,
   LAN_PROVIDER_COLORS,
   TRANSCRIPT_FOLD_LINES,
+  TRANSCRIPT_JUMP_MARGIN_PX,
+  TRANSCRIPT_MINIMAP_MIN_MARK_PX,
+  TRANSCRIPT_MINIMAP_WIDTH_PX,
   TRANSCRIPT_ZOOM_DEFAULT,
   TRANSCRIPT_ZOOM_KEY,
   TRANSCRIPT_ZOOM_MAX,
@@ -19,13 +22,13 @@ import {
   TRANSCRIPT_ZOOM_STEP,
 } from '../constants.js';
 import { t, useLang } from '../i18n.js';
-import { stripCells } from './activityStrip.js';
+import { isPromptEntry, type MapMark, mapMark, stripCells } from './activityStrip.js';
 import { badgeColors } from './badgeColors.js';
 import type { Family } from './highlight.js';
 import { highlight, languageOf } from './highlight.js';
 import { SignalText } from './SignalText.js';
 import type { TranscriptState, TranscriptStatus } from './transcript.js';
-import { clampZoom, contextText, foldText, isAtBottom } from './transcript.js';
+import { clampZoom, contextText, foldText, isAtBottom, jumpTarget } from './transcript.js';
 import {
   headingText,
   prettyResult,
@@ -70,6 +73,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({
 }: TranscriptPanelProps) {
   useLang();
   const scroller = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
   const prev = useRef({ len: 0, start: 0 });
   /** scrollHeight at the last layout: an earlier page shifts the view by what it added. */
@@ -112,6 +116,41 @@ export const TranscriptPanel = memo(function TranscriptPanel({
   useLayoutEffect(() => {
     if (scroller.current) lastHeight.current = scroller.current.scrollHeight;
   });
+
+  // Alt+↑/↓: previous / next prompt I typed (an earlier page is fetched past the first one).
+  const [mineOnly, setMineOnly] = useState(false);
+  const jumpRef = useRef<(dir: 1 | -1) => void>(() => {});
+  jumpRef.current = (dir) => {
+    const el = scroller.current;
+    if (!el) return;
+    const top0 = el.getBoundingClientRect().top - el.scrollTop;
+    const tops = [...el.querySelectorAll('[data-prompt]')].map(
+      (n) => n.getBoundingClientRect().top - top0,
+    );
+    const y = jumpTarget(tops, el.scrollTop, dir, TRANSCRIPT_JUMP_MARGIN_PX);
+    if (y !== null) el.scrollTop = y;
+    else if (dir < 0 && more && !loading) onLoadEarlier();
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+      e.preventDefault();
+      jumpRef.current(e.key === 'ArrowUp' ? -1 : 1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  const shell = info?.kind === 'shell';
+  const shown = useMemo(
+    () =>
+      entries
+        .map((e, i) => ({ e, i }))
+        .filter(
+          ({ e }) =>
+            (e.text || e.kind === 'tool' || e.kind === 'result') && (!mineOnly || isPromptEntry(e)),
+        ),
+    [entries, mineOnly],
+  );
 
   const toBottom = () => {
     const el = scroller.current;
@@ -160,6 +199,22 @@ export const TranscriptPanel = memo(function TranscriptPanel({
             </span>
           </>
         )}
+        {info && !shell && (
+          <button
+            type="button"
+            aria-pressed={mineOnly}
+            data-mine-only={mineOnly}
+            title={t('transcript.mineOnlyTip')}
+            onClick={() => setMineOnly((v) => !v)}
+            className={`shrink-0 border-2 rounded-none px-6 py-1 text-xs cursor-pointer ${
+              mineOnly
+                ? 'bg-active-bg border-accent'
+                : 'bg-btn-bg border-transparent hover:bg-btn-hover'
+            }`}
+          >
+            {t('transcript.mineOnly')}
+          </button>
+        )}
         <ZoomControl zoom={zoom} onChange={changeZoom} />
         <button
           type="button"
@@ -177,7 +232,8 @@ export const TranscriptPanel = memo(function TranscriptPanel({
         <div
           ref={scroller}
           tabIndex={0}
-          className="absolute inset-0 overflow-y-auto pixel-scrollbar px-8 py-6 text-sm leading-normal"
+          className="absolute inset-y-0 left-0 overflow-y-auto pixel-scrollbar px-8 py-6 text-sm leading-normal"
+          style={{ right: shell ? 0 : TRANSCRIPT_MINIMAP_WIDTH_PX }}
           onScroll={(e) => {
             const el = e.currentTarget;
             atBottom.current = isAtBottom(el.scrollTop, el.clientHeight, el.scrollHeight);
@@ -187,7 +243,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({
           }}
         >
           {/* Content zoom only (CSS zoom re-flows the text, unlike a transform). */}
-          <div className="flex flex-col gap-8" style={{ zoom: zoom / 100 }}>
+          <div ref={content} className="flex flex-col gap-8" style={{ zoom: zoom / 100 }}>
             {loading && (
               <Note>{t(entries.length ? 'transcript.loadingEarlier' : 'transcript.loading')}</Note>
             )}
@@ -195,11 +251,21 @@ export const TranscriptPanel = memo(function TranscriptPanel({
             {info?.kind === 'shell' ? (
               <ShellOutput entries={entries} />
             ) : (
-              entries.map((e, i) => <Entry key={i - keys.base} e={e} />)
+              shown.map(({ e, i }) => (
+                <div
+                  key={i - keys.base}
+                  data-entry-kind={e.kind}
+                  data-prompt={isPromptEntry(e) || undefined}
+                  data-mark={mapMark(e) ?? ''}
+                >
+                  <Entry e={e} />
+                </div>
+              ))
             )}
             {error && <Note>{t(`transcript.${error}`)}</Note>}
           </div>
         </div>
+        {!shell && <Minimap scroller={scroller} content={content} />}
         {newBelow && (
           <button
             type="button"
@@ -290,6 +356,95 @@ function StatusBar({
           )}
         </span>
       )}
+    </div>
+  );
+}
+
+const markColor = (m: MapMark) => (m === 'reply' ? 'var(--color-text-muted)' : `var(--strip-${m})`);
+
+/** The loaded session on one strip beside the entries: a mark per entry where it sits, the
+ *  view's window over it; click or drag to move there. Re-measured whenever the content's
+ *  size changes (pages, folds, zoom, filter). */
+function Minimap({
+  scroller,
+  content,
+}: {
+  scroller: RefObject<HTMLDivElement | null>;
+  content: RefObject<HTMLDivElement | null>;
+}) {
+  const [marks, setMarks] = useState<Array<{ top: number; h: number; m: MapMark }>>([]);
+  const [view, setView] = useState({ top: 0, h: 1 });
+  useEffect(() => {
+    const el = scroller.current;
+    const box = content.current;
+    if (!el || !box) return;
+    const measure = () => {
+      const H = el.scrollHeight || 1;
+      const top0 = el.getBoundingClientRect().top - el.scrollTop;
+      const next: typeof marks = [];
+      for (const n of box.querySelectorAll<HTMLElement>('[data-mark]')) {
+        const m = n.dataset.mark as MapMark | '';
+        if (!m) continue;
+        const r = n.getBoundingClientRect();
+        next.push({ top: (r.top - top0) / H, h: r.height / H, m });
+      }
+      setMarks(next);
+      setView({ top: el.scrollTop / H, h: el.clientHeight / H });
+    };
+    const onScroll = () => {
+      const H = el.scrollHeight || 1;
+      setView({ top: el.scrollTop / H, h: el.clientHeight / H });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(box);
+    ro.observe(el);
+    el.addEventListener('scroll', onScroll);
+    return () => {
+      ro.disconnect();
+      el.removeEventListener('scroll', onScroll);
+    };
+  }, [scroller, content]);
+  const go = (e: React.PointerEvent) => {
+    const el = scroller.current;
+    if (!el) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const f = (e.clientY - r.top) / r.height;
+    el.scrollTop = f * el.scrollHeight - el.clientHeight / 2;
+  };
+  return (
+    <div
+      data-transcript-minimap
+      title={t('transcript.minimap')}
+      className="absolute inset-y-0 right-0 cursor-pointer touch-none border-l-2 border-border"
+      style={{ width: TRANSCRIPT_MINIMAP_WIDTH_PX, background: 'var(--strip-none)' }}
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        go(e);
+      }}
+      onPointerMove={(e) => {
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) go(e);
+      }}
+    >
+      {marks.map((k, i) => (
+        <span
+          key={i}
+          className="absolute left-0 right-0"
+          style={{
+            top: `${k.top * 100}%`,
+            height: `max(${k.h * 100}%, ${TRANSCRIPT_MINIMAP_MIN_MARK_PX}px)`,
+            background: markColor(k.m),
+          }}
+        />
+      ))}
+      <span
+        className="absolute left-0 right-0 pointer-events-none border-2"
+        style={{
+          top: `${view.top * 100}%`,
+          height: `${Math.min(1, view.h) * 100}%`,
+          borderColor: 'var(--color-accent)',
+        }}
+      />
     </div>
   );
 }

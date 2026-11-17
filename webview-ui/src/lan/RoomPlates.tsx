@@ -35,6 +35,7 @@ import {
 } from './lanAgents.js';
 import { CharacterPreview } from './ProfileModal.js';
 import { SignalText } from './SignalText.js';
+import { cacheChipText } from './usageLimits.js';
 
 interface Plate {
   label: string;
@@ -294,6 +295,7 @@ export function AgentCard({ a, parent }: { a: OfficeAgent; parent?: OfficeAgent 
           palette={a.peer.palette}
           hueShift={a.peer.hueShift}
           pet={a.peer.pet}
+          outfit={a.peer.outfit}
           scale={PEOPLE_FACE_SCALE}
           crop={a.peer.pet ? PEOPLE_PET_FACE_CROP : PEOPLE_FACE_CROP}
         />
@@ -325,6 +327,11 @@ export function AgentCard({ a, parent }: { a: OfficeAgent; parent?: OfficeAgent 
           )}
           <span className="truncate text-text-muted">{activityText(a)}</span>
           <SignalText a={a} />
+          {cacheChipText(a) && (
+            <span data-cache className="shrink-0 font-mono" title={t('cache.tip')}>
+              {cacheChipText(a)}
+            </span>
+          )}
         </span>
       </span>
     </div>

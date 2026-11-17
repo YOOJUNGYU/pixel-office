@@ -229,10 +229,12 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
         for (const c of popouts) safeSend(c, snap);
       }
       if (options.usage && usageRanges.size) {
+        const limits = options.usage.limits();
         const now = {
           type: 'usageNow',
           today: options.usage.today(),
           scanning: options.usage.scanning,
+          ...(limits.length > 0 && { limits }),
         };
         for (const c of usageRanges.keys()) safeSend(c, now);
       }

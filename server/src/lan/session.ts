@@ -7,7 +7,7 @@ import type {
   Room,
   ServerZone,
 } from '../../../core/src/lan.js';
-import { AGE_MAX_SEC, DIFF_MAX, TODO_MAX } from '../../../core/src/lan.js';
+import { AGE_MAX_SEC, DIFF_MAX, isPrompt, TODO_MAX } from '../../../core/src/lan.js';
 import {
   CODEX_SHELL_IDLE_MS,
   LINE_CLOCK_SLACK_MS,
@@ -306,10 +306,7 @@ export function setThinking(s: SessionState, now: number): void {
 }
 
 /** A real user prompt (not a command wrapper, environment/AGENTS.md preamble or interrupt). */
-export const isPrompt = (text: string): boolean => {
-  const t = text.trim();
-  return !!t && !/^(<|\[Request interrupted|Caveat:|# AGENTS\.md)/.test(t);
-};
+export { isPrompt };
 
 export function setIdle(s: SessionState, now: number): void {
   setCandidate(s, 'lounge', now);

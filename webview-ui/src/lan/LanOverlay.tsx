@@ -8,6 +8,7 @@ import {
   AVATAR_TAG_HEIGHT_PX,
   BUBBLE_SITTING_OFFSET_PX,
   BUBBLE_VERTICAL_OFFSET_PX,
+  CACHE_WARN_SEC,
   CHARACTER_SITTING_OFFSET_PX,
   CHAT_BORDER_PX,
   CHAT_TAIL_PX,
@@ -79,6 +80,7 @@ import {
 } from './statusSignals.js';
 import { stackTags, type TagBox } from './tagStack.js';
 import { textWidth } from './textWidth.js';
+import { cacheChipText } from './usageLimits.js';
 import { modelFamily, modelLabel, usageChipText } from './usageSignals.js';
 
 const measureTag = (s: string) => textWidth(s, LAN_TAG_FONT);
@@ -175,6 +177,24 @@ function BubbleHeader({
   );
 }
 
+/** My idle main agent's prompt cache countdown ("❄ 4:23"), warning colour near the end. */
+function CacheChip({ a, text }: { a: OfficeAgent; text: string }) {
+  const warn = (a.usage?.cache ?? 0) < CACHE_WARN_SEC;
+  return (
+    <span
+      data-cache={a.usage?.cache}
+      className="shrink-0 text-2xs font-bold leading-none"
+      title={t('cache.tip')}
+      style={{
+        padding: `1px ${STATUS_CHIP_PAD_X_PX}px`,
+        background: warn ? 'var(--ctx-warn)' : 'var(--ctx-track)',
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
 /** My agent's context use in its name tag: "29%", filled up to it (warning colour from
  *  CONTEXT_WARN_PCT). Only this PC's agents carry `ctx`. */
 function CtxChip({ a }: { a: OfficeAgent }) {
@@ -255,6 +275,8 @@ interface LanOverlayProps {
   personal: boolean;
   /** Not a team office: the activity bubble wraps to several lines (`wrapsActivity`). */
   wrap: boolean;
+  /** Clicking one of MY agents' speech bubbles opens its session, like clicking the character. */
+  onOpen?: (a: OfficeAgent) => void;
 }
 
 /**
@@ -271,6 +293,7 @@ export function LanOverlay({
   panRef,
   personal,
   wrap,
+  onOpen,
 }: LanOverlayProps) {
   // Re-render after every canvas frame (the on-demand schedule), never when idle.
   const [, setTick] = useState(0);
@@ -323,7 +346,8 @@ export function LanOverlay({
           textWidth(tagBadge(a), LAN_TAG_BADGE_FONT) +
           textWidth(text, LAN_TAG_FONT) +
           chipW(ctxText(a)) +
-          chipW(a.usage ? usageChipText(a.usage) : '')) *
+          chipW(a.usage ? usageChipText(a.usage) : '') +
+          chipW(cacheChipText(a))) *
         k,
     });
   }
@@ -431,6 +455,7 @@ export function LanOverlay({
         {text}
         {a.ctx && <CtxChip a={a} />}
         {a.usage && <TokenChip u={a.usage} />}
+        {cacheChipText(a) && <CacheChip a={a} text={cacheChipText(a)} />}
       </div>,
     );
     if (a.permission) alert(`${a.key}!`, ch);
@@ -534,6 +559,18 @@ export function LanOverlay({
     }
     for (const l of lines) l.w = l.w0 * l.s;
     const bottoms = stackBubbles(lines, LAN_TAG_STACK_GAP_PX * k);
+    // My agents' bubbles take clicks (open the session); the rest let them through.
+    const press = (a: OfficeAgent) =>
+      onOpen && lan.isMine(a)
+        ? {
+            'data-opens': true,
+            className: 'pointer-events-auto cursor-pointer',
+            onClick: () => onOpen(a),
+            // the canvas zooms on its own wheel listener: hand the wheel on to it
+            onWheel: (e: React.WheelEvent) =>
+              el.querySelector('canvas')?.dispatchEvent(new WheelEvent('wheel', e.nativeEvent)),
+          }
+        : { className: 'pointer-events-none' };
     lines.forEach((l, i) =>
       nodes.push(
         <div
@@ -553,7 +590,8 @@ export function LanOverlay({
             key={`act:${l.key}`}
             data-activity={l.key}
             data-icon-only
-            className="bubble-agent flex flex-col items-center pointer-events-none"
+            {...press(l.a)}
+            className={`bubble-agent flex flex-col items-center ${press(l.a).className}`}
             style={{
               left: l.x - l.w / 2,
               top: bottoms[i] - l.h,
@@ -582,7 +620,8 @@ export function LanOverlay({
           <div
             key={`act:${l.key}`}
             data-activity={l.key}
-            className="bubble-agent flex flex-col whitespace-nowrap text-sm leading-none pointer-events-none"
+            {...press(l.a)}
+            className={`bubble-agent flex flex-col whitespace-nowrap text-sm leading-none ${press(l.a).className}`}
             style={{
               left: l.x - l.w / 2,
               top: bottoms[i] - l.h,

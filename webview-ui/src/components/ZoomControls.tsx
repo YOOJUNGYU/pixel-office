@@ -18,6 +18,8 @@ interface ZoomControlsProps {
   onZoomChange: (zoom: number) => void;
   /** The +/− row (hidden on mobile, where pinch zooms); the theme toggle always shows. */
   showZoom: boolean;
+  /** The fit button (between the theme toggle and +): the whole office fills the window. */
+  onFit?: () => void;
   /** Buttons before the theme toggle in the same row (Layout, Settings). */
   leading?: ReactNode;
   /** Under the row, left-aligned (the layout editor's action bar and tools). */
@@ -73,7 +75,14 @@ function ThemeToggle() {
   );
 }
 
-export function ZoomControls({ zoom, onZoomChange, showZoom, leading, below }: ZoomControlsProps) {
+export function ZoomControls({
+  zoom,
+  onZoomChange,
+  showZoom,
+  onFit,
+  leading,
+  below,
+}: ZoomControlsProps) {
   useLang();
   const [showLevel, setShowLevel] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
@@ -137,6 +146,27 @@ export function ZoomControls({ zoom, onZoomChange, showZoom, leading, below }: Z
         <div className="flex flex-nowrap items-start gap-4">
           {leading}
           <ThemeToggle />
+          {onFit && (
+            <Button
+              size="icon_lg"
+              data-tour="zoom-fit"
+              onClick={onFit}
+              className={BTN_CLASS}
+              title={t('zoom.fit')}
+              aria-label={t('zoom.fit')}
+            >
+              {/* Four corners pointing out: fit to the window */}
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+                <path
+                  d="M2 6V2h4M12 2h4v4M16 12v4h-4M6 16H2v-4"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Button>
+          )}
           {showZoom && (
             <div data-tour="zoom" className="flex flex-nowrap gap-4">
               <Button

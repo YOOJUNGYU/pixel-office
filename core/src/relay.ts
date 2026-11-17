@@ -32,11 +32,22 @@ export interface PubWire {
   n: string;
   c: string;
 }
-export type RelayUp = { t: 'send'; w: PubWire[] };
+/**
+ * Who a PC is, as it tells the relay (`me`) and the relay tells everyone (roster, `person`):
+ * `{peer: PeerInfo, personal?: true}`. Plaintext to the relay by design (1.0.64: the relay
+ * lists who is online); the relay checks only its shape, size and `peer.id`, every PC parses
+ * `peer` itself (parsePeerInfo).
+ */
+export type RelayPerson = Record<string, unknown> & { peer: Record<string, unknown> };
+/** A person as JSON at most this long (it lives in the 2 KB socket attachment). */
+export const RELAY_PERSON_MAX_BYTES = 1024;
+export type RelayPeer = { id: string; pk: string; net?: string; p?: RelayPerson };
+export type RelayUp = { t: 'send'; w: PubWire[] } | { t: 'me'; p: RelayPerson };
 export type RelayDown =
-  | { t: 'roster'; you?: string; peers: { id: string; pk: string; net?: string }[] }
-  | { t: 'join'; id: string; pk: string; net?: string }
+  | { t: 'roster'; you?: string; peers: RelayPeer[] }
+  | ({ t: 'join' } & RelayPeer)
   | { t: 'leave'; id: string }
+  | { t: 'person'; id: string; p: RelayPerson }
   | { t: 'w'; w: PubWire[] };
 
 type Obj = Record<string, unknown>;
@@ -71,12 +82,41 @@ function pubWires(x: unknown, from?: string): PubWire[] | null {
   return out;
 }
 
+/** A person whose `peer.id` is `id`, as JSON within RELAY_PERSON_MAX_BYTES; else null. */
+export function relayPerson(x: unknown, id: string): RelayPerson | null {
+  const o = obj(x);
+  const peer = obj(o?.peer);
+  if (!o || !peer || peer.id !== id) return null;
+  const text = JSON.stringify(o);
+  if (
+    text.length * 3 > RELAY_PERSON_MAX_BYTES &&
+    new TextEncoder().encode(text).length > RELAY_PERSON_MAX_BYTES
+  )
+    return null;
+  return o as RelayPerson;
+}
+
 export function parseUp(text: string, from: string): RelayUp | null {
   const o = parseJson(text);
+  if (o?.t === 'me') {
+    const p = relayPerson(o.p, from);
+    return p ? { t: 'me', p } : null;
+  }
   if (!o || o.t !== 'send') return null;
   const w = pubWires(o.w, from);
   return w ? { t: 'send', w } : null;
 }
+
+const peerEntry = (p: Obj | null): RelayPeer | null => {
+  if (!p || !isPeerId(p.id) || !isPublicKey(p.pk)) return null;
+  const person = p.p === undefined ? null : relayPerson(p.p, p.id);
+  return {
+    id: p.id,
+    pk: p.pk,
+    ...(isNetTag(p.net) && { net: p.net }),
+    ...(person && { p: person }),
+  };
+};
 
 export function parseDown(text: string): RelayDown | null {
   const o = parseJson(text);
@@ -84,18 +124,23 @@ export function parseDown(text: string): RelayDown | null {
   switch (o.t) {
     case 'roster': {
       if (!Array.isArray(o.peers)) return null;
-      const peers: { id: string; pk: string; net?: string }[] = [];
+      const peers: RelayPeer[] = [];
       for (const raw of o.peers) {
-        const p = obj(raw);
-        if (!p || !isPeerId(p.id) || !isPublicKey(p.pk)) return null;
-        peers.push({ id: p.id, pk: p.pk, ...(isNetTag(p.net) && { net: p.net }) });
+        const p = peerEntry(obj(raw));
+        if (!p) return null;
+        peers.push(p);
       }
       return { t: 'roster', ...(isNetTag(o.you) && { you: o.you }), peers };
     }
-    case 'join':
-      return isPeerId(o.id) && isPublicKey(o.pk)
-        ? { t: 'join', id: o.id, pk: o.pk, ...(isNetTag(o.net) && { net: o.net }) }
-        : null;
+    case 'join': {
+      const p = peerEntry(o);
+      return p ? { t: 'join', ...p } : null;
+    }
+    case 'person': {
+      if (!isPeerId(o.id)) return null;
+      const p = relayPerson(o.p, o.id);
+      return p ? { t: 'person', id: o.id, p } : null;
+    }
     case 'leave':
       return isPeerId(o.id) ? { t: 'leave', id: o.id } : null;
     case 'w': {

@@ -1,3 +1,4 @@
+import type { Outfit } from '../../../core/src/lan.js';
 import type { BurnTier, SizeTier } from '../lan/usageSignals.js';
 
 export {
@@ -224,6 +225,8 @@ export interface Character {
   palette: number;
   /** Hue shift in degrees (0 = no shift, ≥45 for repeated palettes) */
   hueShift: number;
+  /** Wardrobe look (its PC's profile); unset = the palette character. */
+  outfit?: Outfit;
   /** Bundled pet id drawn instead of the `palette` human (absent, or not loaded = human). */
   pet?: string;
   /** Animation frame index */

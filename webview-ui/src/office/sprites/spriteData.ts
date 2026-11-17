@@ -1,3 +1,5 @@
+import type { Outfit } from '../../../../core/src/lan.js';
+import { outfitFrames, outfitKey } from '../../characters/outfit.js';
 import type { ColorValue } from '../../components/ui/types.js';
 import {
   CHARACTER_SKIN_COLORS,
@@ -136,16 +138,22 @@ function emptySprite(w: number, h: number): SpriteData {
   return rows;
 }
 
-export function getCharacterSprites(paletteIndex: number, hueShift = 0): CharacterSprites {
-  const cacheKey = `${paletteIndex}:${hueShift}`;
+export function getCharacterSprites(
+  paletteIndex: number,
+  hueShift = 0,
+  outfit?: Outfit,
+): CharacterSprites {
+  // A wardrobe look, once the wardrobe has loaded (until then: the palette character).
+  const frames = outfit ? outfitFrames(outfit) : null;
+  const cacheKey = frames && outfit ? `o:${outfitKey(outfit)}` : `${paletteIndex}:${hueShift}`;
   const cached = spriteCache.get(cacheKey);
   if (cached) return cached;
 
   let sprites: CharacterSprites;
 
-  if (loadedCharacters) {
+  if (frames || loadedCharacters) {
     // Use pre-colored character sprites directly (no palette swapping)
-    const char = loadedCharacters[paletteIndex % loadedCharacters.length];
+    const char = frames ?? loadedCharacters![paletteIndex % loadedCharacters!.length];
     const d = char.down;
     const u = char.up;
     const rt = char.right;
@@ -198,8 +206,8 @@ export function getCharacterSprites(paletteIndex: number, hueShift = 0): Charact
     };
   }
 
-  // Apply hue shift if non-zero
-  if (hueShift !== 0) {
+  // Apply hue shift if non-zero (a wardrobe look has its own colours)
+  if (hueShift !== 0 && !frames) {
     sprites = hueShiftSprites(sprites, hueShift);
   }
 

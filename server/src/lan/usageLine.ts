@@ -1,5 +1,7 @@
 import type { Provider } from '../../../core/src/lan.js';
 import {
+  CLAUDE_CACHE_TTL_LONG_MS,
+  CLAUDE_CACHE_TTL_MS,
   USAGE_BIG_RESULT_TOKENS,
   USAGE_CHARS_PER_TOKEN,
   USAGE_MSG_KEEP,
@@ -30,6 +32,16 @@ export interface FileFold {
   lastTs: number;
   big: { n: number; last: number };
   recent: Array<[ts: number, billable: number]>;
+  /** Claude: when the prompt cache was last read or written, and whether it was the 1 h kind. */
+  cacheAt?: number;
+  cache1h?: boolean;
+  /** Codex: the latest `rate_limits` windows (resetsAt in ms). */
+  limits?: { ts: number; windows: LimitWindow[] };
+}
+export interface LimitWindow {
+  pct: number;
+  min: number;
+  resetsAt: number;
 }
 
 const zero = (): Tally => ({ input: 0, output: 0, cacheCreate: 0, cacheRead: 0 });
@@ -112,6 +124,12 @@ function claude(f: FileFold, rec: Obj, ts: number, now: number) {
       cacheCreate: num(u.cache_creation_input_tokens),
       cacheRead: num(u.cache_read_input_tokens),
     };
+    if (t.cacheCreate || t.cacheRead) {
+      const c = obj(u.cache_creation);
+      if (num(c.ephemeral_1h_input_tokens)) f.cache1h = true;
+      else if (num(c.ephemeral_5m_input_tokens)) f.cache1h = false;
+      f.cacheAt = Math.max(f.cacheAt ?? 0, ts);
+    }
     const id = str(msg.id);
     const old = id ? f.byMsg[id] : undefined;
     if (id) {
@@ -147,6 +165,7 @@ function codex(f: FileFold, rec: Obj, ts: number, now: number) {
       if (isPrompt(text)) setTitle(f, text, 0);
     }
   } else if (rec.type === 'event_msg' && p.type === 'token_count') {
+    noteLimits(f, obj(p.rate_limits), ts);
     const u = obj(obj(p.info).total_token_usage);
     if (!Object.keys(u).length) return null;
     const cached = num(u.cached_input_tokens);
@@ -162,6 +181,26 @@ function codex(f: FileFold, rec: Obj, ts: number, now: number) {
     return record(f, ts, f.model, prev && sum(cur) >= sum(prev) ? sub(cur, prev) : cur, now);
   }
   return null;
+}
+
+/** Codex `rate_limits.primary/secondary` → the file's latest windows. */
+function noteLimits(f: FileFold, rl: Obj, ts: number): void {
+  const windows: LimitWindow[] = [];
+  for (const w of [obj(rl.primary), obj(rl.secondary)]) {
+    const pct = w.used_percent;
+    const min = num(w.window_minutes);
+    const resetsAt = num(w.resets_at) * 1000;
+    if (typeof pct === 'number' && Number.isFinite(pct) && pct >= 0 && min && resetsAt)
+      windows.push({ pct, min, resetsAt });
+  }
+  if (windows.length && ts >= (f.limits?.ts ?? 0)) f.limits = { ts, windows };
+}
+
+/** Seconds the file's prompt cache has left (Claude), 0 when expired or unknown. */
+export function cacheLeft(f: FileFold, now: number): number {
+  if (!f.cacheAt) return 0;
+  const ttl = f.cache1h ? CLAUDE_CACHE_TTL_LONG_MS : CLAUDE_CACHE_TTL_MS;
+  return Math.max(0, Math.ceil((f.cacheAt + ttl - now) / 1000));
 }
 
 /** Applies one JSONL line; returns the per-day delta it produced (for buckets), or null. */

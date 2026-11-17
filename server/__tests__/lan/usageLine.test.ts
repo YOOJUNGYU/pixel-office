@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { billable, foldLine, newFold, rateOf } from '../../src/lan/usageLine.js';
+import { billable, cacheLeft, foldLine, newFold, rateOf } from '../../src/lan/usageLine.js';
 
 const NOW = Date.parse('2026-11-12T10:00:00Z');
 const asst = (id: string, u: object, model = 'claude-x') =>
@@ -20,7 +20,74 @@ const tokenCount = (input: number, cached: number, output: number) =>
     },
   });
 
+const MIN = 60_000;
+const at = (ts: number, rec: string) =>
+  JSON.stringify({ ...JSON.parse(rec), timestamp: new Date(ts).toISOString() });
+const limits = (primary: object | null, secondary: object | null = null) =>
+  JSON.stringify({
+    type: 'event_msg',
+    payload: { type: 'token_count', info: null, rate_limits: { primary, secondary } },
+  });
+
 describe('usageLine', () => {
+  it('prompt cache: 5 min after the last cached call, 1 h once a 1 h write is seen', () => {
+    const f = newFold('claude');
+    expect(cacheLeft(f, NOW)).toBe(0);
+    foldLine(f, at(NOW, asst('a', { input_tokens: 1 })), NOW); // no cache use: still unknown
+    expect(cacheLeft(f, NOW)).toBe(0);
+    foldLine(
+      f,
+      at(
+        NOW,
+        asst('b', { cache_read_input_tokens: 9, cache_creation: { ephemeral_5m_input_tokens: 0 } }),
+      ),
+      NOW,
+    );
+    expect(cacheLeft(f, NOW + MIN)).toBe(240);
+    expect(cacheLeft(f, NOW + 5 * MIN)).toBe(0);
+    foldLine(
+      f,
+      at(
+        NOW,
+        asst('c', {
+          cache_creation_input_tokens: 9,
+          cache_creation: { ephemeral_1h_input_tokens: 9 },
+        }),
+      ),
+      NOW,
+    );
+    expect(cacheLeft(f, NOW + 10 * MIN)).toBe(3000);
+    foldLine(f, at(NOW + MIN, asst('d', { cache_read_input_tokens: 9 })), NOW); // read: keeps 1 h
+    expect(cacheLeft(f, NOW + MIN)).toBe(3600);
+  });
+
+  it('codex rate limits: the latest windows, nulls and junk skipped', () => {
+    const f = newFold('codex');
+    foldLine(f, at(NOW, limits(null)), NOW);
+    expect(f.limits).toBeUndefined();
+    foldLine(
+      f,
+      at(
+        NOW,
+        limits(
+          { used_percent: 42.5, window_minutes: 300, resets_at: NOW / 1000 + 600 },
+          { used_percent: 'x', window_minutes: 10080, resets_at: 1 },
+        ),
+      ),
+      NOW,
+    );
+    expect(f.limits).toEqual({
+      ts: NOW,
+      windows: [{ pct: 42.5, min: 300, resetsAt: NOW + 600_000 }],
+    });
+    foldLine(
+      f,
+      at(NOW - MIN, limits({ used_percent: 1, window_minutes: 300, resets_at: NOW / 1000 })),
+      NOW,
+    );
+    expect(f.limits?.windows[0].pct).toBe(42.5); // an older line never replaces it
+  });
+
   it('same message.id replaces its prior tally', () => {
     const f = newFold('claude');
     foldLine(f, asst('m1', { input_tokens: 100, output_tokens: 10 }), NOW);

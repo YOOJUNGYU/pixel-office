@@ -12,6 +12,8 @@ import type { DirectoryPersonMessage } from '../../core/src/messages.js';
 import {
   areaSections,
   EMPTY_DIRECTORY,
+  pagedCount,
+  rowWindow,
   totalPeople,
   viewedExtras,
   viewedRows,
@@ -42,10 +44,10 @@ const row = (peerId: string): PersonRow => ({
 const TAG_A = 'aaaaaaaaaaa';
 const TAG_B = 'bbbbbbbbbbb';
 
-test('areas in order public, team, personal; no team area without a team', () => {
+test('areas in order public, internet, team, personal; no team area without a team', () => {
   assert.deepEqual(
     areaSections(EMPTY_DIRECTORY, 'public').map((s) => s.area),
-    ['public', 'personal'],
+    ['public', 'internet', 'personal'],
   );
   const dir = {
     ...EMPTY_DIRECTORY,
@@ -57,7 +59,7 @@ test('areas in order public, team, personal; no team area without a team', () =>
   const sections = areaSections(dir, 'public');
   assert.deepEqual(
     sections.map((s) => s.area),
-    ['public', 'team', 'team', 'personal'],
+    ['public', 'internet', 'team', 'team', 'personal'],
   );
   assert.deepEqual(
     sections.filter((s) => s.area === 'team').map((s) => s.name),
@@ -65,7 +67,7 @@ test('areas in order public, team, personal; no team area without a team', () =>
   );
   assert.deepEqual(
     sections.map((s) => s.view),
-    ['public', TAG_B, TAG_A, 'personal'],
+    ['public', '', TAG_B, TAG_A, 'personal'],
   );
 });
 
@@ -157,7 +159,7 @@ test('viewedRows: no directory area for the viewed office yet = the snapshot as 
   assert.equal(team?.area, 'team');
   assert.deepEqual(
     sections.map((s) => s.area),
-    ['public', 'team', 'personal'],
+    ['public', 'internet', 'team', 'personal'],
   );
   assert.deepEqual(ids(viewedRows(sections, [row('me'), row('b')])), ['me', 'b']);
   // No directory received at all: the public snapshot as is.
@@ -175,4 +177,35 @@ test('viewedRows: a snapshot person in no directory area (old peer) stays', () =
   };
   const sections = areaSections(dir, 'public');
   assert.deepEqual(ids(viewedRows(sections, [row('me'), row('old')])), ['me', 'old']);
+});
+
+test('public splits into my LAN and other LANs (relay); the internet area is never viewed', () => {
+  const dir = {
+    ...EMPTY_DIRECTORY,
+    public: [
+      person('me', { self: true }),
+      person('lan1', { via: 'lan' }),
+      person('far1', { via: 'relay' }),
+    ],
+  };
+  const [pub, internet] = areaSections(dir, 'public');
+  assert.deepEqual(
+    pub.people.map((p) => p.peerId),
+    ['me', 'lan1'],
+  );
+  assert.equal(pub.viewed, true);
+  assert.deepEqual(
+    internet.people.map((p) => p.peerId),
+    ['far1'],
+  );
+  assert.equal(internet.viewed, false);
+});
+
+test('pagedCount / rowWindow: pages of rows, only the rows in view ± overscan', () => {
+  assert.deepEqual(pagedCount(25, 10), { n: 10, more: true });
+  assert.deepEqual(pagedCount(25, 30), { n: 25, more: false });
+  assert.deepEqual(pagedCount(3, 10), { n: 3, more: false });
+  assert.deepEqual(rowWindow(0, 420, 42, 1000, 4), { first: 0, last: 14 });
+  assert.deepEqual(rowWindow(42 * 500, 420, 42, 1000, 4), { first: 496, last: 514 });
+  assert.deepEqual(rowWindow(42 * 995, 420, 42, 1000, 4), { first: 991, last: 1000 });
 });

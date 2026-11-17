@@ -1,6 +1,6 @@
 // The session window's activity strip: the last minutes of its transcript, one cell per
 // minute, coloured by the most telling thing that happened in it.
-import { exitCodeOf, isFailure } from '../../../core/src/lan.js';
+import { exitCodeOf, isFailure, isPrompt } from '../../../core/src/lan.js';
 import type { TranscriptEntry } from '../../../core/src/messages.js';
 
 export type StripCat = 'fail' | 'edit' | 'run' | 'read' | 'tool' | 'think' | 'user';
@@ -78,3 +78,13 @@ export function stripCells(
   }
   return cells;
 }
+
+/** The session minimap's mark for an entry: its strip category, a reply on its own; null = none. */
+export type MapMark = StripCat | 'reply';
+export function mapMark(e: TranscriptEntry): MapMark | null {
+  if (e.kind === 'user') return isPromptEntry(e) ? 'user' : null;
+  return e.kind === 'assistant' ? 'reply' : stripCat(e);
+}
+
+/** A prompt I typed (not a task notification or another injected user line). */
+export const isPromptEntry = (e: TranscriptEntry): boolean => e.kind === 'user' && isPrompt(e.text);

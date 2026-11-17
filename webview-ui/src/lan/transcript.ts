@@ -109,3 +109,17 @@ export function transcriptStatus(
   // A turn with no tool running yet (setThinking: act 'tool', no target) = thinking.
   return a.act === 'tool' && !a.target ? 'thinking' : 'working';
 }
+
+/** Where Alt+↑/↓ goes: the next (dir 1) / previous (-1) prompt top among `tops` (content px,
+ *  ascending) from the view's top `cur`, so that it sits `margin` below the view's top;
+ *  null = none that way. */
+export function jumpTarget(
+  tops: readonly number[],
+  cur: number,
+  dir: 1 | -1,
+  margin: number,
+): number | null {
+  const at = cur + margin;
+  const pick = dir > 0 ? tops.find((y) => y > at + 1) : [...tops].reverse().find((y) => y < at - 1);
+  return pick === undefined ? null : Math.max(0, pick - margin);
+}

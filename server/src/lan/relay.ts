@@ -1,11 +1,10 @@
 import {
   parseCloseReason,
   parseDown,
-  type PubWire,
-  RELAY_MAX_FRAME_BYTES,
   RELAY_PATH,
   type RelayCloseKind,
   type RelayDown,
+  type RelayPerson,
 } from '../../../core/src/relay.js';
 import {
   RELAY_CONNECT_TIMEOUT_MS,
@@ -126,11 +125,10 @@ export class Relay {
     this.connect();
   }
 
-  send(w: PubWire[]): boolean {
+  /** Tell the relay who this PC is (its person, listed for everyone); false = not connected. */
+  me(p: RelayPerson): boolean {
     if (!this.ws || !this.connected()) return false;
-    const text = JSON.stringify({ t: 'send', w });
-    if (Buffer.byteLength(text) > RELAY_MAX_FRAME_BYTES) return false;
-    this.ws.send(text);
+    this.ws.send(JSON.stringify({ t: 'me', p }));
     return true;
   }
 

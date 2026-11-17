@@ -5,7 +5,7 @@ import { createServer as createNetServer } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebSocketServer } from 'ws';
 
-import { closeReason, type PubWire } from '../../../core/src/relay.js';
+import { closeReason } from '../../../core/src/relay.js';
 import {
   RELAY_RETRY_FULL_JITTER_MS,
   RELAY_RETRY_FULL_MS,
@@ -106,10 +106,8 @@ describe('Relay', () => {
     await until(() => ev.down.length === 1);
     expect(ev.down[0]).toMatchObject({ t: 'roster' });
     expect(f.urls[0]).toBe('/ws?id=me&pk=' + encodeURIComponent(PK) + '&v=1.0');
-    const w: PubWire = { v: 2, t: 'pub', from: 'me', to: 'x', n: 'n', c: 'c' };
-    expect(r.send([w])).toBe(true);
-    await until(() => f.msgs.some((m) => m.includes('"send"')));
-    expect(r.send([{ ...w, c: 'x'.repeat(600_000) }])).toBe(false);
+    expect(r.me({ peer: { id: 'me' } })).toBe(true);
+    await until(() => f.msgs.some((m) => m.includes('"t":"me"')));
   });
 
   it('full close (accepted, then closed before any roster): status, never opened, no instant reconnect', async () => {
@@ -123,7 +121,7 @@ describe('Relay', () => {
     r.want(true);
     await new Promise((x) => setTimeout(x, 100));
     expect(f.urls.length).toBe(1);
-    expect(r.send([])).toBe(false);
+    expect(r.me({ peer: { id: 'me' } })).toBe(false);
   });
 
   it('an accept-then-close refusal (bad) backs off and never opens', async () => {

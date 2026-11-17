@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import App from './App.tsx';
+import { startWardrobe } from './characters/outfit.js';
 import { ReplacedPanel } from './lan/ReplacedPanel.js';
 import { ServerPanel } from './lan/ServerPanel.js';
 import { TranscriptWindow } from './lan/TranscriptWindow.js';
@@ -28,6 +29,7 @@ async function main() {
     );
     return;
   }
+  startWardrobe(); // the office page only: decodes the wardrobe art in the background
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />

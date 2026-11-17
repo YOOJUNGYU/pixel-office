@@ -1,4 +1,4 @@
-import type { AvatarDir, OfficeAgent, Room, ServerZone } from '../../../core/src/lan.js';
+import type { AvatarDir, OfficeAgent, Outfit, Room, ServerZone } from '../../../core/src/lan.js';
 import { parseAvatar, ROOM_LABELS } from '../../../core/src/lan.js';
 import type { OfficePersonMessage, TagColors } from '../../../core/src/messages.js';
 import { FX_DURATION_MS, FX_MAX, LAN_KIND_BADGES, LAN_ROOM_TOOL } from '../constants.js';
@@ -84,6 +84,7 @@ export interface Look {
   palette: number;
   hueShift: number;
   pet?: string;
+  outfit?: Outfit;
 }
 
 /** The PC's own look (main agents). */
@@ -91,6 +92,7 @@ const peerLook = (p: OfficeAgent['peer']): Look => ({
   palette: p.palette,
   hueShift: p.hueShift,
   pet: p.pet,
+  outfit: p.outfit,
 });
 
 /** Look of an agent's character: its PC's (human or pet) for main, subagent and shell
@@ -199,7 +201,12 @@ export class LanAgents {
     const seen = new Set<string>();
     for (const p of people) {
       seen.add(p.peerId);
-      const look: Look = { palette: p.palette, hueShift: p.hueShift, pet: p.pet };
+      const look: Look = {
+        palette: p.palette,
+        hueShift: p.hueShift,
+        pet: p.pet,
+        outfit: p.outfit,
+      };
       const a = parseAvatar(p.avatar);
       const at = a && { col: a.col, row: a.row, dir: DIRS[a.dir] };
       let id = this.avatarIds.get(p.peerId);
@@ -458,6 +465,7 @@ export class LanAgents {
     ch.palette = look.palette;
     ch.hueShift = look.hueShift;
     ch.pet = look.pet;
+    ch.outfit = look.outfit;
   }
 
   /** Lounge idles (seated, or standing still when the room is full); every other room works at a desk. */
