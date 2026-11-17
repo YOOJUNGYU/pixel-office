@@ -149,6 +149,24 @@ describe('PeerNet public office', () => {
     expect(a.net.peers(PUBLIC_VIEW)).toEqual([]);
   });
 
+  it('stays live while hellos are lost but sealed presences still arrive', async () => {
+    const [a, b] = await mkNodes(['A', 'B']);
+    const both = () => a.net.peers(PUBLIC_VIEW).length > 0 && b.net.peers(PUBLIC_VIEW).length > 0;
+    await pump([a, b], both);
+    expect(both()).toBe(true);
+    // Broadcast dropped (storm control, a busy switch): no more hellos either way, only the
+    // unicast presences to the addresses already heard.
+    for (const n of [a, b])
+      (n.net as unknown as { opts: { targets: () => string[] } }).opts.targets = () => [];
+    for (let s = 0; s < 3; s++) {
+      a.t += PEER_TTL_MS - 1000;
+      b.t += PEER_TTL_MS - 1000;
+      await pump([a, b], () => false, 5);
+    }
+    expect(ids(a.net.peers(PUBLIC_VIEW))).toEqual(['B']);
+    expect(ids(b.net.peers(PUBLIC_VIEW))).toEqual(['A']);
+  });
+
   it('manual peer on one side only: both still see each other (hello reply)', async () => {
     const [pa, pb] = await Promise.all([freePort(), freePort()]);
     const mk = (name: string, port: number, targets: string[]) => {

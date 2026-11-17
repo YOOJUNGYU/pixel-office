@@ -72,7 +72,7 @@ interface Heard {
   address: string;
   port: number;
   at: number;
-  /** Last UDP hello/watch (-Infinity = heard over the relay only). */
+  /** Last UDP hello/watch or fresh sealed presence (-Infinity = heard over the relay only). */
   udpAt: number;
   /** Last fresh public presence accepted from it over UDP: our UDP path to it is
    *  "confirmed" (-Infinity = never). Only then does the relay skip it. */
@@ -828,8 +828,11 @@ export class PeerNet {
       if (this.layoutPart(PUBLIC_VIEW, plain)) return;
       const inner = this.unpack(PUBLIC_VIEW, plain, w.from);
       const heard = this.hellos.get(w.from); // UDP here: the relay's returned above
+      // A fresh sealed presence proves the PC is alive and reachable at least as well as its
+      // hello does: hellos are broadcast, which a switch (storm control) or a busy LAN can drop
+      // for seconds while unicast flows — without this both sides forgot each other.
       if (heard && inner?.packet.peer.id === w.from && this.accept(PUBLIC_VIEW, inner))
-        heard.udpPubAt = this.now();
+        heard.udpPubAt = heard.at = heard.udpAt = this.now();
       return;
     }
     // Watcher: the person only — no agents, chat, avatar, and never a layout.
