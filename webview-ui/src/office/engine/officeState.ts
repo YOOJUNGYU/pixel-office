@@ -56,6 +56,7 @@ import type {
   TileType as TileTypeVal,
 } from '../types.js';
 import { CharacterState, Direction, TILE_SIZE } from '../types.js';
+import { blinkWake, tickBlink } from './blink.js';
 import { BURN_FRAME_SEC } from './burnAura.js';
 import { createCharacter, stepTile, updateCharacter } from './characters.js';
 import { requestRender } from './gameLoop.js';
@@ -364,6 +365,24 @@ export class OfficeState {
       }
     }
     return out;
+  }
+
+  /** The character sitting in seat `uid`, if any. */
+  seatHolder(uid: string): number | undefined {
+    for (const c of this.characters.values()) if (c.seatId === uid) return c.id;
+    return undefined;
+  }
+
+  /** Seat `uid` of `areaLabel` for character `id` (a LAN peer's agent sits where its own PC sat
+   *  it): its holder, if any, loses it (returned, to be re-homed; the seat stays taken, so
+   *  `moveToArea(id, area, uid)` takes it next). null = no such seat an agent may take there. */
+  claimSeat(id: number, uid: string, areaLabel: string): { evicted?: number } | null {
+    if (!this.seats.has(uid) || this.seatZone(uid) !== areaLabel || !this.agentMaySit(uid))
+      return null;
+    const holder = this.seatHolder(uid);
+    if (holder === undefined || holder === id) return {};
+    this.characters.get(holder)!.seatId = null;
+    return { evicted: holder };
   }
 
   /** The free seat in `areaLabel` closest (Manhattan) to `anchorId`'s seat, else its tile —
@@ -1684,6 +1703,7 @@ export class OfficeState {
       }
       if (ch.bubbleType === 'waiting') next = Math.min(next, ch.bubbleTimer);
       if ((ch.burn ?? 0) >= 2) next = Math.min(next, BURN_FRAME_SEC - (nowSec % BURN_FRAME_SEC));
+      if (ch.outfit) next = Math.min(next, blinkWake(ch, nowSec));
     }
     if (this.furnitureAnimated) {
       next = Math.min(
@@ -1712,7 +1732,9 @@ export class OfficeState {
     const toDelete: number[] = [];
     /** leader id → last follower in its line, so siblings queue behind each other */
     const lineEnd = new Map<number, Character>();
+    const nowSec = performance.now() / 1000; // blinks keep wall time (dt is clamped)
     for (const ch of this.characters.values()) {
+      if (ch.outfit && !ch.pet) tickBlink(ch, nowSec, ch.state === CharacterState.TYPE);
       const effect = advanceMatrixEffect(ch, dt);
       if (effect !== 'none') {
         if (effect === 'despawned') toDelete.push(ch.id);

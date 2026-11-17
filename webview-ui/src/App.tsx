@@ -19,6 +19,7 @@ import {
   FIRST_OPEN_FIT_FILL,
   FIT_TOP_MARGIN_PX,
   OFFICE_CANVAS_TEST_ID,
+  OTHERS_BUBBLES_KEY,
   PERSONAL_LAYOUT_ASSET,
   TOAST_MS,
   TOP_RIGHT_BOTTOM_RESERVE_PX,
@@ -146,6 +147,24 @@ function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUsageOpen, setIsUsageOpen] = useState(false);
+  // Other PCs' agents' speech bubbles (top-left toggle), remembered per viewer; shown by default.
+  const [othersBubbles, setOthersBubbles] = useState(() => {
+    try {
+      return localStorage.getItem(OTHERS_BUBBLES_KEY) !== 'off';
+    } catch {
+      return true;
+    }
+  });
+  const toggleOthersBubbles = () =>
+    setOthersBubbles((v) => {
+      try {
+        localStorage.setItem(OTHERS_BUBBLES_KEY, v ? 'off' : 'on');
+      } catch {
+        // private window: not remembered
+      }
+      requestRender('othersBubbles');
+      return !v;
+    });
   const lang = useLang();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const firstRun = !!profile?.canEdit && profile.firstRun;
@@ -638,6 +657,7 @@ function App() {
           personal={personal}
           wrap={wrapsActivity(offices)}
           onOpen={(a) => openPopout(a.id)}
+          othersBubbles={othersBubbles}
         />
 
         <ChatLayer
@@ -681,6 +701,8 @@ function App() {
               onToggleSettings={() => setIsSettingsOpen((v) => !v)}
               onToggleUsage={officeReadOnly || isMobile ? null : () => setIsUsageOpen((v) => !v)}
               isUsageOpen={usageOpen}
+              othersBubbles={othersBubbles}
+              onToggleOthersBubbles={toggleOthersBubbles}
             />
           }
           below={

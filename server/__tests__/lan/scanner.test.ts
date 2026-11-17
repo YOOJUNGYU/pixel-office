@@ -27,6 +27,7 @@ import {
   statStart,
 } from '../../src/lan/liveness.js';
 import { LanService } from '../../src/lan/office.js';
+import { redactView } from '../../src/lan/redact.js';
 import { discoverRoots, Scanner, wslSessionsToCheck } from '../../src/lan/scanner.js';
 import { newSession } from '../../src/lan/session.js';
 
@@ -159,7 +160,7 @@ describe('Scanner', () => {
     expect(nums).toEqual({ b: 2, c: 1 });
   });
 
-  it('session titles stay local: Scanner.info has them, the peer packet never does', async () => {
+  it('session titles: Scanner.info has them, peers get the title but never the prompt or folder', async () => {
     const line = (o: unknown) => JSON.stringify(o) + '\n';
     writeFileSync(
       join(proj, 'cl.jsonl'),
@@ -192,6 +193,9 @@ describe('Scanner', () => {
     await scanner.discover();
     expect(scanner.info('cl')).toEqual({ title: 'MY secret title', folder: 'secret-repo' });
     expect(scanner.info('cx')).toEqual({ title: 'CODEX prompt', folder: 'codex-repo' });
+    // a title that is only the prompt stays home: peers get no title until the session is named
+    expect(scanner.views(true).find((v) => v.id === 'cx')).not.toHaveProperty('title');
+    expect(scanner.views().find((v) => v.id === 'cx')?.title).toBe('CODEX prompt');
     // the index appears / is renamed (appended): re-read on change, last line wins
     const idx = join(dir, 'session_index.jsonl');
     writeFileSync(idx, line({ id: 'cx', thread_name: 'Old name' }));
@@ -200,10 +204,11 @@ describe('Scanner', () => {
     ago(idx, -5_000); // a different mtime, as a real append gives
     await scanner.discover();
     expect(scanner.info('cx')?.title).toBe('CODEX thread');
-    // this PC's own snapshot carries the title for the bubble header; brief (peers) never
+    // the bubble header's title: this PC's snapshot and LAN peers (since 1.0.65) alike
     const own = Object.fromEntries(scanner.views().map((v) => [v.id, v.title]));
     expect(own).toMatchObject({ cl: 'MY secret title', cx: 'CODEX thread' });
-    for (const v of scanner.views(true)) expect(v).not.toHaveProperty('title');
+    const brief = Object.fromEntries(scanner.views(true).map((v) => [v.id, v.title]));
+    expect(brief).toMatchObject({ cl: 'MY secret title', cx: 'CODEX thread' });
 
     for (const channel of [PUBLIC_VIEW, 'team-tag']) {
       const lan = new LanService(
@@ -225,7 +230,10 @@ describe('Scanner', () => {
       );
       const sent = JSON.stringify(lan.packet(channel));
       expect(sent).toContain('"provider":"codex"'); // the views are there
-      expect(sent).not.toMatch(/SECRET|secret|AUTO title|CODEX|codex-repo|Old name/);
+      expect(sent).toContain('MY secret title'); // the session title only
+      expect(sent).not.toMatch(
+        /SECRET prompt|secret-repo|AUTO title|CODEX prompt|codex-repo|Old name/,
+      );
     }
     expect(JSON.stringify(scanner.views(true))).not.toContain(proj);
   });
@@ -621,6 +629,51 @@ describe('closed sessions (Claude sessions/<pid>.json registry)', () => {
     );
   });
 
+  it('shells started before the live process started died with the old one', async () => {
+    const at = (ms: number) => new Date(ms).toISOString();
+    const shell = (tool: string, id: string, ms: number) =>
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: at(ms),
+        message: {
+          content: [
+            {
+              type: 'tool_use',
+              id: tool,
+              name: 'Bash',
+              input: { command: 'npm run dev', run_in_background: true },
+            },
+          ],
+        },
+      }) +
+      '\n' +
+      JSON.stringify({
+        type: 'user',
+        timestamp: at(ms),
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: tool,
+              content: `Command running in background with ID: ${id}`,
+            },
+          ],
+        },
+      }) +
+      '\n';
+    writeFileSync(
+      join(proj, 'rs.jsonl'),
+      shell('t1', 'old', t - 60_000) + shell('t2', 'new', t - 1_000),
+    );
+    mkdirSync(join(dir, 'sessions'), { recursive: true });
+    writeFileSync(
+      join(dir, 'sessions', '200.json'),
+      JSON.stringify({ pid: 200, sessionId: 'rs', startedAt: t - 30_000 }),
+    );
+    await scanner.discover();
+    expect(scanner.views().map((v) => v.id)).toEqual(['rs', 'rs/sh/new']);
+  });
+
   it('a live session stays; once its pid is dead it leaves on the next poll, with its subagents', async () => {
     writeFileSync(join(proj, 's1.jsonl'), edit('a.ts'));
     mkdirSync(join(proj, 's1', 'subagents'), { recursive: true });
@@ -865,7 +918,7 @@ describe('WSL liveness checks only for shown sessions', () => {
       }) +
       '\n';
 
-    it('main + subagent get usage, sum only with a child; shell and brief get none', async () => {
+    it('main + subagent get usage, sum only with a child; shells get none', async () => {
       writeFileSync(join(proj, 'sid.jsonl'), shellLine);
       mkdirSync(join(proj, 'sid', 'subagents'), { recursive: true });
       writeFileSync(join(proj, 'sid', 'subagents', 'agent-x.jsonl'), edit('a.ts'));
@@ -887,7 +940,10 @@ describe('WSL liveness checks only for shown sessions', () => {
       const shells = vs.filter((v) => v.kind === 'shell');
       expect(shells.length).toBeGreaterThan(0);
       expect(shells.every((v) => v.usage === undefined)).toBe(true);
-      expect(scanner.views(true).every((v) => v.usage === undefined)).toBe(true);
+      // peers get the same totals (redactView keeps tokens/rate/model/sum)
+      expect(scanner.views(true).find((v) => v.kind === 'main')?.usage?.tokens).toBe(
+        m?.usage?.tokens,
+      );
       expect(scanner.liveFiles()).toHaveLength(2);
       expect(scanner.rootsNow().claude).toEqual([join(dir, 'claude')]);
     });
@@ -898,7 +954,7 @@ describe('WSL liveness checks only for shown sessions', () => {
       scanner.usage = { ...stub, fileUsage: () => ({ ...stub.fileUsage(), cache }) };
       await scanner.discover();
       expect(scanner.views()[0].usage?.cache).toBe(90);
-      expect(scanner.views(true)[0].usage).toBeUndefined();
+      expect(redactView(scanner.views(true)[0]).usage).not.toHaveProperty('cache');
       cache = 0;
       expect(scanner.views()[0].usage).not.toHaveProperty('cache');
     });

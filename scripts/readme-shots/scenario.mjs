@@ -60,8 +60,112 @@ function agent(peerId, a) {
     peer: P[peerId],
   };
 }
-/** A colleague's agent in the public office: the quiet view (no bubble, no details). */
-const quiet = (peerId, a) => agent(peerId, { ...a, quiet: true, target: '', reason: '' });
+/** Colleagues' sessions as the LAN shares them (1.0.65): title, model, tokens, context. */
+const SESSIONS = {
+  'p-minji:a': {
+    title: '결제 API 리팩터링',
+    model: 'claude-opus-5-5',
+    tokens: 640_000,
+    rate: 21_000,
+    ctx: 41,
+  },
+  'p-jun:a': {
+    title: '대시보드 차트 성능 개선',
+    model: 'claude-sonnet-5-5',
+    tokens: 180_000,
+    rate: 8_000,
+    ctx: 22,
+  },
+  'p-jun:b': {
+    title: '푸시 알림 딥링크',
+    model: 'claude-sonnet-5-5',
+    tokens: 90_000,
+    rate: 3_000,
+    ctx: 12,
+  },
+  'p-seo:a': {
+    title: '야간 배치 중복 제거',
+    model: 'claude-opus-5-5',
+    tokens: 1_200_000,
+    rate: 52_000,
+    ctx: 63,
+  },
+  'p-choi:a': {
+    title: '결제 실패 재시도 정책',
+    model: 'claude-opus-5-5',
+    tokens: 310_000,
+    rate: 12_000,
+    ctx: 35,
+  },
+  'p-ha:a': { title: '빌드 정리', model: 'gpt-5-codex', tokens: 150_000, rate: 5_000, ctx: 18 },
+  'p-kang:a': {
+    title: '버튼 토큰 다크모드',
+    model: 'claude-sonnet-5-5',
+    tokens: 70_000,
+    rate: 0,
+    ctx: 9,
+  },
+  'p-kang:b': {
+    title: '불꽃 오라 스프라이트',
+    model: 'claude-haiku-5-5',
+    tokens: 40_000,
+    rate: 2_000,
+    ctx: 6,
+  },
+  'p-yoon:a': {
+    title: '대시보드 차트 성능 개선',
+    model: 'claude-opus-5-5',
+    tokens: 260_000,
+    rate: 16_000,
+    ctx: 30,
+  },
+  'p-yoon:b': {
+    title: '푸시 알림 딥링크',
+    model: 'claude-sonnet-5-5',
+    tokens: 120_000,
+    rate: 4_000,
+    ctx: 15,
+  },
+  'p-han:a': {
+    title: '야간 배치 중복 제거',
+    model: 'claude-sonnet-5-5',
+    tokens: 95_000,
+    rate: 1_000,
+    ctx: 11,
+  },
+  'p-oh:a': { title: '빌드 정리', model: 'gpt-5-codex', tokens: 60_000, rate: 2_000, ctx: 8 },
+  'p-oh:b': {
+    title: '버튼 토큰 다크모드',
+    model: 'claude-sonnet-5-5',
+    tokens: 30_000,
+    rate: 0,
+    ctx: 4,
+  },
+};
+/** A colleague's agent in the public office (LAN): no target or reason, but the session's title,
+ *  model, tokens and context; children carry their session's title only. */
+const quiet = (peerId, a) => {
+  const s = SESSIONS[`${peerId}:${a.parentId ?? a.id}`];
+  const main = !a.parentId;
+  return agent(peerId, {
+    ...a,
+    quiet: true,
+    target: '',
+    reason: '',
+    ...(s && { title: s.title }),
+    ...(s &&
+      main && {
+        usage: { tokens: s.tokens, rate: s.rate, model: s.model },
+        ctx: { used: s.ctx * 2_000, window: 200_000 },
+        heat: heat(s.tokens, s.rate),
+      }),
+  });
+};
+/** core heatOf, for made-up numbers. */
+const heat = (tokens, rate) => ({
+  size: tokens >= 1_000_000 ? 2 : tokens >= 300_000 ? 1 : 0,
+  burn: rate >= 75_000 ? 3 : rate >= 40_000 ? 2 : rate >= 15_000 ? 1 : 0,
+});
 
 /** My agents in full detail; `t` advances the effect counters between snapshots. */
 export function myAgents(t = 0) {
@@ -213,18 +317,6 @@ export function people(view = 'public') {
     'p-han': { col: 70, row: 45, dir: 'left' },
     'p-oh': { col: 79, row: 43, dir: 'down' },
   };
-  const via = {
-    'p-minji': 'lan',
-    'p-jun': 'lan',
-    'p-seo': 'relay',
-    'p-choi': 'lan',
-    'p-ha': 'relay',
-    'p-kang': 'lan',
-    'p-yoon': 'relay',
-    'p-han': 'lan',
-    'p-oh': 'relay',
-  };
-  const net = { 'p-seo': 'b2', 'p-ha': 'b2', 'p-yoon': 'c3', 'p-oh': 'c3' };
   const list = view === 'public' ? PEERS : PEERS.filter((p) => p.id === SELF);
   return list.map((p) => {
     const s = spots[p.id];
@@ -232,7 +324,8 @@ export function people(view = 'public') {
     return {
       peerId: id,
       ...rest,
-      ...(id === SELF ? { self: true } : { via: via[id], net: net[id] ?? 'a1' }),
+      // The office is one LAN since 1.0.64: everyone here is on my network.
+      ...(id === SELF ? { self: true, net: 'a1' } : { via: 'lan', net: 'a1' }),
       ...(view === 'public' && s.chat && { chat: s.chat }),
       avatar: { col: s.col, row: s.row, dir: s.dir },
     };
@@ -286,11 +379,23 @@ export function snapshot(view = 'public', t = 0) {
   };
 }
 
+/** App users on other networks: the relay lists them in the people panel only (never in the
+ *  office), grouped by network; one is in personal mode. */
+const REMOTE = [
+  { ...peer('p-song', 'song.be', 4), via: 'relay', net: 'b2' },
+  { ...peer('p-lim', 'lim.ios', 1, { hueShift: 120 }), via: 'relay', net: 'b2' },
+  { ...peer('p-baek', 'baek.data', 5), via: 'relay', net: 'c3' },
+].map(({ id, ...p }) => ({ peerId: id, ...p }));
+const REMOTE_PERSONAL = [{ ...peer('p-moon', 'moon.ml', 2), net: 'c3' }].map(({ id, ...p }) => ({
+  peerId: id,
+  ...p,
+}));
+
 export function directory(view = 'public') {
   if (view === 'gallery') view = 'personal';
   const ps = people(view).map(({ chat: _c, avatar: _a, ...p }) => p);
   return view === 'public'
-    ? { type: 'peopleDirectory', public: ps, teams: [], personal: [] }
+    ? { type: 'peopleDirectory', public: [...ps, ...REMOTE], teams: [], personal: REMOTE_PERSONAL }
     : { type: 'peopleDirectory', public: [], teams: [], personal: ps };
 }
 

@@ -47,7 +47,8 @@ export const ctxText = (a: Pick<OfficeAgent, 'ctx'>): string => {
 export const iconOnly = (scale: number, threshold: number): boolean => scale < threshold;
 
 /**
- * A head bubble (and hover bubble, fail drop) for this agent: not for a quiet one —
- * another PC's agent in the public office, whose work details are not sent.
+ * A head bubble for this agent: every one of mine; other PCs' unless the viewer hid them (the
+ * top-left 말풍선 toggle). A quiet one (public office) shows its title and act, never the
+ * target. The hover bubble always shows.
  */
-export const hasBubble = (a: Pick<OfficeAgent, 'quiet'>): boolean => !a.quiet;
+export const hasBubble = (mine: boolean, othersShown: boolean): boolean => mine || othersShown;

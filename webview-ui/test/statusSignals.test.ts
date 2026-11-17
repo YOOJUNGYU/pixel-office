@@ -78,9 +78,10 @@ test('ctx chip text: my agents only carry ctx', async () => {
   assert.equal(ctxText({}), '');
 });
 
-test('a quiet agent (another PC over the relay) gets no bubble; its PC screen stays', () => {
-  assert.equal(hasBubble({ quiet: true }), false);
-  assert.equal(hasBubble({}), true);
+test("head bubbles: mine always, other PCs' unless hidden; a quiet one's PC screen stays", () => {
+  assert.equal(hasBubble(true, false), true);
+  assert.equal(hasBubble(false, true), true);
+  assert.equal(hasBubble(false, false), false);
   const quiet = { act: 'edit', quiet: true } as const;
   assert.equal(screenKind(quiet), 'code'); // act is kept: the PC screen still shows code
 });

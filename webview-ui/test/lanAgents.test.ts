@@ -596,11 +596,11 @@ test('bubble text: a run shows the command alone (서버실 says it already), ot
   );
 });
 
-test('room card text of a quiet agent: 작업 중 / Working; idle and waiting keep their text', () => {
+test('room card text of a quiet agent: the act without its target; idle and waiting keep their text', () => {
   setLang('ko');
   assert.equal(
     activityText(agent('a', 'coding', { act: 'edit', target: '', quiet: true })),
-    '작업 중',
+    '파일 수정 중',
   );
   assert.equal(
     activityText(agent('a', 'lounge', { act: 'idle', target: '', quiet: true })),
@@ -618,7 +618,7 @@ test('room card text of a quiet agent: 작업 중 / Working; idle and waiting ke
   setLang('en');
   assert.equal(
     activityText(agent('a', 'coding', { act: 'edit', target: '', quiet: true })),
-    'Working',
+    'Editing a file',
   );
   setLang('ko');
 });
@@ -698,4 +698,36 @@ test('getCharacterAt: a 1.5× character is hit 1.5× higher above its feet', () 
   assert.equal(os.getCharacterAt(ch.x, y), null);
   ch.usageScale = 1.5;
   assert.equal(os.getCharacterAt(ch.x, y), 1);
+});
+
+test("LAN seats: a peer's agent sits where its PC sat it; a clash goes to the smaller peer id; mine are reported", () => {
+  const { os, lan } = setup();
+  lan.applyPeople([
+    { peerId: 'p1', account: 'yoo', nickname: 'kim', palette: 2, hueShift: 30, self: true },
+  ]);
+  const sent: Array<Array<{ id: string; seat: string }>> = [];
+  lan.onSeats = (s) => sent.push(s);
+  lan.apply([agent('a', 'coding')]);
+  const mine = os.characters.get(lan.idFor('p1:a')!)!;
+  const mySeat = mine.seatId!;
+  assert.deepEqual(sent.at(-1), [{ id: 'a', seat: mySeat }]);
+  const other = (pid: string, seat: string): OfficeAgent => ({
+    ...agent('b', 'coding', { seat }),
+    key: `${pid}:b`,
+    peer: { ...peer, id: pid },
+  });
+  // A free seat elsewhere in 코딩실: taken as claimed.
+  const free = [...os.seats.keys()].find(
+    (u) => u !== mySeat && os.seatZone(u) === '코딩실' && !os.seats.get(u)!.assigned,
+  )!;
+  lan.apply([agent('a', 'coding'), other('p9', free)]);
+  assert.equal(os.characters.get(lan.idFor('p9:b')!)!.seatId, free);
+  // My seat claimed by a larger peer id: mine keeps it.
+  lan.apply([agent('a', 'coding'), other('p9', mySeat)]);
+  assert.equal(mine.seatId, mySeat);
+  // ... by a smaller one: it takes it, mine moves to another seat and reports it.
+  lan.apply([agent('a', 'coding'), other('p0', mySeat)]);
+  assert.equal(os.characters.get(lan.idFor('p0:b')!)!.seatId, mySeat);
+  assert.ok(mine.seatId && mine.seatId !== mySeat);
+  assert.deepEqual(sent.at(-1), [{ id: 'a', seat: mine.seatId }]);
 });

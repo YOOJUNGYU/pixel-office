@@ -802,7 +802,17 @@ export const PEOPLE_PET_FACE_CROP = { top: PEOPLE_PET_FACE_TOP, rows: PEOPLE_FAC
 export const PEOPLE_HINT_MS = 2_000;
 /** People panel lists: rows shown at first and loaded per scroll to the end; every row's fixed
  *  height (virtualized: only the rows in view ± PEOPLE_OVERSCAN are rendered). */
+/** Wardrobe: outfits whose office frames are kept (least recently used dropped first). */
+export const OUTFIT_FRAME_CACHE_MAX = 200;
+/** Profile wardrobe thumbnails: scale, the sprite rows shown (head and upper body), and the
+ *  eye-shape thumbnails' (eyes only) scale and rows. */
+export const OUTFIT_THUMB_SCALE = 2;
+export const OUTFIT_THUMB_CROP = { top: 4, rows: 22 } as const;
+export const OUTFIT_EYES_SCALE = 4;
+export const OUTFIT_EYES_CROP = { top: 8, rows: 10 } as const;
 export const PEOPLE_PAGE = 10;
+/** People panel list width (the panel is at most 260 px wide). */
+export const PEOPLE_LIST_WIDTH_PX = 250;
 export const PEOPLE_ROW_PX = 42;
 export const PEOPLE_OVERSCAN = 4;
 /** Settings → 관리자 토큰: longest token the server accepts (asyncapi setRelayAdminToken maxLength). */
@@ -950,3 +960,23 @@ export const ARCADE_TICKET_WAIT_MS = 5000;
 /** The arcade's "taken" notice: shown this long, this far above the bottom edge (over the chat bar). */
 export const ARCADE_NOTICE_MS = 3500;
 export const ARCADE_NOTICE_BOTTOM_PX = 64;
+
+/** Office blinks (wardrobe looks), per character on its own clock (office/engine/blink.ts). A
+ *  gap is BLINK_GAP_MIN_SEC plus a random wait that is usually short and now and then long
+ *  (exponential, mean BLINK_GAP_MEAN_SEC, capped at BLINK_GAP_MAX_SEC), stretched by
+ *  BLINK_FOCUS_STRETCH while typing at the desk. BLINK_DOUBLE_CHANCE of blinks come twice. */
+export const BLINK_SHUT_SEC = [0.1, 0.17] as const;
+export const BLINK_GAP_MIN_SEC = 1.5;
+export const BLINK_GAP_MEAN_SEC = 3.5;
+export const BLINK_GAP_MAX_SEC = 11;
+export const BLINK_FOCUS_STRETCH = 1.5;
+export const BLINK_DOUBLE_CHANCE = 0.15;
+export const BLINK_DOUBLE_GAP_SEC = [0.15, 0.3] as const;
+
+/** Usage panel 세션 tab: wait this long after typing before asking the server. */
+export const SESSION_FIND_DEBOUNCE_MS = 300;
+/** Session row: indent of the stats line under a ranked row (the rank column + gap). */
+export const SESSION_RANK_INDENT_PX = 26;
+
+/** localStorage: other PCs' agents' speech bubbles, 'off' = hidden (top-left toggle). */
+export const OTHERS_BUBBLES_KEY = 'pixel-office.othersBubbles';

@@ -79,20 +79,46 @@ describe('parsePeerPacket', () => {
       expect(one(bad)).not.toHaveProperty('heat');
   });
 
-  it('local-only fields (title, ctx, usage) are never read from a peer', () => {
+  it('LAN-shared fields: title (cleaned), ctx, usage (totals/model only) and seat are read; bad ones dropped alone', () => {
     const got = parse(
       packet({
         views: [
           {
             ...view(),
-            title: 'peer title',
+            title: ' peer\u202e title\n',
             ctx: { used: 1, window: 2 },
-            usage: { tokens: 5, rate: 0 },
+            usage: {
+              tokens: 5,
+              rate: 0,
+              model: 'claude-opus-5-5',
+              cache: 9,
+              big: { n: 1, last: 2 },
+            },
+            seat: 'lan-001:1',
           },
         ],
       }),
     )?.views[0];
-    expect(got).toEqual(view());
+    expect(got).toEqual({
+      ...view(),
+      title: 'peer title',
+      ctx: { used: 1, window: 2 },
+      usage: { tokens: 5, rate: 0, model: 'claude-opus-5-5' },
+      seat: 'lan-001:1',
+    });
+    const bad = parse(
+      packet({
+        views: [
+          {
+            ...view(),
+            ctx: { used: -1, window: 2 },
+            usage: { tokens: 5, rate: 0, model: 'bad model<script>' },
+            seat: '../x y',
+          } as unknown as AgentView,
+        ],
+      }),
+    )?.views[0];
+    expect(bad).toEqual({ ...view(), usage: { tokens: 5, rate: 0 } });
   });
 
   it('hidden: only true survives', () => {

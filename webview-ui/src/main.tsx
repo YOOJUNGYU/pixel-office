@@ -8,7 +8,7 @@ import { startWardrobe } from './characters/outfit.js';
 import { ReplacedPanel } from './lan/ReplacedPanel.js';
 import { ServerPanel } from './lan/ServerPanel.js';
 import { TranscriptWindow } from './lan/TranscriptWindow.js';
-import { popoutId } from './lan/transcriptWindows.js';
+import { popoutFind, popoutId } from './lan/transcriptWindows.js';
 import { initPwa } from './pwa.js';
 import { isBrowserRuntime } from './runtime';
 
@@ -24,7 +24,7 @@ async function main() {
   if (popout !== null) {
     createRoot(document.getElementById('root')!).render(
       <StrictMode>
-        <TranscriptWindow id={popout} />
+        <TranscriptWindow id={popout} find={popoutFind()} />
       </StrictMode>,
     );
     return;

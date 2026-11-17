@@ -25,6 +25,7 @@ import {
 import { t, useLang } from '../i18n.js';
 import { transport } from '../transport/index.js';
 import { providerName, tagBadge } from './lanAgents.js';
+import { SessionFinder, SessionRow } from './SessionFinder.js';
 import { openPopout } from './transcriptWindows.js';
 import { DayBars, HBars, ShareBar, Swatch } from './UsageCharts.js';
 import { hitRate } from './usageCharts.js';
@@ -52,6 +53,7 @@ const modelColor = (model: string, i: number): string => {
 export function UsagePanel({ onClose }: { onClose: () => void }) {
   useLang();
   const [range, setRange] = useState<UsageRange>(storedRange);
+  const [view, setView] = useState<'usage' | 'sessions'>('usage');
   const rangeRef = useRef(range);
   const [now, setNow] = useState<{ today: number; scanning?: boolean; limits?: UsageLimit[] }>({
     today: 0,
@@ -108,8 +110,25 @@ export function UsagePanel({ onClose }: { onClose: () => void }) {
       onWheel={(e) => e.stopPropagation()}
     >
       <div className="flex items-center gap-8 shrink-0 px-12 pt-8 pb-6 border-b-2 border-border">
-        <h2 className="m-0 text-sm font-bold">{t('usage.window')}</h2>
         <div className="flex gap-2" role="tablist">
+          {(['usage', 'sessions'] as const).map((v) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={v === view}
+              data-usage-view={v}
+              onClick={() => setView(v)}
+              className={`border-0 border-b-2 rounded-none px-4 py-1 text-sm font-bold cursor-pointer bg-transparent ${
+                v === view
+                  ? 'border-accent text-text'
+                  : 'border-transparent text-text-muted hover:text-text'
+              }`}
+            >
+              {t(`usage.view.${v}`)}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2" role="tablist" hidden={view !== 'usage'}>
           {RANGES.map((r) => (
             <button
               key={r}
@@ -137,9 +156,15 @@ export function UsagePanel({ onClose }: { onClose: () => void }) {
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto pixel-scrollbar">
         <div className="flex flex-col gap-10 p-12">
-          <NowPanel agents={agents} today={now.today} scanning={scanning} />
-          {!!now.limits?.length && <Limits limits={now.limits} />}
-          {data && <History data={data} />}
+          {view === 'sessions' ? (
+            <SessionFinder />
+          ) : (
+            <>
+              <NowPanel agents={agents} today={now.today} scanning={scanning} />
+              {!!now.limits?.length && <Limits limits={now.limits} />}
+              {data && <History data={data} />}
+            </>
+          )}
         </div>
       </div>
       <Grip which="right" box={box} />
@@ -486,47 +511,9 @@ function History({ data }: { data: UsageLoaded }) {
       {data.top.length > 0 && (
         <Section title={t('usage.top')}>
           <div className="flex flex-col">
-            {data.top.map((s, i) => {
-              const d = new Date(s.lastTs);
-              return (
-                <button
-                  key={s.key}
-                  onClick={() => openPopout(`usage:${s.key}`)}
-                  title={s.exists ? undefined : t('usage.deleted')}
-                  className={`flex items-center gap-6 w-full min-w-0 py-2 text-left text-sm bg-transparent border-0 cursor-pointer hover:bg-btn-hover ${s.exists ? '' : 'opacity-50'}`}
-                >
-                  <span className="w-[20px] shrink-0 text-right text-text-muted font-mono">
-                    {i + 1}
-                  </span>
-                  <span
-                    className="shrink-0 px-2 text-2xs font-bold leading-normal"
-                    style={{
-                      background:
-                        s.provider === 'claude' || s.provider === 'codex'
-                          ? LAN_PROVIDER_COLORS[s.provider]
-                          : undefined,
-                      color: LAN_PROVIDER_BADGE_FG,
-                    }}
-                  >
-                    {s.provider === 'codex' ? 'Codex' : 'Claude'}
-                  </span>
-                  <span className="truncate" title={s.exists ? s.title || s.folder : undefined}>
-                    {s.title || s.folder}
-                  </span>
-                  {s.title && s.folder && (
-                    <span className="shrink-0 max-w-[25%] truncate text-xs text-text-muted">
-                      {s.folder}
-                    </span>
-                  )}
-                  <span className="ml-auto shrink-0 text-xs text-text-muted">
-                    {`${String(d.getMonth() + 1)}/${String(d.getDate())}`}
-                  </span>
-                  <span className="w-[56px] shrink-0 text-right font-mono">
-                    {tokensText(s.billable)}
-                  </span>
-                </button>
-              );
-            })}
+            {data.top.map((s, i) => (
+              <SessionRow key={s.key} s={s} rank={i + 1} />
+            ))}
           </div>
         </Section>
       )}

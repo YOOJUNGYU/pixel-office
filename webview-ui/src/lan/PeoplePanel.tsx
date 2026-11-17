@@ -9,6 +9,7 @@ import {
   PEOPLE_FACE_CROP,
   PEOPLE_FACE_SCALE,
   PEOPLE_HINT_MS,
+  PEOPLE_LIST_WIDTH_PX,
   PEOPLE_OVERSCAN,
   PEOPLE_PAGE,
   PEOPLE_PET_FACE_CROP,
@@ -21,6 +22,7 @@ import type { OfficeState } from '../office/engine/officeState.js';
 import { transport } from '../transport/index.js';
 import {
   type AreaSection,
+  byNetGroup,
   pagedCount,
   rowWindow,
   totalPeople,
@@ -213,8 +215,9 @@ function PagedRows({
   return (
     <div
       data-people-list
-      className="overflow-y-auto pixel-scrollbar"
-      style={{ height: viewH }}
+      className="overflow-y-auto pixel-scrollbar max-w-full"
+      // Rows are absolutely placed (virtualized): they give the panel no width, so it has its own.
+      style={{ height: viewH, width: PEOPLE_LIST_WIDTH_PX }}
       onScroll={(e) => {
         const el = e.currentTarget;
         setTop(el.scrollTop);
@@ -312,18 +315,13 @@ export function PeoplePanel({
 
   const count = t('people.title', { n: String(totalPeople(sections, live)) });
 
-  // Same-network numbers: public office, mine and other LANs' (the viewed one = live rows +
-  // its extras).
+  // Same-network numbers: public area only (the viewed one = live rows + its extras).
   const pub = sections.find((s) => s.area === 'public');
-  const pubLike = (s: AreaSection) => s.area === 'public' || s.area === 'internet';
-  const pubPeople = [
-    ...(pub
-      ? pub.viewed
-        ? [...live.map((r) => r.person), ...viewedExtras(pub, live)]
-        : pub.people
-      : []),
-    ...(sections.find((s) => s.area === 'internet')?.people ?? []),
-  ];
+  const pubPeople = pub
+    ? pub.viewed
+      ? [...live.map((r) => r.person), ...viewedExtras(pub, live)]
+      : pub.people
+    : [];
   const nets = netNumbers(pubPeople, pubPeople.find((p) => p.self)?.net);
   const publicViewed = pub?.viewed === true;
   const netOf = (p: DirectoryPersonMessage) => (p.net === undefined ? undefined : nets.get(p.net));
@@ -333,6 +331,7 @@ export function PeoplePanel({
 
   const liveRows = rows.map((r) => ({
     key: r.person.peerId,
+    person: r.person,
     row: (style: CSSProperties) => (
       <li
         style={style}
@@ -380,27 +379,34 @@ export function PeoplePanel({
           <span className="shrink-0">
             {t(heading, { n: String(n), name: s.name || t('office.unnamed') })}
           </span>
-          {s.area === 'internet' && <RelayChip relay={relay} />}
+          {s.area === 'public' && <RelayChip relay={relay} />}
         </div>
         {n === 0 ? (
           <div className="py-3 px-8 text-xs text-text-muted">{t('people.area.empty')}</div>
         ) : (
           <PagedRows
-            rows={[
-              ...(s.viewed ? liveRows : []),
-              ...extras.map((p) => ({
-                key: p.peerId,
-                row: (style: CSSProperties) => (
-                  <PlainRow
-                    style={style}
-                    person={p}
-                    net={pubLike(s) ? netOf(p) : undefined}
-                    kick={pubLike(s) && canKick && !p.self && (s.viewed || s.area === 'internet')}
-                    mine={myVer}
-                  />
-                ),
-              })),
-            ]}
+            rows={(() => {
+              const items = [
+                ...(s.viewed ? liveRows : []),
+                ...extras.map((p) => ({
+                  key: p.peerId,
+                  person: p,
+                  row: (style: CSSProperties) => (
+                    <PlainRow
+                      style={style}
+                      person={p}
+                      net={s.area === 'public' ? netOf(p) : undefined}
+                      kick={s.area === 'public' && canKick && !p.self}
+                      mine={myVer}
+                    />
+                  ),
+                })),
+              ];
+              // The public office: one list, grouped by network, my LAN first (망 badges).
+              return s.area === 'public'
+                ? byNetGroup(items, (x) => (x.person.self ? 1 : netOf(x.person))) // me = my LAN
+                : items;
+            })()}
           />
         )}
       </li>

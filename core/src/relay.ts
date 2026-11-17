@@ -39,8 +39,9 @@ export interface PubWire {
  * `peer` itself (parsePeerInfo).
  */
 export type RelayPerson = Record<string, unknown> & { peer: Record<string, unknown> };
-/** A person as JSON at most this long (it lives in the 2 KB socket attachment). */
-export const RELAY_PERSON_MAX_BYTES = 1024;
+/** A person as UTF-8 JSON at most this long (it lives in the 2 KB socket attachment, beside
+ *  ~300 bytes of the connection's own fields). */
+export const RELAY_PERSON_MAX_BYTES = 1536;
 export type RelayPeer = { id: string; pk: string; net?: string; p?: RelayPerson };
 export type RelayUp = { t: 'send'; w: PubWire[] } | { t: 'me'; p: RelayPerson };
 export type RelayDown =

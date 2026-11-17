@@ -198,3 +198,17 @@ export function authorized(header: string | null, token: string): boolean {
     diff |= (given.charCodeAt(i) || 0) ^ (token.charCodeAt(i) || 0);
   return diff === 0;
 }
+
+/** The oldest app version the relay serves (who-is-online `me` frames). */
+export const MIN_CLIENT = [1, 0, 64] as const;
+/** How long a refused older client waits before asking again (close `kicked`, Worker-side). */
+export const OLD_CLIENT_RETRY_MS = 24 * 60 * 60 * 1000;
+
+/** Whether `v` (the upgrade's `v` param, `1.0.64` or `1.0.64-beta.1`) is at least MIN_CLIENT. */
+export function currentClient(v: string | null): boolean {
+  const m = /^(\d{1,4})\.(\d{1,4})\.(\d{1,4})(?:-[0-9A-Za-z.-]{1,20})?$/.exec(v ?? '');
+  if (!m) return false;
+  const [a, b, c] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const [x, y, z] = MIN_CLIENT;
+  return a !== x ? a > x : b !== y ? b > y : c >= z;
+}

@@ -7,12 +7,15 @@ import type { Outfit, OutfitColorKey, OutfitSlot } from '../../../core/src/lan.j
 import { SWATCHES } from '../characters/art/artColors.js';
 import { onWardrobe, outfitProfile, wardrobeRenderer } from '../characters/outfit.js';
 import { ACCESSORIES, colorArt, type ColorKey, EYE_SHAPES, TABS } from '../characters/slots.js';
+import {
+  OUTFIT_EYES_CROP,
+  OUTFIT_EYES_SCALE,
+  OUTFIT_THUMB_CROP,
+  OUTFIT_THUMB_SCALE,
+} from '../constants.js';
 import { type Key, t, useLang } from '../i18n.js';
 import { CharacterPreview } from './ProfileModal.js';
 
-const THUMB_SCALE = 2;
-/** The thumbnails show the head and the upper body: sprite rows [top, top + rows). */
-const THUMB_CROP = { top: 4, rows: 22 };
 /** Slots that may be left empty (a None thumbnail first). */
 const OPTIONAL = new Set<string>(['beard', 'top', 'jacket', 'pants', 'shoes', 'full', 'hat']);
 
@@ -78,8 +81,8 @@ export function OutfitEditor({ outfit, onChange }: { outfit: Outfit; onChange(o:
                 palette={0}
                 hueShift={0}
                 outfit={next}
-                scale={THUMB_SCALE}
-                crop={THUMB_CROP}
+                scale={OUTFIT_THUMB_SCALE}
+                crop={OUTFIT_THUMB_CROP}
               />
             </button>
           );
@@ -153,8 +156,8 @@ export function OutfitEditor({ outfit, onChange }: { outfit: Outfit; onChange(o:
                   palette={0}
                   hueShift={0}
                   outfit={next}
-                  scale={THUMB_SCALE * 2}
-                  crop={{ top: 8, rows: 10 }}
+                  scale={OUTFIT_EYES_SCALE}
+                  crop={OUTFIT_EYES_CROP}
                 />
               </button>
             );

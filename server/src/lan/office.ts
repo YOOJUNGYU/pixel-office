@@ -18,6 +18,7 @@ import {
   parseChat,
   PERSONAL_VIEW,
   PUBLIC_VIEW,
+  SEAT_ID,
 } from '../../../core/src/lan.js';
 import type {
   ChatMessage,
@@ -32,6 +33,7 @@ import {
   PING_APP,
   PING_TIMEOUT_MS,
 } from '../constants.js';
+import { MAX_SEAT_REPORT, MAX_SEAT_VIEW_ID } from '../constants.js';
 import { inviteText, newInviteCode, parseInviteCode, teamKey } from './crypto.js';
 import type { NetDirectory, TeamChannel } from './peerNet.js';
 import { fitPacket } from './peerNet.js';
@@ -163,6 +165,8 @@ export class LanService {
     try {
       views = this.local.views(true).map(redactView);
       if (channel === PUBLIC_VIEW) views = views.map(quietView);
+      const seats = this.seats?.view === channel ? this.seats.byId : undefined;
+      if (seats) views = views.map((v) => (seats.has(v.id) ? { ...v, seat: seats.get(v.id) } : v));
     } catch (err) {
       console.error('[Pixel Office] Building peer packet failed:', err);
       views = [];
@@ -217,6 +221,26 @@ export class LanService {
 
   /** My avatar moved in the active view's layout (strictly validated). Peers hear
    *  it within AVATAR_SEND_DELAY_MS (coalesced), the file within AVATAR_SAVE_DELAY_MS. */
+  /** My page's seats for my agents, for the office it showed then (`view`). */
+  private seats: { view: string; byId: Map<string, string> } | null = null;
+
+  /** `agentSeats`: where my page seated my agents (view id → seat uid), for peers. */
+  setSeats(raw: unknown): void {
+    if (!Array.isArray(raw)) return;
+    const byId = new Map<string, string>();
+    for (const x of raw.slice(0, MAX_SEAT_REPORT)) {
+      const o = x as { id?: unknown; seat?: unknown };
+      if (
+        typeof o?.id === 'string' &&
+        o.id.length <= MAX_SEAT_VIEW_ID &&
+        typeof o.seat === 'string' &&
+        SEAT_ID.test(o.seat)
+      )
+        byId.set(o.id, o.seat);
+    }
+    this.seats = { view: this.profile.activeView, byId };
+  }
+
   moveAvatar(raw: unknown): boolean {
     const pos = parseAvatar(raw, true);
     if (!pos) return false;

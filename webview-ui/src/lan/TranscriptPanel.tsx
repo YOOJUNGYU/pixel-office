@@ -53,6 +53,9 @@ export interface TranscriptPanelProps {
   agent?: OfficeAgent;
   onClose(): void;
   onLoadEarlier(): void;
+  /** Text to find (a session search hit): matching entries are marked, earlier pages load until
+   *  one is found, and the latest one is scrolled to. */
+  find?: string;
 }
 
 /**
@@ -70,6 +73,7 @@ export const TranscriptPanel = memo(function TranscriptPanel({
   agent,
   onClose,
   onLoadEarlier,
+  find: findInit,
 }: TranscriptPanelProps) {
   useLang();
   const scroller = useRef<HTMLDivElement>(null);
@@ -120,17 +124,16 @@ export const TranscriptPanel = memo(function TranscriptPanel({
   // Alt+↑/↓: previous / next prompt I typed (an earlier page is fetched past the first one).
   const [mineOnly, setMineOnly] = useState(false);
   const jumpRef = useRef<(dir: 1 | -1) => void>(() => {});
-  jumpRef.current = (dir) => {
+  const jumpTo = (sel: string, dir: 1 | -1) => {
     const el = scroller.current;
     if (!el) return;
     const top0 = el.getBoundingClientRect().top - el.scrollTop;
-    const tops = [...el.querySelectorAll('[data-prompt]')].map(
-      (n) => n.getBoundingClientRect().top - top0,
-    );
+    const tops = [...el.querySelectorAll(sel)].map((n) => n.getBoundingClientRect().top - top0);
     const y = jumpTarget(tops, el.scrollTop, dir, TRANSCRIPT_JUMP_MARGIN_PX);
     if (y !== null) el.scrollTop = y;
     else if (dir < 0 && more && !loading) onLoadEarlier();
   };
+  jumpRef.current = (dir) => jumpTo('[data-prompt]', dir);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
@@ -140,6 +143,28 @@ export const TranscriptPanel = memo(function TranscriptPanel({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+  // Find: mark matches, load earlier pages until one is there, then show the latest once.
+  const [find, setFind] = useState(findInit?.trim().toLowerCase() ?? '');
+  const isMatch = (e: TranscriptEntry) => !!find && e.text.toLowerCase().includes(find);
+  const matches = useMemo(
+    () => (find ? entries.filter((e) => e.text.toLowerCase().includes(find)).length : 0),
+    [entries, find],
+  );
+  const shownFind = useRef(false);
+  useEffect(() => {
+    if (!find || shownFind.current || loading || !info) return;
+    if (matches === 0) {
+      if (more) onLoadEarlier();
+      return;
+    }
+    shownFind.current = true;
+    const hits = scroller.current?.querySelectorAll('[data-find]');
+    const last = hits?.[hits.length - 1];
+    if (last) {
+      atBottom.current = false;
+      last.scrollIntoView({ block: 'center' });
+    }
+  }, [find, matches, more, loading, info, onLoadEarlier]);
   const shell = info?.kind === 'shell';
   const shown = useMemo(
     () =>
@@ -226,6 +251,35 @@ export const TranscriptPanel = memo(function TranscriptPanel({
           ×
         </button>
       </div>
+      {find && (
+        <div
+          data-find-bar
+          className="flex items-center gap-6 px-8 py-2 border-b-2 border-border text-xs select-none"
+        >
+          <span className="truncate">{t('transcript.find', { q: find, n: String(matches) })}</span>
+          {(['up', 'down'] as const).map((d) => (
+            <button
+              key={d}
+              type="button"
+              title={t(`transcript.find.${d}`)}
+              aria-label={t(`transcript.find.${d}`)}
+              onClick={() => jumpTo('[data-find]', d === 'up' ? -1 : 1)}
+              className="shrink-0 px-6 bg-btn-bg border-0 cursor-pointer hover:bg-btn-hover"
+            >
+              {d === 'up' ? '↑' : '↓'}
+            </button>
+          ))}
+          <button
+            type="button"
+            title={t('transcript.find.clear')}
+            aria-label={t('transcript.find.clear')}
+            onClick={() => setFind('')}
+            className="ml-auto shrink-0 px-6 bg-transparent border-0 text-text-muted hover:text-text cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <StatusBar status={status} activity={activity} agent={agent} context={state.context} />
       {info && info.kind !== 'shell' && <ActivityStrip entries={entries} more={state.more} />}
       <div className="relative flex-1 min-h-0">
@@ -257,6 +311,8 @@ export const TranscriptPanel = memo(function TranscriptPanel({
                   data-entry-kind={e.kind}
                   data-prompt={isPromptEntry(e) || undefined}
                   data-mark={mapMark(e) ?? ''}
+                  data-find={isMatch(e) || undefined}
+                  className={isMatch(e) ? 'outline-2 outline-accent outline-offset-2' : undefined}
                 >
                   <Entry e={e} />
                 </div>

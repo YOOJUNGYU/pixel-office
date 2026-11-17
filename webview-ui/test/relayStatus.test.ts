@@ -11,11 +11,8 @@ test('off → no chip', () => {
   assert.equal(relayStatusView({ state: 'off' }, tenAm), null);
 });
 
-test('connected → ok; connecting → muted', () => {
-  assert.deepEqual(relayStatusView({ state: 'connected' }, tenAm), {
-    key: 'relay.connected',
-    tone: 'ok',
-  });
+test('connected → no chip (nothing to say); connecting → muted', () => {
+  assert.equal(relayStatusView({ state: 'connected' }, tenAm), null);
   assert.equal(relayStatusView({ state: 'connecting' }, tenAm)?.tone, 'muted');
 });
 

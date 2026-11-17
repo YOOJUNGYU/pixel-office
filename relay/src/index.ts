@@ -38,6 +38,7 @@ import {
   authorized,
   charge,
   type Conn,
+  currentClient,
   DEFAULT_LIMITS,
   exhausted,
   type HubState,
@@ -48,6 +49,7 @@ import {
   msToReset,
   netTag,
   newState,
+  OLD_CLIENT_RETRY_MS,
   onFrame,
   pruneBans,
   REQUEST_WEIGHT,
@@ -273,12 +275,8 @@ export class Hub extends DurableObject<Env> {
     if (old.size) await this.ctx.storage.delete([...old.keys()]);
   }
 
-  /** Rejected upgrades are still accepted, then closed, so the client can read the code. */
   private refuse(kind: RelayCloseKind, ms?: number): Response {
-    const [client, server] = Object.values(new WebSocketPair()) as [WebSocket, WebSocket];
-    server.accept();
-    server.close(RELAY_CLOSE[kind], closeReason(kind, ms));
-    return new Response(null, { status: 101, webSocket: client });
+    return refuseSocket(kind, ms);
   }
 
   private async upgrade(req: Request, url: URL, now: number): Promise<Response> {
@@ -309,16 +307,14 @@ export class Hub extends DurableObject<Env> {
     this.ctx.acceptWebSocket(server);
     const me: Att = { id, pk, win: now, n: 0, at: now, ...(net && { net }) };
     server.serializeAttachment(me);
+    // The roster stays small (ids, keys, nets: well under the frame cap with maxPeers on);
+    // each person follows in its own frame (outgoing is free).
     send(server, {
       t: 'roster',
       ...(net && { you: net }),
-      peers: live.map((x) => ({
-        id: x.c.id,
-        pk: x.c.pk,
-        ...(x.c.net && { net: x.c.net }),
-        ...(x.c.p && { p: x.c.p }),
-      })),
+      peers: live.map((x) => ({ id: x.c.id, pk: x.c.pk, ...(x.c.net && { net: x.c.net }) })),
     });
+    for (const x of live) if (x.c.p) send(server, { t: 'person', id: x.c.id, p: x.c.p });
     for (const o of live) send(o.ws, { t: 'join', id, pk, ...(net && { net }) });
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -423,6 +419,14 @@ export class Hub extends DurableObject<Env> {
   }
 }
 
+/** Rejected upgrades are still accepted, then closed, so the client can read the code. */
+function refuseSocket(kind: RelayCloseKind, ms?: number): Response {
+  const [client, server] = Object.values(new WebSocketPair()) as [WebSocket, WebSocket];
+  server.accept();
+  server.close(RELAY_CLOSE[kind], closeReason(kind, ms));
+  return new Response(null, { status: 101, webSocket: client });
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(req.url);
@@ -432,6 +436,11 @@ export default {
       const q = new URL(req.url).searchParams;
       if (!isPeerId(q.get('id')) || !isPublicKey(q.get('pk')))
         return new Response('bad id or pk', { status: 400 });
+      // PCs ≤ 1.0.63 send their whole presence on every change (a billed message a second each):
+      // refused here, before the hub (no DO request, no budget), as `kicked` with a day's wait —
+      // their client retries `bad` every ≤ 5 min, `kicked` after `ms`. They keep the LAN and
+      // update themselves; their chip reads "kicked" meanwhile.
+      if (!currentClient(q.get('v'))) return refuseSocket('kicked', OLD_CLIENT_RETRY_MS);
     } else if (pathname.startsWith(ADMIN)) {
       if (!authorized(req.headers.get('Authorization'), env.ADMIN_TOKEN ?? ''))
         return new Response('unauthorized', { status: 401 });

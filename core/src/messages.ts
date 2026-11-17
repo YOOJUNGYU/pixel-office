@@ -42,7 +42,8 @@ export type ServerMessage =
   | TranscriptContext
   | TranscriptError
   | UsageNow
-  | UsageLoaded;
+  | UsageLoaded
+  | SessionsFound;
 
 export type ClientMessage =
   | WebviewReady
@@ -66,6 +67,7 @@ export type ClientMessage =
   | SubmitScore
   | OpenArcade
   | MoveAvatar
+  | AgentSeats
   | SetNotifications
   | OpenTranscript
   | LoadTranscriptBefore
@@ -73,6 +75,7 @@ export type ClientMessage =
   | SetRelayAdminToken
   | OpenUsage
   | CloseUsage
+  | FindSessions
   | RelayKick;
 
 export interface LayoutLoaded {
@@ -212,6 +215,7 @@ export interface OfficeAgentMessage {
   ctx?: AgentContext;
   title?: string;
   usage?: AgentUsage;
+  seat?: string;
   peer: PeerInfoMessage;
 }
 
@@ -568,14 +572,12 @@ export interface UsageNow {
 }
 
 export interface UsageLimit {
-  provider: AnonymousSchema_267;
+  provider: AgentProvider;
   windowMin: number;
   usedPct: number;
   resetsInSec: number;
   ageSec: number;
 }
-
-export type AnonymousSchema_267 = 'claude' | 'codex';
 
 export interface UsageLoaded {
   type: 'usageLoaded';
@@ -631,6 +633,18 @@ export interface UsageTopSession {
   lastTs: number;
   billable: number;
   exists: boolean;
+  activeMin?: number;
+  tools?: number;
+  edits?: number;
+  snippet?: string;
+}
+
+export interface SessionsFound {
+  type: 'sessionsFound';
+  q: string;
+  body: boolean;
+  sessions: UsageTopSession[];
+  more: boolean;
 }
 
 export interface WebviewReady {
@@ -738,6 +752,16 @@ export interface MoveAvatar {
   dir: AvatarDir;
 }
 
+export interface AgentSeats {
+  type: 'agentSeats';
+  seats: AgentSeat[];
+}
+
+export interface AgentSeat {
+  id: string;
+  seat: string;
+}
+
 export interface SetNotifications {
   type: 'setNotifications';
   presence?: boolean;
@@ -773,6 +797,12 @@ export interface OpenUsage {
 
 export interface CloseUsage {
   type: 'closeUsage';
+}
+
+export interface FindSessions {
+  type: 'findSessions';
+  q: string;
+  body?: boolean;
 }
 
 export interface RelayKick {

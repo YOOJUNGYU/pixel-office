@@ -65,16 +65,10 @@ export function tagText(a: OfficeAgent, parent?: OfficeAgent, withName = true): 
 /**
  * What an agent does, for its bubble and room card: the command alone for a run (its room,
  * 서버실, already says "running a command"), else the full activity text. A quiet agent
- * (another PC over the relay, no details) is just "working" unless idle or waiting.
+ * (another PC in the public office: no target) gets the act's target-free phrase.
  */
 export const activityText = (a: OfficeAgent): string =>
-  a.hidden
-    ? t('act.hidden')
-    : a.quiet && a.act !== 'idle' && a.act !== 'ask' && !a.permission
-      ? t('act.quiet')
-      : a.act === 'run' && a.target
-        ? a.target
-        : actText(a.act, a.target);
+  a.hidden ? t('act.hidden') : a.act === 'run' && a.target ? a.target : actText(a.act, a.target); // quiet: no target, so the target-free phrase
 
 /** The badge at the front of a tag (i18n-neutral): MAIN / SUB / SHELL. */
 export const tagBadge = (a: OfficeAgent): string => LAN_KIND_BADGES[a.kind].text;
@@ -444,6 +438,8 @@ export class LanAgents {
         if (seat !== null) this.enterRoom(id, a, seat);
       }
     }
+    this.seatPeers(agents, shown, talkOf);
+    this.reportSeats(agents, shown);
     // Each working character's PC screen follows its act (code / terminal / document).
     for (const a of agents) {
       const cid = this.ids.get(a.key);
@@ -456,6 +452,51 @@ export class LanAgents {
       ch.burn = burn === 0 ? undefined : burn;
     }
     requestRender('snapshot');
+  }
+
+  /** Other PCs' agents sit where their own PC sat them (`seat`, LAN): a clash goes to the
+   *  smaller peer id (mine count as claiming the seat they sit on); the loser is re-homed. */
+  private seatPeers(agents: OfficeAgent[], shown: Set<string>, talking: Map<string, string>) {
+    const os = this.os;
+    for (const a of agents) {
+      if (!a.seat || !shown.has(a.key) || talking.has(a.key) || this.isMine(a)) continue;
+      const id = this.ids.get(a.key)!;
+      const ch = os.characters.get(id);
+      if (!ch || ch.seatId === a.seat) continue;
+      const holder = os.seatHolder(a.seat);
+      const held = holder !== undefined ? this.byId.get(holder) : undefined;
+      if (held && (held.seat === a.seat || this.isMine(held)) && held.peer.id < a.peer.id) continue;
+      const label = ROOM_LABELS[a.room];
+      const claim = os.claimSeat(id, a.seat, label);
+      if (!claim) continue;
+      os.setFollowTarget(id, null);
+      this.enterRoom(id, a, a.seat);
+      const lost = claim.evicted !== undefined ? this.byId.get(claim.evicted) : undefined;
+      if (claim.evicted !== undefined && lost) this.enterRoom(claim.evicted, lost);
+    }
+  }
+
+  /** Where my agents sit, for the server to share with LAN peers (`agentSeats`, on change). */
+  onSeats: ((seats: Array<{ id: string; seat: string }>) => void) | null = null;
+  private seatsSent = '';
+
+  private reportSeats(agents: OfficeAgent[], shown: Set<string>): void {
+    if (!this.onSeats) return;
+    const seats: Array<{ id: string; seat: string }> = [];
+    for (const a of agents) {
+      if (!shown.has(a.key) || !this.isMine(a) || isDemoKey(a.key)) continue;
+      const seat = this.os.characters.get(this.ids.get(a.key)!)?.seatId;
+      if (seat) seats.push({ id: a.id, seat });
+    }
+    const key = JSON.stringify(seats);
+    if (key === this.seatsSent) return;
+    this.seatsSent = key;
+    this.onSeats(seats);
+  }
+
+  /** The server forgot them (a reconnect): the next snapshot reports my seats again. */
+  resendSeats(): void {
+    this.seatsSent = '';
   }
 
   /** A PC edited its profile: existing characters take the new look. */

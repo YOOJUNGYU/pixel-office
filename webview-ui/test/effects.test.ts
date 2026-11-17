@@ -47,10 +47,13 @@ test('celebration: a list finishing, or a main turn ending; not a child, not hid
   assert.deepEqual(run(ag(), ag({ act: 'idle', hidden: true })), []);
 });
 
-test('a quiet agent triggers no effects (no +N, smoke or confetti)', () => {
+test('a quiet agent (LAN public office, counts shared) triggers effects too', () => {
   const q = { quiet: true as const };
-  assert.deepEqual(run(ag({ ...q }), ag({ ...q, act: 'idle' })), []);
-  assert.deepEqual(run(ag({ ...q }), ag({ ...q, fail: true, diff: { add: 2, del: 0 } })), []);
+  const fx = run(ag({ ...q }), ag({ ...q, fail: true, diff: { add: 2, del: 0 } }));
+  assert.deepEqual(
+    fx.map((e) => e.kind),
+    ['plus', 'smoke'],
+  );
 });
 
 test('box on a new big result; newcomer and unchanged emit none', () => {

@@ -558,3 +558,30 @@
 .bubble-chat button:hover {
   opacity: 1;
 }
+
+/* Instant tooltip under a button (`data-tip`, top-left controls): shown on hover/focus at once,
+   unlike the native `title` delay; pixel panel look, left-aligned so the first button's tip
+   stays on screen. */
+@media (hover: hover) {
+  [data-tip] {
+    position: relative;
+  }
+  [data-tip]:hover::after,
+  [data-tip]:focus-visible::after {
+    content: attr(data-tip);
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 50;
+    padding: 3px 8px;
+    white-space: nowrap;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--color-text);
+    background: var(--color-bg-dark);
+    border: 2px solid var(--color-border);
+    border-radius: 0;
+    box-shadow: var(--shadow-pixel);
+    pointer-events: none;
+  }
+}

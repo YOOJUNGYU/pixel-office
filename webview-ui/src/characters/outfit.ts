@@ -3,14 +3,27 @@
 // wardrobe loads once, in the background: until then (and for a look it cannot draw) callers
 // fall back to the palette character.
 import { rgbaToHex } from '../../../core/src/assets/colorUtils.js';
+import {
+  CHAR_FRAME_H,
+  CHAR_FRAME_W,
+  CHAR_FRAMES_PER_ROW,
+} from '../../../core/src/assets/constants.js';
 import type { Outfit, OutfitColorKey } from '../../../core/src/lan.js';
 import { OUTFIT_COLOR_KEYS, OUTFIT_SLOTS } from '../../../core/src/lan.js';
+import { OUTFIT_FRAME_CACHE_MAX } from '../constants.js';
 import { requestRender } from '../office/engine/gameLoop.js';
 import type { SpriteData } from '../office/types.js';
 import { loadWardrobe } from './loadWardrobe.js';
 import { CharacterRenderer } from './renderer.js';
 import { SHEET_FRAMES_PER_ROW, SHEET_W } from './sheet.js';
-import { colorArt, type ColorKey, type RenderProfile, startingUtop, UNDERWEAR } from './slots.js';
+import {
+  canBlink,
+  colorArt,
+  type ColorKey,
+  type RenderProfile,
+  startingUtop,
+  UNDERWEAR,
+} from './slots.js';
 import type { CharacterColor } from './types.js';
 
 let renderer: CharacterRenderer | null = null;
@@ -63,10 +76,6 @@ export function outfitProfile(r: CharacterRenderer, o: Outfit): RenderProfile {
 }
 
 /** The composed RGBA sheet of an outfit, or null before the wardrobe is ready. */
-export function outfitSheet(o: Outfit): Uint8ClampedArray | null {
-  return renderer ? renderer.sheet(outfitProfile(renderer, o)) : null;
-}
-
 /** Per-direction frames (down, up, right x the office's 7) of a composed sheet. */
 export interface OutfitFrames {
   down: SpriteData[];
@@ -74,20 +83,15 @@ export interface OutfitFrames {
   right: SpriteData[];
 }
 
-const FRAME_W = 16;
-const FRAME_H = 32;
-/** The office's frames per row (walk1-3, type1-2, read1-2): the sheet's seated 8th is unused. */
-const OFFICE_FRAMES = 7;
-
 function sheetFrames(d: Uint8ClampedArray): OutfitFrames {
   const out: OutfitFrames = { down: [], up: [], right: [] };
   (['down', 'up', 'right'] as const).forEach((dir, row) => {
-    for (let f = 0; f < OFFICE_FRAMES && f < SHEET_FRAMES_PER_ROW; f++) {
+    for (let f = 0; f < CHAR_FRAMES_PER_ROW && f < SHEET_FRAMES_PER_ROW; f++) {
       const frame: SpriteData = [];
-      for (let y = 0; y < FRAME_H; y++) {
+      for (let y = 0; y < CHAR_FRAME_H; y++) {
         const line: string[] = [];
-        for (let x = 0; x < FRAME_W; x++) {
-          const i = ((row * FRAME_H + y) * SHEET_W + f * FRAME_W + x) * 4;
+        for (let x = 0; x < CHAR_FRAME_W; x++) {
+          const i = ((row * CHAR_FRAME_H + y) * SHEET_W + f * CHAR_FRAME_W + x) * 4;
           line.push(rgbaToHex(d[i], d[i + 1], d[i + 2], d[i + 3]));
         }
         frame.push(line);
@@ -101,21 +105,50 @@ function sheetFrames(d: Uint8ClampedArray): OutfitFrames {
 /** Stable cache key of an outfit (its content). */
 export const outfitKey = (o: Outfit): string => JSON.stringify(o);
 
-const frameCache = new Map<string, OutfitFrames>();
-const FRAME_CACHE_MAX = 200;
+/** The reading frames of a row (spriteData `reading`): bare eyes keep them open mid-blink, or
+ *  the blink would flash the glasses. */
+const READ_FRAMES = new Set([5, 6]);
 
-/** An outfit's office frames, or null before the wardrobe is ready. Cached per outfit. */
-export function outfitFrames(o: Outfit): OutfitFrames | null {
+/** Frames per outfit content (+ blink), least recently used first (editor thumbnails never
+ *  flush the office's looks: those are used every frame), and per outfit object (no stringify
+ *  per frame). `null` = this look cannot blink (closed eyes). */
+const frameCache = new Map<string, OutfitFrames | null>();
+const byObject = [
+  new WeakMap<Outfit, OutfitFrames | null>(),
+  new WeakMap<Outfit, OutfitFrames | null>(),
+];
+
+function build(o: Outfit, blink: boolean): OutfitFrames | null {
+  const r = renderer!;
+  const p = outfitProfile(r, o);
+  if (!blink) return sheetFrames(r.sheet(p));
+  if (!canBlink(p, false)) return null;
+  const shut = sheetFrames(r.sheet({ ...p, blink: true }));
+  if (canBlink(p, true)) return shut;
+  const open = outfitFrames(o)!;
+  const mix = (s: SpriteData[], k: keyof OutfitFrames) =>
+    s.map((f, i) => (READ_FRAMES.has(i) ? open[k][i] : f));
+  return { down: mix(shut.down, 'down'), up: mix(shut.up, 'up'), right: mix(shut.right, 'right') };
+}
+
+/** An outfit's office frames (`blink`: eyes shut; null when it cannot blink), or null before
+ *  the wardrobe is ready. Cached per outfit. */
+export function outfitFrames(o: Outfit, blink = false): OutfitFrames | null {
   if (!renderer) return null;
-  const key = outfitKey(o);
+  const objs = byObject[blink ? 1 : 0];
+  const hit = objs.get(o);
+  if (hit !== undefined) return hit;
+  const key = blink ? `${outfitKey(o)}|blink` : outfitKey(o);
   let f = frameCache.get(key);
-  if (!f) {
-    const sheet = outfitSheet(o);
-    if (!sheet) return null;
-    f = sheetFrames(sheet);
-    if (frameCache.size >= FRAME_CACHE_MAX) frameCache.clear();
-    frameCache.set(key, f);
+  if (f !== undefined)
+    frameCache.delete(key); // re-inserted below: now the most recent
+  else {
+    f = build(o, blink);
+    if (frameCache.size >= OUTFIT_FRAME_CACHE_MAX)
+      frameCache.delete(frameCache.keys().next().value as string);
   }
+  frameCache.set(key, f);
+  objs.set(o, f);
   return f;
 }
 

@@ -25,6 +25,7 @@ import {
   PERMISSION_MODE_SCAN_BYTES,
   POLL_INTERVAL_MS,
   SESSION_TTL_MS,
+  SHELL_SCAN_BYTES,
   TAIL_BYTES,
   TALK_MS,
   TALK_PENDING_MS,
@@ -130,8 +131,8 @@ const SHELL_LINE =
  * The background shells still running as of byte `end` (the tail's start): a restart reads
  * only the tail, and a long session's dev server was started far before it. Streams [0, end)
  * once, replaying only the lines that can start or end a shell into a scratch session.
- * ponytail: reads the whole head of every long live session at start; cache shells across
- * restarts if that ever shows up.
+ * At most SHELL_SCAN_BYTES back; shells older than the live process are dropped later
+ * (dropShellsBeforeStart).
  */
 async function earlierShells(
   file: string,
@@ -139,11 +140,19 @@ async function earlierShells(
   now: number,
 ): Promise<SessionState['shells']> {
   const scratch = newSession('claude', 'scan', 'main', now);
+  const start = Math.max(0, end - SHELL_SCAN_BYTES);
   const lines = readline.createInterface({
-    input: createReadStream(file, { start: 0, end: end - 1, encoding: 'utf8' }),
+    input: createReadStream(file, { start, end: end - 1, encoding: 'utf8' }),
     crlfDelay: Infinity,
   });
-  for await (const line of lines) if (SHELL_LINE.test(line)) applyClaudeLine(scratch, line, now);
+  let first = start > 0; // mid-line: not a whole record
+  for await (const line of lines) {
+    if (first) {
+      first = false;
+      continue;
+    }
+    if (SHELL_LINE.test(line)) applyClaudeLine(scratch, line, now);
+  }
   return scratch.shells;
 }
 
@@ -199,6 +208,8 @@ export class Scanner {
   ready: Promise<void> = Promise.resolve();
   /** Claude session ids whose registry pids are all dead (closed): dropped at once, not after the TTL. */
   private closed = new Set<string>();
+  /** Claude session id → when its live process started (registry `startedAt`). */
+  private started = new Map<string, number>();
   /** file → mtime when it was turned away (closed / expired): skipped until it changes. */
   private rejected = new Map<string, number>();
   /** Codex session_index.jsonl per path: `mtime:size` read last + id → thread name. */
@@ -241,6 +252,8 @@ export class Scanner {
       const state = await this.pids(domain, entries).catch(() => new Map());
       for (const e of entries) {
         const st = state.get(e.pid) ?? 'unknown';
+        if (st === 'alive' && e.startedAt !== undefined)
+          this.started.set(e.sessionId, Math.max(this.started.get(e.sessionId) ?? 0, e.startedAt));
         if (st === 'alive') alive.add(e.sessionId);
         else if (st === 'dead') dead.add(e.sessionId);
         else alive.add(e.sessionId); // unknown: never close on a failed check
@@ -287,7 +300,19 @@ export class Scanner {
         // vanished / unreadable: retry next cycle
       }
     }
+    this.dropShellsBeforeStart();
     this.primed = true;
+  }
+
+  /** Background shells die with the Claude process that started them: one started before its
+   *  session's live process (a resume, a restart) is gone, notification or not. */
+  private dropShellsBeforeStart(): void {
+    for (const { s } of this.files.values()) {
+      if (s.provider !== 'claude' || !s.shells.size) continue;
+      const startedAt = this.started.get(s.kind === 'main' ? s.id : (s.parentId ?? ''));
+      if (startedAt === undefined) continue;
+      for (const [id, sh] of s.shells) if (sh.since < startedAt) s.shells.delete(id);
+    }
   }
 
   async poll(): Promise<void> {
@@ -367,7 +392,7 @@ export class Scanner {
 
   /** This PC's main session `id`: title + folder for its notifications. LOCAL ONLY —
    *  never put into views()/packets. */
-  info(id: string): AgentInfo | undefined {
+  info(id: string, namedOnly = false): AgentInfo | undefined {
     for (const { s } of this.files.values()) {
       if (s.id !== id || s.kind !== 'main') continue;
       const l = s.local;
@@ -375,7 +400,8 @@ export class Scanner {
       if (s.provider === 'codex') {
         for (const idx of this.codexIndex.values()) named ||= idx.names.get(id) ?? '';
       }
-      return { title: named || l.prompt, folder: folderOf(l.cwd) };
+      // namedOnly (peers): a set or generated name only, never the prompt it falls back to.
+      return { title: named || (namedOnly ? '' : l.prompt), folder: folderOf(l.cwd) };
     }
     return undefined;
   }
@@ -455,10 +481,10 @@ export class Scanner {
         const views = toViews(t.s, brief, now);
         const heat = this.heatOf(file, now);
         if (heat) views[0].heat = heat;
-        if (brief) return views;
         this.attachUsage(file, t.s, views[0]);
-        // Local only: this PC's own snapshot shows each agent's session title in its bubble.
-        const title = this.titleOf(t.s);
+        // The bubble header's session title; peers (brief) get the session's own title only,
+        // never a subagent's task prompt (that is the work itself).
+        const title = this.titleOf(t.s, brief);
         if (title) for (const v of views) v.title = title;
         return views;
       });
@@ -494,12 +520,12 @@ export class Scanner {
   }
 
   /** The bubble title of a session (its shells share it): main → info().title; a subagent →
-   *  its own task prompt, else its parent's. LOCAL ONLY (views(brief=false) only). */
-  private titleOf(s: SessionState): string {
-    const raw =
-      s.kind === 'main'
-        ? (this.info(s.id)?.title ?? '')
-        : s.local.prompt || (this.info(s.parentId ?? '')?.title ?? '');
+   *  its own task prompt, else its parent's; `sessionOnly` (peers): the session's own name only
+   *  (custom / AI title, Codex thread name) — never a prompt, which is the work itself. */
+  private titleOf(s: SessionState, sessionOnly = false): string {
+    const own = s.kind === 'main' ? '' : sessionOnly ? '' : s.local.prompt;
+    const session = s.kind === 'main' ? s.id : (s.parentId ?? '');
+    const raw = own || (this.info(session, sessionOnly)?.title ?? '');
     const cps = Array.from(raw);
     return cps.length > VIEW_TITLE_MAX ? `${cps.slice(0, VIEW_TITLE_MAX - 1).join('')}…` : raw;
   }

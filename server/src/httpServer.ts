@@ -25,6 +25,7 @@ import {
   LOOPBACK_HOSTNAMES,
   PING_APP,
   SNAPSHOT_INTERVAL_MS,
+  USAGE_QUERY_MAX,
   WS_CLOSE_FORBIDDEN,
 } from './constants.js';
 import type { FileStateAdapter } from './fileStateAdapter.js';
@@ -190,8 +191,32 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
   const sendUsage = (c: WsLike, range: UsageRange): void => {
     if (options.usage) safeSend(c, { type: 'usageLoaded', ...options.usage.report(range) });
   };
-  /** openUsage / closeUsage (the page's usage panel); true when `msg` was one of them. */
+  /** The latest findSessions per socket: an older full-text search still running goes stale. */
+  const searches = new WeakMap<WsLike, number>();
+  let searchSeq = 0;
+  const findSessions = (socket: WsLike, msg: Record<string, unknown>): void => {
+    const usage = options.usage;
+    if (!usage || typeof msg.q !== 'string' || msg.q.length > USAGE_QUERY_MAX) return;
+    const q = msg.q;
+    const body = msg.body === true;
+    const seq = ++searchSeq;
+    searches.set(socket, seq);
+    const reply = (r: { sessions: unknown[]; more: boolean }) =>
+      safeSend(socket, { type: 'sessionsFound', q, body, ...r });
+    if (!body) return reply(usage.find(q));
+    usage
+      .search(q, () => searches.get(socket) !== seq)
+      .then((r) => {
+        if (searches.get(socket) === seq) reply(r);
+      })
+      .catch((err: unknown) => console.error('[Pixel Office] session search failed:', err));
+  };
+  /** openUsage / closeUsage / findSessions (the page's usage panel); true when `msg` was one. */
   const onUsageMessage = (socket: WsLike, msg: Record<string, unknown>): boolean => {
+    if (msg.type === 'findSessions') {
+      findSessions(socket, msg);
+      return true;
+    }
     if (msg.type === 'closeUsage') {
       usageRanges.delete(socket);
       return true;
@@ -300,6 +325,7 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     socket.on('close', () => {
       clients.delete(socket);
       usageRanges.delete(socket);
+      searches.delete(socket); // a running full-text search goes stale and stops
       options.transcripts?.close(socket);
     });
     // Every connection learns the server version at once, a reconnect too (no new

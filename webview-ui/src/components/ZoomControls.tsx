@@ -39,7 +39,7 @@ function ThemeToggle() {
       data-tour="theme-toggle"
       onClick={() => setThemePref(dark ? 'light' : 'dark')}
       className={BTN_CLASS}
-      title={t(dark ? 'theme.toLight' : 'theme.toDark')}
+      data-tip={t(dark ? 'theme.toLight' : 'theme.toDark')}
       aria-label={t(dark ? 'theme.toLight' : 'theme.toDark')}
     >
       {dark ? (
@@ -152,7 +152,7 @@ export function ZoomControls({
               data-tour="zoom-fit"
               onClick={onFit}
               className={BTN_CLASS}
-              title={t('zoom.fit')}
+              data-tip={t('zoom.fit')}
               aria-label={t('zoom.fit')}
             >
               {/* Four corners pointing out: fit to the window */}
@@ -174,7 +174,8 @@ export function ZoomControls({
                 onClick={() => onZoomChange(zoom * ZOOM_BUTTON_FACTOR)}
                 disabled={maxDisabled}
                 className={BTN_CLASS}
-                title={t('zoom.in')}
+                data-tip={t('zoom.in')}
+                aria-label={t('zoom.in')}
               >
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                   <line
@@ -202,7 +203,8 @@ export function ZoomControls({
                 onClick={() => onZoomChange(zoom / ZOOM_BUTTON_FACTOR)}
                 disabled={minDisabled}
                 className={BTN_CLASS}
-                title={t('zoom.out')}
+                data-tip={t('zoom.out')}
+                aria-label={t('zoom.out')}
               >
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                   <line

@@ -4,8 +4,9 @@ Cloudflare Worker + one Durable Object (`Hub`) that lists who is online across n
 (since app 1.0.64; the office itself stays on each LAN). Each PC tells it who it is once per
 connection and per change (`{t:'me', p}`: account, nickname, look, version, personal mode);
 the hub keeps that in the socket attachment and hands it to everyone (roster, `person`).
-These person records are plaintext to the relay by design. Older PCs' sealed `pub` datagrams
-are still routed (it sees only their ids). Arcade scores are refereed here too. Routing, budget and ban decisions live in `src/hub.ts` (tested by
+These person records are plaintext to the relay by design. PCs older than 1.0.64 are turned
+away by the Worker before the hub (no Durable Object request, no budget): close `kicked` with a
+24 h retry-after (`OLD_CLIENT_RETRY_MS`), so they keep their LAN and update themselves. Arcade scores are refereed here too. Routing, budget and ban decisions live in `src/hub.ts` (tested by
 `npm run test:relay` at the repo root); `src/index.ts` is the thin Worker/DO shell.
 
 ## Deploy

@@ -60,6 +60,8 @@ export const LINE_CLOCK_SLACK_MS = 60_000;
 export const TALK_PENDING_MS = 15_000;
 /** Bytes replayed from the end of a newly found transcript. */
 export const TAIL_BYTES = 64 * 1024;
+/** A restart looks this far back before the tail for background shells still running. */
+export const SHELL_SCAN_BYTES = 32 * 1024 * 1024;
 /** How far before the tail a Claude transcript is searched for its last permissionMode (a long
  *  autonomous turn writes none for MBs; without it every long command looks like a prompt). */
 export const PERMISSION_MODE_SCAN_BYTES = 16 * 1024 * 1024;
@@ -264,7 +266,7 @@ export const NOTIFY_TITLE_SHORT_MAX = 24;
 /** A session's first prompt is kept (local only) up to this many chars as its fallback title. */
 export const SESSION_PROMPT_MAX = 200;
 /** A session title in this PC's own bubble header (AgentView.title, local only), code points. */
-export const VIEW_TITLE_MAX = 60;
+export { VIEW_TITLE_MAX } from '../../core/src/lan.js';
 /** Codex `session_index.jsonl` (thread names): only its last this-many bytes are read. */
 export const CODEX_INDEX_MAX_BYTES = 256 * 1024;
 /** Transcript panel: one entry's text is clipped to this many chars (meta lines: the second). */
@@ -297,6 +299,19 @@ export const RELAY_PONG_TIMEOUT_MS = 2 * RELAY_PING_MS;
 export const RELAY_CONNECT_TIMEOUT_MS = 15_000;
 
 /** Token usage: burn rate is averaged over this window. */
+/** findSessions: longest query accepted (asyncapi maxLength). */
+export const USAGE_QUERY_MAX = 100;
+/** Session list: at most this many rows per answer (newest first). */
+export const USAGE_FIND_MAX = 100;
+/** Full-text search: stop after this many matching sessions, or this many bytes read. */
+export const USAGE_SEARCH_MAX_HITS = 30;
+export const USAGE_SEARCH_MAX_BYTES = 512 * 1024 * 1024;
+/** Full-text search: a transcript bigger than this is skipped (it is read whole). */
+export const USAGE_SEARCH_FILE_MAX_BYTES = 32 * 1024 * 1024;
+/** Characters of context either side of a search match in its snippet. */
+export const USAGE_SNIPPET_CONTEXT = 50;
+/** Session activity: a gap between two transcript lines up to this counts as active time. */
+export const USAGE_ACTIVE_GAP_MS = 5 * 60_000;
 export const USAGE_RATE_WINDOW_MS = 120_000;
 /** Token usage: a tool result of at least this many tokens (chars / USAGE_CHARS_PER_TOKEN) is "big". */
 export const USAGE_BIG_RESULT_TOKENS = 50_000;
@@ -320,3 +335,7 @@ export const USAGE_READ_CHUNK_BYTES = 8 * 1024 * 1024;
 export const ARCADE_HTTP_TIMEOUT_MS = 10_000;
 /** The board is re-read from the relay at most this often (every read costs relay budget). */
 export const ARCADE_BOARD_CACHE_MS = 10_000;
+
+/** agentSeats: rows kept, view-id length (the seat uid shape is core SEAT_ID). */
+export const MAX_SEAT_REPORT = 256;
+export const MAX_SEAT_VIEW_ID = 200;

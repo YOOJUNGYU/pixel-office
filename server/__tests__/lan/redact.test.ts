@@ -92,13 +92,24 @@ describe('status signals and quiet views', () => {
     title: 'my session',
     usage: { tokens: 1, rate: 2 },
   } as unknown as AgentView;
-  it('redactView keeps them (counts and a flag only) but never the local ctx', () => {
-    expect(redactView(v)).not.toHaveProperty('ctx');
-    expect(redactView(v)).not.toHaveProperty('title');
-    expect(redactView(v)).not.toHaveProperty('usage');
-    expect(redactView(v)).toMatchObject({ ageSec: 90, todo: { done: 1, total: 3 }, fail: true });
+  it('redactView keeps them, plus title, ctx and usage totals (LAN only since 1.0.65)', () => {
+    expect(redactView(v)).toMatchObject({
+      ageSec: 90,
+      todo: { done: 1, total: 3 },
+      fail: true,
+      ctx: { used: 10, window: 100 },
+      title: 'my session',
+      usage: { tokens: 1, rate: 2 },
+    });
+    const u = redactView({
+      ...v,
+      usage: { tokens: 1, rate: 2.4, cache: 9, big: { n: 1, last: 2 } },
+    });
+    expect(u.usage).toEqual({ tokens: 1, rate: 2 });
+    const t = redactView({ ...v, title: 'fix /home/kim/app/src/a.ts on 10.0.0.5' });
+    expect(t.title).toBe('fix a.ts on ***');
   });
-  it('quietView keeps act, room and waiting, drops the work details', () => {
+  it('quietView keeps act, room, waiting, counts and title; drops target and reason', () => {
     const w = {
       ...v,
       room: 'coding',
@@ -108,7 +119,9 @@ describe('status signals and quiet views', () => {
     } as AgentView;
     const q = quietView(w);
     for (const k of ['ageSec', 'todo', 'fail', 'diff', 'ctx', 'title', 'usage'])
-      expect(q).not.toHaveProperty(k);
+      expect(q).toHaveProperty(k);
+    expect(quietView({ ...w, act: 'mcp', target: 'github' }).target).toBe('github');
+    expect(quietView({ ...w, act: 'tool', target: 'rm -rf /x' }).target).toBe('');
     expect(quietView({ ...w, heat: { size: 2, burn: 3 } }).heat).toEqual({ size: 2, burn: 3 });
     expect(redactView({ ...w, heat: { size: 1, burn: 0 } }).heat).toEqual({ size: 1, burn: 0 });
     expect(q).toMatchObject({

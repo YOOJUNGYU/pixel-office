@@ -4,12 +4,21 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import type { Provider } from '../../../core/src/lan.js';
-import type { UsageLimit, UsageLoaded } from '../../../core/src/messages.js';
+import type {
+  UsageLimit,
+  UsageLoaded,
+  UsageTopSession as SessionRow,
+} from '../../../core/src/messages.js';
 import {
   USAGE_FILE,
+  USAGE_FIND_MAX,
   USAGE_RATE_WINDOW_MS,
   USAGE_READ_CHUNK_BYTES,
   USAGE_SAVE_DELAY_MS,
+  USAGE_SEARCH_FILE_MAX_BYTES,
+  USAGE_SEARCH_MAX_BYTES,
+  USAGE_SEARCH_MAX_HITS,
+  USAGE_SNIPPET_CONTEXT,
   USAGE_VERSION,
   VIEW_TITLE_MAX,
 } from '../constants.js';
@@ -17,12 +26,16 @@ import { codexSessionMeta } from './codexParser.js';
 import type { Roots } from './roots.js';
 import type { TranscriptSource } from './scanner.js';
 import { folderOf } from './session.js';
+import { parseLines } from './transcript.js';
 import { addDays, dayKey, dayRange, dayStart } from './usageDays.js';
 import {
+  type Activity,
   billable,
   cacheLeft,
   type FileFold,
+  foldActivity,
   foldLine,
+  newActivity,
   newFold,
   rateOf,
   type Tally,
@@ -57,6 +70,8 @@ interface SessionEntry {
   lastTs: number;
   tally: Tally;
   mainFile?: string;
+  /** Activity: tool calls and edits of every file, active time of the main file only. */
+  act?: { ms: number; tools: number; edits: number };
 }
 type Days = Record<string, Record<string, Record<string, Record<string, Tally>>>>;
 interface Candidate {
@@ -385,15 +400,140 @@ export class UsageIndex {
       top: inRange
         .sort((a, b) => billable(b[1].tally) - billable(a[1].tally))
         .slice(0, TOP_SESSIONS)
-        .map(([key, s]) => ({
-          key,
-          provider: s.provider,
-          title: s.title,
-          folder: s.folder,
-          lastTs: s.lastTs,
-          billable: billable(s.tally),
-          exists: !!s.mainFile && fs.existsSync(s.mainFile),
-        })),
+        .map(([key, s]) => this.row(key, s)),
+    };
+  }
+
+  private addAct(s: SessionEntry, e: FileEntry, from: Activity, to: Activity): void {
+    const a = (s.act ??= { ms: 0, tools: 0, edits: 0 });
+    if (!e.sub) a.ms += to.ms - from.ms;
+    a.tools += to.tools - from.tools;
+    a.edits += to.edits - from.edits;
+  }
+
+  /** A file folded before activity existed: count it over what was already read, once. */
+  private async backfill(e: FileEntry, file: string): Promise<void> {
+    const act = newActivity();
+    e.fold.act = act; // set first: a failed read is not retried (ponytail: undercounts that file)
+    const s = this.sessions[e.key];
+    let pending: Buffer = Buffer.alloc(0); // whole bytes: no UTF-8 split across chunks
+    let pos = 0;
+    // Spans folded before 1.0.65 took undated lines as the scan time: redo them from dated ones.
+    let first = 0;
+    let last = 0;
+    try {
+      const fh = await fs.promises.open(file, 'r');
+      try {
+        while (pos < e.offset) {
+          const buf = Buffer.alloc(Math.min(this.chunk, e.offset - pos));
+          const { bytesRead } = await fh.read(buf, 0, buf.length, pos);
+          if (!bytesRead) break;
+          pos += bytesRead;
+          const data = Buffer.concat([pending, buf.subarray(0, bytesRead)]);
+          const end = data.lastIndexOf(10) + 1;
+          pending = data.subarray(end);
+          for (const line of data.subarray(0, end).toString('utf8').split('\n')) {
+            const ts = foldRaw(act, e.fold.provider, line);
+            if (ts !== undefined) {
+              if (!first || ts < first) first = ts;
+              if (ts > last) last = ts;
+            }
+          }
+          await yieldLoop();
+        }
+      } finally {
+        await fh.close();
+      }
+    } catch {
+      // gone: keep what was counted
+    }
+    if (last) {
+      e.fold.firstTs = first;
+      e.fold.lastTs = last;
+    }
+    if (s) {
+      this.addAct(s, e, newActivity(), act);
+      const folds = Object.values(this.files).filter(
+        (f) => !f.skip && f.key === e.key && f.fold.lastTs,
+      );
+      if (folds.length) {
+        s.firstTs = Math.min(...folds.map((f) => f.fold.firstTs || f.fold.lastTs));
+        s.lastTs = Math.max(...folds.map((f) => f.fold.lastTs));
+      }
+    }
+    this.dirty = true;
+  }
+
+  /** Sessions whose title or folder contains `q` (all when empty), newest first. */
+  find(q: string): { sessions: SessionRow[]; more: boolean } {
+    const needle = q.trim().toLowerCase();
+    const all = Object.entries(this.sessions)
+      .filter(
+        ([, s]) =>
+          s.mainFile &&
+          (!needle ||
+            s.title.toLowerCase().includes(needle) ||
+            s.folder.toLowerCase().includes(needle)),
+      )
+      .sort((a, b) => b[1].lastTs - a[1].lastTs);
+    return {
+      sessions: all.slice(0, USAGE_FIND_MAX).map(([key, s]) => this.row(key, s)),
+      more: all.length > USAGE_FIND_MAX,
+    };
+  }
+
+  /** Sessions whose prompts or replies contain `q`, newest first, each with a snippet of its
+   *  latest match. Stops at USAGE_SEARCH_MAX_HITS sessions or USAGE_SEARCH_MAX_BYTES read
+   *  (`more`), or when `stale()` says a newer search replaced this one. */
+  async search(
+    q: string,
+    stale: () => boolean,
+  ): Promise<{ sessions: SessionRow[]; more: boolean }> {
+    const needle = q.trim().toLowerCase();
+    const out: SessionRow[] = [];
+    if (!needle) return { sessions: out, more: false };
+    const order = Object.entries(this.sessions)
+      .filter(([, s]) => s.mainFile)
+      .sort((a, b) => b[1].lastTs - a[1].lastTs);
+    let budget = USAGE_SEARCH_MAX_BYTES;
+    for (const [key, s] of order) {
+      if (stale()) return { sessions: out, more: false };
+      if (out.length >= USAGE_SEARCH_MAX_HITS || budget <= 0) return { sessions: out, more: true };
+      let text: string;
+      try {
+        const st = await fs.promises.stat(s.mainFile!);
+        // ponytail: a transcript over the per-file cap is skipped (read whole, it would hold the
+        // event loop); stream it in chunks if huge sessions must be searchable.
+        if (st.size > USAGE_SEARCH_FILE_MAX_BYTES || st.size > budget) {
+          budget -= Math.min(st.size, budget);
+          continue;
+        }
+        budget -= st.size;
+        text = await fs.promises.readFile(s.mainFile!, 'utf8');
+      } catch {
+        continue; // deleted
+      }
+      const snippet = findSnippet(s.provider, text, needle);
+      if (snippet !== undefined) out.push({ ...this.row(key, s), snippet });
+      await yieldLoop();
+    }
+    return { sessions: out, more: false };
+  }
+
+  private row(key: string, s: SessionEntry): SessionRow {
+    return {
+      key,
+      provider: s.provider,
+      title: s.title,
+      folder: s.folder,
+      lastTs: s.lastTs,
+      billable: billable(s.tally),
+      exists: !!s.mainFile && fs.existsSync(s.mainFile),
+      ...(s.act && {
+        activeMin: Math.round(s.act.ms / 60_000),
+        tools: s.act.tools,
+        edits: s.act.edits,
+      }),
     };
   }
 
@@ -452,10 +592,13 @@ export class UsageIndex {
       }
       return false;
     }
+    // A shrunk file is re-read from 0 below: backfilling its old offset would count it twice.
+    if (e && !e.fold.act && st.size >= e.offset) await this.backfill(e, c.file);
     if (e && st.size === e.size) return false;
     if (e && st.size < e.offset) {
       // rewritten: take the old fold back out (ponytail: all of it from the day of its last line)
       const s = this.sessions[e.key];
+      if (s && e.fold.act) this.addAct(s, e, e.fold.act, newActivity());
       const neg = {
         input: -e.fold.total.input,
         output: -e.fold.total.output,
@@ -553,6 +696,7 @@ export class UsageIndex {
       tally: zero(),
     });
     let any = false;
+    const before = { ...(e.fold.act ?? newActivity()) };
     for (const line of whole.toString('utf8').split('\n')) {
       if (!line) continue;
       const r = foldLine(e.fold, line, now);
@@ -561,6 +705,7 @@ export class UsageIndex {
       addTo(this.bucket(r.ts, e.fold, r.model || e.fold.model), r.d);
       addTo(s.tally, r.d);
     }
+    if (e.fold.act) this.addAct(s, e, before, e.fold.act);
     const f = e.fold;
     if (f.firstTs && (!s.firstTs || f.firstTs < s.firstTs)) s.firstTs = f.firstTs;
     s.lastTs = Math.max(s.lastTs, f.lastTs);
@@ -572,6 +717,42 @@ export class UsageIndex {
     } else if (!s.folder && f.cwd) s.folder = folderOf(f.cwd);
     return any;
   }
+}
+
+/** One line into an activity (backfill: no token tally); its own time, if dated. */
+function foldRaw(a: Activity, provider: Provider, line: string): number | undefined {
+  if (!line) return undefined;
+  try {
+    const r = JSON.parse(line) as unknown;
+    if (!r || typeof r !== 'object') return undefined;
+    const o = r as Record<string, unknown>;
+    foldActivity(a, provider, o);
+    const ts = typeof o.timestamp === 'string' ? Date.parse(o.timestamp) : NaN;
+    return Number.isFinite(ts) ? ts : undefined;
+  } catch {
+    return undefined; // not JSON
+  }
+}
+
+/** The latest prompt/reply of a transcript containing `needle` (lower case): ±context chars. */
+export function findSnippet(provider: Provider, text: string, needle: string): string | undefined {
+  // Cheap rejects on the raw JSON lines: the needle as JSON escapes it (quotes, backslashes).
+  const raw = JSON.stringify(needle).slice(1, -1);
+  if (!text.toLowerCase().includes(raw)) return undefined;
+  const lines = text.split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (!lines[i].toLowerCase().includes(raw)) continue;
+    for (const e of parseLines(provider, [lines[i]]).reverse()) {
+      if (e.kind !== 'user' && e.kind !== 'assistant') continue;
+      const flat = e.text.replace(/\s+/g, ' ');
+      const at = flat.toLowerCase().indexOf(needle);
+      if (at < 0) continue;
+      const from = Math.max(0, at - USAGE_SNIPPET_CONTEXT);
+      const to = Math.min(flat.length, at + needle.length + USAGE_SNIPPET_CONTEXT);
+      return `${from > 0 ? '…' : ''}${flat.slice(from, to)}${to < flat.length ? '…' : ''}`;
+    }
+  }
+  return undefined;
 }
 
 /** Transcript source for the popout: `usage:<key>` = a finished session out of the index (the

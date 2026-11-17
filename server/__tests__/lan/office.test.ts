@@ -110,14 +110,18 @@ describe('LanService', () => {
     expect(asked).toEqual([true, undefined]);
   });
 
-  it('public presence is quiet (UDP and relay alike); team and my own snapshot keep detail', () => {
+  it('public presence is quiet (no target/reason, counts and title shared); team and my own snapshot keep detail', () => {
     const lan = new LanService(
       { ...profile },
-      { views: () => [view({ act: 'edit', ageSec: 5, todo: { done: 1, total: 2 }, fail: true })] },
+      {
+        views: () => [
+          view({ act: 'edit', ageSec: 5, todo: { done: 1, total: 2 }, fail: true, title: 'T' }),
+        ],
+      },
     );
     const [q] = lan.packet(PUBLIC_VIEW).views;
     expect(q).toMatchObject({ act: 'edit', room: 'coding', target: '', reason: '', quiet: true });
-    for (const k of ['ageSec', 'todo', 'fail']) expect(q).not.toHaveProperty(k);
+    expect(q).toMatchObject({ ageSec: 5, todo: { done: 1, total: 2 }, fail: true, title: 'T' });
     const [team] = lan.packet('team-tag').views;
     expect(team).toMatchObject({ target: 'a.ts', ageSec: 5 });
     expect(team).not.toHaveProperty('quiet');
@@ -148,6 +152,16 @@ describe('LanService', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it("agentSeats: my page's seats go into that office's presence only", () => {
+    const lan = new LanService({ ...profile }, { views: () => [view({ act: 'edit' })] });
+    lan.setSeats([
+      { id: 's1', seat: 'lan-007:1' },
+      { id: 'x', seat: 'bad seat!' },
+    ]);
+    expect(lan.packet(PUBLIC_VIEW).views[0].seat).toBe('lan-007:1');
+    expect(lan.packet('team-tag').views[0]).not.toHaveProperty('seat');
   });
 
   it('packet() never throws: a failing scan sends no views', () => {

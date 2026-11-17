@@ -227,6 +227,10 @@ export interface Character {
   hueShift: number;
   /** Wardrobe look (its PC's profile); unset = the palette character. */
   outfit?: Outfit;
+  /** Wardrobe looks only (office/engine/blink.ts): when the eyes next shut (absolute s). */
+  blinkAt?: number;
+  /** While shut: when they open again (absolute s; 0/unset = open). */
+  openAt?: number;
   /** Bundled pet id drawn instead of the `palette` human (absent, or not loaded = human). */
   pet?: string;
   /** Animation frame index */

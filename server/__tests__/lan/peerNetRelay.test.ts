@@ -1,9 +1,10 @@
 import * as dgram from 'dgram';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { AgentView, LayoutRev } from '../../../core/src/lan.js';
+import type { AgentView, LayoutRev, Outfit } from '../../../core/src/lan.js';
 import { DEFAULT_LAYOUT_REV, PUBLIC_VIEW } from '../../../core/src/lan.js';
 import type { PubWire, RelayDown, RelayPerson } from '../../../core/src/relay.js';
+import { RELAY_PERSON_MAX_BYTES } from '../../../core/src/relay.js';
 import type { Identity } from '../../src/lan/crypto.js';
 import { createIdentity, teamKey, teamTag } from '../../src/lan/crypto.js';
 import type { TeamChannel } from '../../src/lan/peerNet.js';
@@ -64,6 +65,7 @@ interface Node {
   /** Personal mode (PeerNet `offline`). */
   personal: boolean;
   nickname: string;
+  outfit?: Outfit;
 }
 
 /** In-memory hub: a node's relay.send routes each wire to its `to` node, synchronously. */
@@ -97,7 +99,14 @@ function hub() {
       identity: node.id,
       getPacket: () => ({
         v: 1,
-        peer: { id: node.id.id, account: name, nickname: node.nickname, palette: 0, hueShift: 0 },
+        peer: {
+          id: node.id.id,
+          account: name,
+          nickname: node.nickname,
+          palette: 0,
+          hueShift: 0,
+          ...(node.outfit && { outfit: node.outfit }),
+        },
         views: node.quiet ? node.views.map(quietView) : node.views,
         ...(node.avatar && { avatar: { ...node.avatar } }),
         layout: node.layout,
@@ -348,7 +357,7 @@ describe('PeerNet over the relay (who is online only)', () => {
     // B's old-style full presence, sealed for A as a pub wire
     const o = b.net as unknown as {
       sealPub(id: string, h: unknown, t: string[]): PubWire[];
-      hellos: Map<string, unknown>;
+      relayKeys: Map<string, unknown>;
     };
     const full = JSON.stringify({
       seq: Date.now() + 1e9,
@@ -359,7 +368,7 @@ describe('PeerNet over the relay (who is online only)', () => {
         avatar: { col: 1, row: 1, dir: 'up' },
       },
     });
-    a.net.relayDown({ t: 'w', w: o.sealPub(a.id.id, o.hellos.get(a.id.id), [full]) });
+    a.net.relayDown({ t: 'w', w: o.sealPub(a.id.id, o.relayKeys.get(a.id.id), [full]) });
     expect(a.net.peers(PUBLIC_VIEW)).toEqual([]);
     expect(a.net.directory().public[0].nickname).toBe('Old');
   });
@@ -439,6 +448,32 @@ describe('PeerNet over the relay (who is online only)', () => {
     expect(a.net.netOf(b.id.id)).toBeUndefined();
     expect(a.net.viaOf(b.id.id)).toBeUndefined();
     expect(a.net.viaOf('nobody')).toBeUndefined();
+  });
+
+  it('a person over the relay cap goes without its look (listed rather than dropped)', async () => {
+    const h = hub();
+    const a = await h.mk('A');
+    const b = await h.mk('B');
+    a.outfit = { body: 'flat', parts: { hair: 'x'.repeat(RELAY_PERSON_MAX_BYTES) } };
+    h.connect();
+    tickAll([a, b]);
+    expect(a.sent.at(-1)?.peer).not.toHaveProperty('outfit');
+    expect(dirIds(b, 'public')).toEqual([a.id.id]);
+    a.outfit = { body: 'flat', parts: { hair: 'bob' } };
+    clock.t += 1_000;
+    a.net.sendNow();
+    expect(a.sent.at(-1)?.peer).toHaveProperty('outfit');
+  });
+
+  it('relay people never take LAN hello places, never get pinned', async () => {
+    const h = hub();
+    const a = await h.mk('A', [], false);
+    const o = a.net as unknown as { hellos: Map<string, unknown> };
+    const r = createIdentity('R');
+    a.net.relayOpened();
+    a.net.relayDown({ t: 'roster', peers: [{ id: r.id, pk: r.publicKey }] });
+    expect(o.hellos.size).toBe(0);
+    expect(a.pins.has(r.id)).toBe(false);
   });
 
   it('lists far more relay people than MAX_HELLO_PEERS', async () => {

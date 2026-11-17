@@ -34,14 +34,15 @@ export function ServerPanel() {
   const [now, setNow] = useState(() => Date.now());
   const [before, setBefore] = useState(startedBefore);
 
-  useEffect(
-    () =>
-      transport.onStateChange((s) => {
-        setState(s);
-        if (s === 'connected') setEverConnected(true);
-      }),
-    [],
-  );
+  useEffect(() => {
+    const on = (s: typeof transport.state) => {
+      setState(s);
+      if (s === 'connected') setEverConnected(true);
+    };
+    const off = transport.onStateChange(on);
+    on(transport.state); // it may have connected between the first render and this effect
+    return off;
+  }, []);
   useEffect(() => {
     const id = setTimeout(() => setGraceOver(true), SERVER_PANEL_GRACE_MS);
     return () => clearTimeout(id);

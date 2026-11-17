@@ -2,6 +2,7 @@ import type { Provider } from '../../../core/src/lan.js';
 import {
   CLAUDE_CACHE_TTL_LONG_MS,
   CLAUDE_CACHE_TTL_MS,
+  USAGE_ACTIVE_GAP_MS,
   USAGE_BIG_RESULT_TOKENS,
   USAGE_CHARS_PER_TOKEN,
   USAGE_MSG_KEEP,
@@ -37,6 +38,42 @@ export interface FileFold {
   cache1h?: boolean;
   /** Codex: the latest `rate_limits` windows (resetsAt in ms). */
   limits?: { ts: number; windows: LimitWindow[] };
+  /** Activity (absent in files folded before 1.0.65 until `UsageIndex` backfills it). */
+  act?: Activity;
+}
+/** Work done in a file: active ms (gaps between lines ≤ USAGE_ACTIVE_GAP_MS), tool calls, edits;
+ *  `at` = the last line's time. */
+export interface Activity {
+  ms: number;
+  at: number;
+  tools: number;
+  edits: number;
+}
+export const newActivity = (): Activity => ({ ms: 0, at: 0, tools: 0, edits: 0 });
+
+/** Tools that change files (Claude names, Codex `apply_patch`). */
+const EDIT_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', 'NotebookEdit', 'apply_patch']);
+
+/** Folds one parsed line into `a`. */
+export function foldActivity(a: Activity, provider: Provider, r: Obj): void {
+  // Only a line's own time: undated lines (snapshots, titles) would read as "now".
+  const ts = typeof r.timestamp === 'string' ? Date.parse(r.timestamp) : NaN;
+  if (Number.isFinite(ts)) {
+    if (a.at && ts > a.at && ts - a.at <= USAGE_ACTIVE_GAP_MS) a.ms += ts - a.at;
+    if (ts > a.at) a.at = ts;
+  }
+  const call = (name: string) => {
+    a.tools++;
+    if (EDIT_TOOLS.has(name)) a.edits++;
+  };
+  if (provider === 'claude') {
+    const content = obj(r.message).content;
+    if (r.type === 'assistant' && Array.isArray(content))
+      for (const b of content) if (obj(b).type === 'tool_use') call(str(obj(b).name));
+  } else if (r.type === 'response_item') {
+    const p = obj(r.payload);
+    if (p.type === 'function_call' || p.type === 'custom_tool_call') call(str(p.name));
+  }
 }
 export interface LimitWindow {
   pct: number;
@@ -57,6 +94,7 @@ export function newFold(provider: Provider): FileFold {
     lastTs: 0,
     big: { n: 0, last: 0 },
     recent: [],
+    act: newActivity(),
   };
 }
 
@@ -218,8 +256,12 @@ export function foldLine(
   if (!rec || typeof rec !== 'object') return null;
   const r = rec as Obj;
   const ts = lineTime(r.timestamp, now);
-  if (!f.firstTs || ts < f.firstTs) f.firstTs = ts;
-  if (ts > f.lastTs) f.lastTs = ts;
+  if (f.act) foldActivity(f.act, f.provider, r);
+  // Session span from dated lines only (an undated snapshot would read as the scan time).
+  if (typeof r.timestamp === 'string') {
+    if (!f.firstTs || ts < f.firstTs) f.firstTs = ts;
+    if (ts > f.lastTs) f.lastTs = ts;
+  }
   const cwd = f.provider === 'claude' ? r.cwd : obj(r.payload).cwd;
   if (
     typeof cwd === 'string' &&

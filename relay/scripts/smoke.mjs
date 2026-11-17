@@ -12,7 +12,7 @@ const tag = Date.now().toString(36);
 const A = `smokeA-${tag}`;
 const B = `smokeB-${tag}`;
 
-const open = (id, pk) => new WebSocket(`${base}?id=${id}&pk=${encodeURIComponent(pk)}&v=smoke`);
+const open = (id, pk) => new WebSocket(`${base}?id=${id}&pk=${encodeURIComponent(pk)}&v=1.0.64`);
 const fail = (why) => {
   console.error(`FAIL: ${why}`);
   process.exit(1);

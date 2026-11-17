@@ -14,16 +14,15 @@ const hhmm = (ms: number): string => {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-/** null = no chip (relay off). */
+/** null = no chip (relay off, or connected: nothing to say). */
 export function relayStatusView(
   s: Pick<RelayState, 'state' | 'retryInMs'>,
   now: number,
 ): RelayStatusView | null {
   switch (s.state) {
     case 'off':
-      return null;
     case 'connected':
-      return { key: 'relay.connected', tone: 'ok' };
+      return null;
     case 'connecting':
       return { key: 'relay.connecting', tone: 'muted' };
     case 'budget':

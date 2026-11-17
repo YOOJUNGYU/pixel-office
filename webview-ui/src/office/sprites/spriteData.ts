@@ -1,5 +1,5 @@
 import type { Outfit } from '../../../../core/src/lan.js';
-import { outfitFrames, outfitKey } from '../../characters/outfit.js';
+import { outfitFrames } from '../../characters/outfit.js';
 import type { ColorValue } from '../../components/ui/types.js';
 import {
   CHARACTER_SKIN_COLORS,
@@ -138,47 +138,60 @@ function emptySprite(w: number, h: number): SpriteData {
   return rows;
 }
 
+/** A wardrobe look's sprites, per frames object (frames are cached per outfit content). */
+const outfitSprites = new WeakMap<LoadedCharacterData, CharacterSprites>();
+
+/** A character's walk / typing / reading frames from its down/up/right rows (left = mirrored). */
+function spritesOf(char: LoadedCharacterData): CharacterSprites {
+  const d = char.down;
+  const u = char.up;
+  const rt = char.right;
+  const flip = flipSpriteHorizontal;
+  return {
+    walk: {
+      [Dir.DOWN]: [d[0], d[1], d[2], d[1]],
+      [Dir.UP]: [u[0], u[1], u[2], u[1]],
+      [Dir.RIGHT]: [rt[0], rt[1], rt[2], rt[1]],
+      [Dir.LEFT]: [flip(rt[0]), flip(rt[1]), flip(rt[2]), flip(rt[1])],
+    },
+    typing: {
+      [Dir.DOWN]: [d[3], d[4]],
+      [Dir.UP]: [u[3], u[4]],
+      [Dir.RIGHT]: [rt[3], rt[4]],
+      [Dir.LEFT]: [flip(rt[3]), flip(rt[4])],
+    },
+    reading: {
+      [Dir.DOWN]: [d[5], d[6]],
+      [Dir.UP]: [u[5], u[6]],
+      [Dir.RIGHT]: [rt[5], rt[6]],
+      [Dir.LEFT]: [flip(rt[5]), flip(rt[6])],
+    },
+  } as CharacterSprites;
+}
+
 export function getCharacterSprites(
   paletteIndex: number,
   hueShift = 0,
   outfit?: Outfit,
+  blink = false,
 ): CharacterSprites {
-  // A wardrobe look, once the wardrobe has loaded (until then: the palette character).
-  const frames = outfit ? outfitFrames(outfit) : null;
-  const cacheKey = frames && outfit ? `o:${outfitKey(outfit)}` : `${paletteIndex}:${hueShift}`;
+  // A wardrobe look, once the wardrobe has loaded (until then: the palette character), its
+  // eyes shut mid-blink when it can. Runs every frame per character: no string keys here.
+  const frames = outfit ? (blink && outfitFrames(outfit, true)) || outfitFrames(outfit) : null;
+  if (frames) {
+    let worn = outfitSprites.get(frames);
+    if (!worn) outfitSprites.set(frames, (worn = spritesOf(frames)));
+    return worn;
+  }
+  const cacheKey = `${paletteIndex}:${hueShift}`;
   const cached = spriteCache.get(cacheKey);
   if (cached) return cached;
 
   let sprites: CharacterSprites;
 
-  if (frames || loadedCharacters) {
+  if (loadedCharacters) {
     // Use pre-colored character sprites directly (no palette swapping)
-    const char = frames ?? loadedCharacters![paletteIndex % loadedCharacters!.length];
-    const d = char.down;
-    const u = char.up;
-    const rt = char.right;
-    const flip = flipSpriteHorizontal;
-
-    sprites = {
-      walk: {
-        [Dir.DOWN]: [d[0], d[1], d[2], d[1]],
-        [Dir.UP]: [u[0], u[1], u[2], u[1]],
-        [Dir.RIGHT]: [rt[0], rt[1], rt[2], rt[1]],
-        [Dir.LEFT]: [flip(rt[0]), flip(rt[1]), flip(rt[2]), flip(rt[1])],
-      },
-      typing: {
-        [Dir.DOWN]: [d[3], d[4]],
-        [Dir.UP]: [u[3], u[4]],
-        [Dir.RIGHT]: [rt[3], rt[4]],
-        [Dir.LEFT]: [flip(rt[3]), flip(rt[4])],
-      },
-      reading: {
-        [Dir.DOWN]: [d[5], d[6]],
-        [Dir.UP]: [u[5], u[6]],
-        [Dir.RIGHT]: [rt[5], rt[6]],
-        [Dir.LEFT]: [flip(rt[5]), flip(rt[6])],
-      },
-    };
+    sprites = spritesOf(loadedCharacters[paletteIndex % loadedCharacters.length]);
   } else {
     // Fallback: return transparent placeholder sprites (16×32)
     const e = emptySprite(16, 32);
@@ -206,8 +219,8 @@ export function getCharacterSprites(
     };
   }
 
-  // Apply hue shift if non-zero (a wardrobe look has its own colours)
-  if (hueShift !== 0 && !frames) {
+  // Apply hue shift if non-zero
+  if (hueShift !== 0) {
     sprites = hueShiftSprites(sprites, hueShift);
   }
 

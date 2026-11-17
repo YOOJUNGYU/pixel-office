@@ -12,6 +12,9 @@ interface MenuButtonsProps {
   /** null hides the usage button (read-only viewers, mobile). */
   onToggleUsage: (() => void) | null;
   isUsageOpen: boolean;
+  /** Other PCs' agents' speech bubbles shown (default) or hidden; null hides the button. */
+  othersBubbles: boolean;
+  onToggleOthersBubbles: (() => void) | null;
 }
 
 /** Layout and Settings as icon buttons: the first two of the top-left row (ZoomControls). */
@@ -22,6 +25,8 @@ export function MenuButtons({
   onToggleSettings,
   onToggleUsage,
   isUsageOpen,
+  othersBubbles,
+  onToggleOthersBubbles,
 }: MenuButtonsProps) {
   useLang();
   return (
@@ -33,7 +38,7 @@ export function MenuButtons({
           onClick={onToggleEditMode}
           data-tour="layout-button"
           className={BTN_CLASS}
-          title={t('toolbar.layoutTitle')}
+          data-tip={t('toolbar.layoutTitle')}
           aria-label={t('toolbar.layoutTitle')}
           aria-pressed={isEditMode}
         >
@@ -50,7 +55,7 @@ export function MenuButtons({
         onClick={onToggleSettings}
         data-tour="settings-button"
         className={BTN_CLASS}
-        title={t('toolbar.settings')}
+        data-tip={t('toolbar.settings')}
         aria-label={t('toolbar.settings')}
         aria-pressed={isSettingsOpen}
       >
@@ -80,7 +85,7 @@ export function MenuButtons({
           aria-pressed={isUsageOpen}
           data-tour="usage-button"
           className={BTN_CLASS}
-          title={t('usage.window')}
+          data-tip={t('usage.window')}
           aria-label={t('usage.window')}
         >
           {/* Bar chart */}
@@ -96,6 +101,33 @@ export function MenuButtons({
             <rect x="7.5" y="4" width="3" height="11" />
             <rect x="13" y="7" width="3" height="8" />
             <rect x="1" y="15" width="16" height="2" />
+          </svg>
+        </Button>
+      )}
+      {onToggleOthersBubbles && (
+        <Button
+          size="icon_lg"
+          variant={othersBubbles ? 'default' : 'active'}
+          onClick={onToggleOthersBubbles}
+          aria-pressed={!othersBubbles}
+          data-others-bubbles={othersBubbles}
+          className={BTN_CLASS}
+          data-tip={t(othersBubbles ? 'toolbar.othersBubbles.hide' : 'toolbar.othersBubbles.show')}
+          aria-label={t(
+            othersBubbles ? 'toolbar.othersBubbles.hide' : 'toolbar.othersBubbles.show',
+          )}
+        >
+          {/* Speech bubble; struck through while others' are hidden */}
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+            <path
+              d="M2 3h14v9H8l-4 3v-3H2Z"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinejoin="round"
+            />
+            {!othersBubbles && (
+              <line x1="2" y1="16" x2="16" y2="1" stroke="currentColor" strokeWidth="2" />
+            )}
           </svg>
         </Button>
       )}

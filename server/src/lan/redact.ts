@@ -1,4 +1,4 @@
-import type { AgentView } from '../../../core/src/lan.js';
+import type { AgentUsage, AgentView } from '../../../core/src/lan.js';
 
 // Placeholders are language-neutral: every viewer shows them as-is.
 const DIR = '…';
@@ -84,15 +84,39 @@ export function redactText(s: string): string {
   return out;
 }
 
-/** The reason is the agent's own reply text: free prose, so it is not sent at all. */
+const TOOL_NAME = /^[\w.:-]{1,40}$/;
+
+/** Token usage as peers get it: totals, rate and model (no cache clock, no big results). */
+const sharedUsage = (u: AgentUsage | undefined): AgentUsage | undefined =>
+  u && {
+    tokens: u.tokens,
+    rate: Math.round(u.rate),
+    ...(u.model && { model: u.model }),
+    ...(u.sum !== undefined && { sum: u.sum }),
+  };
+
+/** A team office: the target redacted, the reason (the agent's own reply text: free prose)
+ *  never sent. Title, usage and context are shared (LAN only since 1.0.65). */
 export function redactView(v: AgentView): AgentView {
-  const { ctx: _c, title: _ti, usage: _u, ...rest } = v; // local only, never to peers
-  return { ...rest, target: redactText(v.target), reason: '' };
+  const { usage, title, ...rest } = v;
+  const u = sharedUsage(usage);
+  // A title can be the first prompt itself: paths, hosts and secrets go as for targets.
+  const t = title && redactText(title);
+  return {
+    ...rest,
+    ...(u && { usage: u }),
+    ...(t && { title: t }),
+    target: redactText(v.target),
+    reason: '',
+  };
 }
 
-/** Public office (UDP and relay alike): the agent still moves between rooms, types and
- *  waits, but what it works on stays home. */
+/** Public office (LAN only since 1.0.65): everything but the work itself — no target, no
+ *  reason; the session title, model, tokens, context and the work signals (counts) go. */
 export function quietView(v: AgentView): AgentView {
-  const { ageSec: _a, todo: _t, fail: _f, diff: _d, ctx: _c, title: _ti, usage: _u, ...rest } = v;
-  return { ...rest, target: '', reason: '', quiet: true };
+  const { usage, ...rest } = v;
+  const u = sharedUsage(usage);
+  // A tool's bare name (act tool/mcp) says what kind of work, not what it works on.
+  const tool = (v.act === 'tool' || v.act === 'mcp') && TOOL_NAME.test(v.target) ? v.target : '';
+  return { ...rest, ...(u && { usage: u }), target: tool, reason: '', quiet: true };
 }

@@ -216,6 +216,10 @@ export function handleClientMessage(
       ctx.lan?.moveAvatar(msg); // no answer: the page moved it already
       break;
 
+    case 'agentSeats':
+      ctx.lan?.setSeats(msg.seats); // goes out with the next presence
+      break;
+
     case 'getOfficeCode': {
       const code = ctx.lan?.officeCode(msg.tag);
       if (code) send({ type: 'officeCode', tag: msg.tag as string, code });

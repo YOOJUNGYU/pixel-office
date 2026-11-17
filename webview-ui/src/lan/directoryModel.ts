@@ -5,9 +5,7 @@ import type { DirectoryPersonMessage, PeopleDirectory } from '../../../core/src/
 import { peerLabel, tieBreak } from './nicknames.js';
 import type { PersonRow } from './peopleModel.js';
 
-/** `public` = the public office on my LAN (the office itself); `internet` = people in the
- *  public office of another LAN, heard over the relay (listed only). */
-export type AreaKey = 'public' | 'internet' | 'team' | 'personal';
+export type AreaKey = 'public' | 'team' | 'personal';
 
 export interface AreaSection {
   area: AreaKey;
@@ -84,16 +82,8 @@ export function areaSections(
             fallback: true,
           },
         ];
-  // The office stays on the LAN: the relay's public people are another LAN's office.
-  const internet = dir.public.filter((p) => p.via === 'relay');
   return [
-    section(
-      'public',
-      PUBLIC_VIEW,
-      '',
-      dir.public.filter((p) => p.via !== 'relay'),
-    ),
-    { ...section('internet', '', '', internet), viewed: false },
+    section('public', PUBLIC_VIEW, '', dir.public),
     ...teams.map((t) => section('team', t.tag, t.name, t.people)),
     ...pending,
     section('personal', PERSONAL_VIEW, '', dir.personal),
@@ -150,4 +140,21 @@ export function rowWindow(
   const first = Math.max(0, Math.floor(top / rowPx) - overscan);
   const last = Math.min(count, Math.ceil((top + viewH) / rowPx) + overscan);
   return { first, last: Math.max(first, last) };
+}
+
+/** People grouped by network: my LAN first (`mine`), then each other network by its number,
+ *  unknown last; the order within a group is kept (stable). `netOf` = the person's 망 number. */
+export function byNetGroup<T>(
+  people: readonly T[],
+  netOf: (p: T) => number | undefined,
+  mine = 1,
+): T[] {
+  const rank = (p: T) => {
+    const n = netOf(p);
+    return n === undefined ? Infinity : n === mine ? 0 : n;
+  };
+  return people
+    .map((p, i) => ({ p, i, r: rank(p) }))
+    .sort((a, b) => a.r - b.r || a.i - b.i)
+    .map((x) => x.p);
 }

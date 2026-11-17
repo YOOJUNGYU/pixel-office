@@ -289,13 +289,16 @@ export interface AgentView {
   fail?: true;
   /** Lines added / removed by this session's edits so far (counts only). */
   diff?: AgentDiff;
-  /** THIS PC's browser only (never on the wire, not parsed from peers): context window use. */
+  /** Context window use (LAN peers since 1.0.65; the relay never carries views). */
   ctx?: { used: number; window: number };
-  /** THIS PC's browser only (never on the wire, not parsed from peers): the session's title
-   *  (≤ 60 code points) for the bubble header. */
+  /** The session's title (≤ VIEW_TITLE_MAX code points) for the bubble header; LAN peers since
+   *  1.0.65 (their target/reason, i.e. the work itself, still stay home). */
   title?: string;
-  /** THIS PC's browser only (never on the wire, not parsed from peers): token usage. */
+  /** Token usage. LAN peers since 1.0.65 get tokens/rate/model/sum only (`parseView`). */
   usage?: AgentUsage;
+  /** The seat this agent's own PC sat it in (its layout seat uid), shared on the LAN so every
+   *  viewer seats it there too (when free; the smaller peer id wins a clash). */
+  seat?: string;
   /** Token usage as two small tiers, shared with peers (public and team offices): the
    *  character's size and its burn effect. Absent = 0/0. Older peers ignore it. */
   heat?: AgentHeat;
@@ -600,6 +603,21 @@ export function cleanAccount(x: unknown): string | null {
   return n >= 1 && n <= MAX_ACCOUNT && !CONTROL_OR_FORMAT.test(s) ? s : null;
 }
 
+/** A received session title made displayable (as chat text), ≤ VIEW_TITLE_MAX code points. */
+export function cleanTitle(x: unknown): string | null {
+  if (typeof x !== 'string') return null;
+  const s = takeCodePoints(
+    x
+      .slice(0, 4 * VIEW_TITLE_MAX)
+      .replace(/\p{Cc}/gu, ' ')
+      .replace(/\p{C}/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim(),
+    VIEW_TITLE_MAX,
+  ).trim();
+  return s || null;
+}
+
 /** A received nickname made displayable: control/bidi/format chars removed, trimmed. */
 export const cleanNickname = (s: string): string => s.replace(/\p{C}/gu, '').trim();
 
@@ -671,6 +689,13 @@ const MAX_PEER_ID = 64;
 const MAX_NICKNAME = 20;
 const MAX_ID = 200;
 const MAX_TARGET = 120;
+/** A view's session title, in code points (server VIEW_TITLE_MAX). */
+export const VIEW_TITLE_MAX = 60;
+const MAX_MODEL = 64;
+const MODEL_ID = /^[\w.:/@[\]-]+$/;
+/** A layout seat uid (chair uid, `:n` for more seats): agentSeats and AgentView.seat. */
+export const SEAT_ID = /^[\w.:-]{1,64}$/;
+const TOKENS_MAX = 1e13;
 const MAX_REASON = 200;
 
 const ROOMS = new Set<string>(ROOM_ORDER);
@@ -730,6 +755,29 @@ function parseView(raw: unknown): AgentView | null {
     const burn = int(raw.heat.burn, 0, 3);
     if (size !== null && burn !== null && size + burn > 0) view.heat = { size, burn } as AgentHeat;
   }
+  const title = cleanTitle(raw.title);
+  if (title) view.title = title;
+  if (isObj(raw.usage)) {
+    const tokens = int(raw.usage.tokens, 0, TOKENS_MAX);
+    const rate =
+      typeof raw.usage.rate === 'number' && raw.usage.rate >= 0 && raw.usage.rate <= TOKENS_MAX
+        ? raw.usage.rate
+        : null;
+    if (tokens !== null && rate !== null) {
+      const u: AgentUsage = { tokens, rate };
+      const model = str(raw.usage.model, MAX_MODEL);
+      if (model && MODEL_ID.test(model)) u.model = model;
+      const sum = int(raw.usage.sum, 0, TOKENS_MAX);
+      if (sum !== null) u.sum = sum;
+      view.usage = u;
+    }
+  }
+  if (isObj(raw.ctx)) {
+    const window = int(raw.ctx.window, 1, TOKENS_MAX);
+    const used = int(raw.ctx.used, 0, TOKENS_MAX);
+    if (window !== null && used !== null) view.ctx = { used, window };
+  }
+  if (typeof raw.seat === 'string' && SEAT_ID.test(raw.seat)) view.seat = raw.seat;
   if (raw.parentId !== undefined) {
     const parentId = str(raw.parentId, MAX_ID);
     if (parentId === null) return null;

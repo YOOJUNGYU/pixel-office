@@ -277,6 +277,8 @@ interface LanOverlayProps {
   wrap: boolean;
   /** Clicking one of MY agents' speech bubbles opens its session, like clicking the character. */
   onOpen?: (a: OfficeAgent) => void;
+  /** Other PCs' agents' head bubbles (the top-left toggle); mine always show. */
+  othersBubbles?: boolean;
 }
 
 /**
@@ -294,6 +296,7 @@ export function LanOverlay({
   personal,
   wrap,
   onOpen,
+  othersBubbles = true,
 }: LanOverlayProps) {
   // Re-render after every canvas frame (the on-demand schedule), never when idle.
   const [, setTick] = useState(0);
@@ -484,7 +487,11 @@ export function LanOverlay({
       bottom: number;
     }> = [];
     for (const { a, ch } of tags) {
-      if (ch.id === officeState.hoveredAgentId || ch.mergeInto !== undefined || !hasBubble(a))
+      if (
+        ch.id === officeState.hoveredAgentId ||
+        ch.mergeInto !== undefined ||
+        !hasBubble(lan.isMine(a), othersBubbles)
+      )
         continue;
       const text = activityText(a);
       const typing = ch.state === CharacterState.TYPE;
@@ -741,7 +748,7 @@ export function LanOverlay({
   const hoveredId = officeState.hoveredAgentId;
   const hovered = hoveredId !== null ? lan.agentFor(hoveredId) : undefined;
   const hoveredCh = hoveredId !== null ? officeState.characters.get(hoveredId) : undefined;
-  if (hovered && hoveredCh && hasBubble(hovered)) {
+  if (hovered && hoveredCh) {
     const typing = hoveredCh.state === CharacterState.TYPE;
     nodes.push(
       <div

@@ -16,6 +16,9 @@ export interface RegEntry {
   /** Where the pid lives, e.g. `linux:<machine-id>:pid:[4026532223]`. Claude Desktop runs in
    *  another pid namespace than the terminal, so the same number there is another process. */
   pidDomain?: string;
+  /** When that Claude process started (ms epoch): background shells from before it died with
+   *  the previous one. */
+  startedAt?: number;
 }
 
 export type PidState = 'alive' | 'dead' | 'unknown';
@@ -68,6 +71,8 @@ export async function readRegistry(projectsRoot: string): Promise<RegEntry[] | n
         procStart:
           typeof j.procStart === 'string' && START_RE.test(j.procStart) ? j.procStart : undefined,
         pidDomain: typeof j.pidDomain === 'string' ? j.pidDomain : undefined,
+        startedAt:
+          typeof j.startedAt === 'number' && Number.isFinite(j.startedAt) ? j.startedAt : undefined,
       });
     } catch {
       // half-written or foreign file

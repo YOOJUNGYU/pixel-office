@@ -11,7 +11,7 @@ import { useAnnounce } from './transcriptWindows.js';
 import { useTranscripts } from './useTranscript.js';
 
 /** A popout window's whole page: one transcript filling it (its own /ws/transcript socket). */
-export function TranscriptWindow({ id }: { id: string }) {
+export function TranscriptWindow({ id, find }: { id: string; find?: string }) {
   useLang();
   useThemePref(); // follows the office window's theme (storage event in theme.ts)
   const tr = useTranscripts();
@@ -48,6 +48,7 @@ export function TranscriptWindow({ id }: { id: string }) {
         agent={agent}
         onClose={() => window.close()}
         onLoadEarlier={() => loadEarlier(id)}
+        find={find}
       />
     </div>
   );

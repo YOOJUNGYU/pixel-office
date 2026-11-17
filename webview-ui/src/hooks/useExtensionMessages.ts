@@ -336,12 +336,20 @@ export function useExtensionMessages(
       transport.send({ type: 'moveAvatar', col, row, dir: avatarDirName(dir) });
     getOfficeState().onAvatarMove = sendMove;
     lan.onSelfPlaced = sendMove;
+    // Where my agents sit: the server shares it with LAN peers (they seat them alike).
+    lan.onSeats = (seats) => transport.send({ type: 'agentSeats', seats });
+    const offState = transport.onStateChange((st) => {
+      if (st === 'connected') lan.resendSeats();
+    });
     const unsubscribe = transport.onMessage((msg) => {
       handler(msg);
       requestRender('message'); // whatever it changed shows on the next frame
     });
     transport.send({ type: 'webviewReady' });
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      offState();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getOfficeState]);
 

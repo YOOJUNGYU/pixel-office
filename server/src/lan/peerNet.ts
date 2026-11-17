@@ -14,7 +14,7 @@ import {
   PUBLIC_VIEW,
 } from '../../../core/src/lan.js';
 import type { PubWire, RelayDown, RelayPeer, RelayPerson } from '../../../core/src/relay.js';
-import { WIRE_MAX_ID } from '../../../core/src/relay.js';
+import { RELAY_PERSON_MAX_BYTES, WIRE_MAX_ID } from '../../../core/src/relay.js';
 import {
   GCM_NONCE_BYTES,
   GCM_TAG_BYTES,
@@ -315,6 +315,10 @@ export class PeerNet {
   private readonly warned = new Set<string>();
   /** Relay: ids from roster/join until leave (live without a TTL), their network tags. */
   private readonly relayLive = new Set<string>();
+  /** Relay peers' keys, apart from `hellos` (UDP only): a crowd on the relay never takes the
+   *  LAN's MAX_HELLO_PEERS places, is never pinned, and never hides a LAN watcher. Used only
+   *  to open an older PC's (≤ 1.0.63) pairwise presence sent over the relay. */
+  private readonly relayKeys = new Map<string, { pk: string; key: Buffer | null }>();
   private readonly nets = new Map<string, string>();
   private myNet: string | undefined;
   private lastRelayKey = '';
@@ -491,7 +495,17 @@ export class PeerNet {
     if (!relay?.connected() || t - this.lastRelaySend < RELAY_MIN_SEND_MS) return;
     const personal = this.isOffline();
     const peer = this.opts.getPacket(personal ? PERSONAL_VIEW : PUBLIC_VIEW).peer;
-    const person: RelayPerson = { peer: { ...peer }, ...(personal && { personal: true }) };
+    let person: RelayPerson = { peer: { ...peer }, ...(personal && { personal: true }) };
+    // Over the relay's cap (a long name plus a full wardrobe): listed without the look rather
+    // than not at all (the relay drops an oversized `me`).
+    if (Buffer.byteLength(JSON.stringify(person)) > RELAY_PERSON_MAX_BYTES) {
+      const { outfit: _o, ...rest } = peer;
+      person = { ...person, peer: { ...rest } };
+      this.warnOnce(
+        'relay:person',
+        '[Pixel Office] 프로필이 커서 인터넷 명단에는 외형 없이 보냅니다.',
+      );
+    }
     const key = JSON.stringify(person);
     if (key === this.lastRelayKey) return;
     if (!relay.me(person)) return;
@@ -562,9 +576,8 @@ export class PeerNet {
     if (p.id === this.opts.identity.id) return;
     const pinned = this.opts.pins.get(p.id);
     if (pinned !== undefined && pinned !== p.pk) return; // a known PC's key changed: not it
-    // Its key (TOFU pin, and an older PC's pairwise presence) — none past MAX_HELLO_PEERS,
-    // which only matters for older PCs: the list itself has no such cap.
-    this.heard(this.hellos, p.id, p.pk, null);
+    const prev = this.relayKeys.get(p.id);
+    this.relayKeys.set(p.id, { pk: p.pk, key: prev?.pk === p.pk ? prev.key : null });
     this.relayLive.add(p.id);
     if (p.net) this.nets.set(p.id, p.net);
     else this.nets.delete(p.id);
@@ -582,12 +595,8 @@ export class PeerNet {
   private relayDrop(id: string): void {
     this.relayLive.delete(id);
     this.relayPeople.delete(id);
+    this.relayKeys.delete(id);
     this.nets.delete(id);
-    const h = this.hellos.get(id);
-    const t = this.now();
-    if (h && this.confirmed(h, t)) return;
-    if (!h || !this.udpLive(h, t)) this.hellos.delete(id);
-    this.seen.get(PUBLIC_VIEW)?.delete(id);
   }
 
   private confirmed(h: Heard, t: number): boolean {
@@ -798,7 +807,7 @@ export class PeerNet {
   /** A pairwise public presence or layout part, from UDP or the relay. */
   private receivePub(w: Extract<Wire, { t: 'pub' }>, viaUdp: boolean): void {
     const me = this.opts.identity.id;
-    const h = this.hellos.get(w.from);
+    const h = viaUdp ? this.hellos.get(w.from) : this.relayKeys.get(w.from);
     if (w.to !== me || !h) return;
     h.key ??= pairKey(this.opts.identity.privateKeyPem, h.pk, me, w.from);
     if (!h.key) return;
@@ -818,8 +827,9 @@ export class PeerNet {
     if (this.inPublic()) {
       if (this.layoutPart(PUBLIC_VIEW, plain)) return;
       const inner = this.unpack(PUBLIC_VIEW, plain, w.from);
-      if (inner?.packet.peer.id === w.from && this.accept(PUBLIC_VIEW, inner))
-        h.udpPubAt = this.now();
+      const heard = this.hellos.get(w.from); // UDP here: the relay's returned above
+      if (heard && inner?.packet.peer.id === w.from && this.accept(PUBLIC_VIEW, inner))
+        heard.udpPubAt = this.now();
       return;
     }
     // Watcher: the person only — no agents, chat, avatar, and never a layout.
@@ -988,8 +998,7 @@ export class PeerNet {
   private prune(): void {
     const t = this.now();
     const live = new Set([PUBLIC_VIEW, RELAY_CHANNEL, ...this.opts.offices().map((o) => o.tag)]);
-    for (const [id, e] of this.hellos)
-      if (!this.live(e.at, t) && !this.relayLive.has(id)) this.hellos.delete(id);
+    for (const [id, e] of this.hellos) if (!this.live(e.at, t)) this.hellos.delete(id);
     for (const m of [this.watchers, this.heardPublic, this.cards])
       for (const [id, e] of m) if (t - e.at > PEER_TTL_MS) m.delete(id);
     for (const [ch, peers] of this.seen) {

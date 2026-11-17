@@ -11,15 +11,24 @@ import {
 
 /** The URL query a popout window carries its agent id in. */
 const PARAM = 'transcript';
+const FIND_PARAM = 'find';
 
 /** This window is a popout: the agent id it shows, else null. */
 export function popoutId(search: string = window.location.search): string | null {
   return new URLSearchParams(search).get(PARAM);
 }
 
-/** Opens (or focuses: one window per id) the popout window of transcript `id`. */
-export function openPopout(id: string): void {
-  const url = `${window.location.pathname}?${PARAM}=${encodeURIComponent(id)}`;
+/** The text a popout opened from a search hit looks for, else undefined. */
+export function popoutFind(search: string = window.location.search): string | undefined {
+  return new URLSearchParams(search).get(FIND_PARAM) ?? undefined;
+}
+
+/** Opens (or focuses: one window per id) the popout window of transcript `id`; `find` = the
+ *  text to look for in it (a search hit; an open window reloads to it). */
+export function openPopout(id: string, find?: string): void {
+  const url = `${window.location.pathname}?${PARAM}=${encodeURIComponent(id)}${
+    find ? `&${FIND_PARAM}=${encodeURIComponent(find)}` : ''
+  }`;
   const name = `po-transcript-${id.replace(/[^\w-]/g, '_')}`;
   const w = window.open(
     url,

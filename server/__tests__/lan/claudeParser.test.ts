@@ -409,10 +409,9 @@ describe('context use (local only)', () => {
     expect(s.local.context).toEqual({ used: 330_001, window: 1_000_000 });
     applyClaudeLine(s, usage({ input_tokens: 1, cache_read_input_tokens: 20_000 }), 0); // after /compact
     expect(s.local.context).toEqual({ used: 20_001, window: 1_000_000 });
-    expect(JSON.stringify(toViews(s, true))).not.toMatch(/20001|1000000/);
-    // this PC's own snapshot carries it; what peers get (brief) never does
+    // this PC's own snapshot and LAN peers (brief) alike: numbers only (since 1.0.65)
     expect(toViews(s)[0].ctx).toEqual({ used: 20_001, window: 1_000_000 });
-    expect(toViews(s, true)[0]).not.toHaveProperty('ctx');
+    expect(toViews(s, true)[0].ctx).toEqual({ used: 20_001, window: 1_000_000 });
   });
 });
 

@@ -117,6 +117,7 @@ components:
         # Local token usage (loopback browser only)
         - $ref: '#/components/schemas/UsageNow'
         - $ref: '#/components/schemas/UsageLoaded'
+        - $ref: '#/components/schemas/SessionsFound'
       discriminator: type
 
     ClientMessage:
@@ -142,6 +143,7 @@ components:
         - $ref: '#/components/schemas/SubmitScore'
         - $ref: '#/components/schemas/OpenArcade'
         - $ref: '#/components/schemas/MoveAvatar'
+        - $ref: '#/components/schemas/AgentSeats'
         - $ref: '#/components/schemas/SetNotifications'
         - $ref: '#/components/schemas/OpenTranscript'
         - $ref: '#/components/schemas/LoadTranscriptBefore'
@@ -149,6 +151,7 @@ components:
         - $ref: '#/components/schemas/SetRelayAdminToken'
         - $ref: '#/components/schemas/OpenUsage'
         - $ref: '#/components/schemas/CloseUsage'
+        - $ref: '#/components/schemas/FindSessions'
         - $ref: '#/components/schemas/RelayKick'
       discriminator: type
 
@@ -723,8 +726,7 @@ components:
       required: [provider, windowMin, usedPct, resetsInSec, ageSec]
       properties:
         provider:
-          type: string
-          enum: [claude, codex]
+          $ref: '#/components/schemas/AgentProvider'
         windowMin:
           type: integer
           minimum: 1
@@ -812,6 +814,46 @@ components:
         exists:
           type: boolean
           description: The transcript file still exists.
+        activeMin:
+          type: integer
+          minimum: 0
+          description: >-
+            Minutes of work in the main transcript (gaps between lines up to
+            5 min). Absent for sessions not yet counted.
+        tools:
+          type: integer
+          minimum: 0
+          description: Tool calls (the session's subagents included).
+        edits:
+          type: integer
+          minimum: 0
+          description: File edits (Edit/MultiEdit/Write/NotebookEdit, Codex apply_patch).
+        snippet:
+          type: string
+          description: findSessions with `body` only, the latest matching prompt/reply text around the match.
+
+    SessionsFound:
+      description: >-
+        Answer to findSessions, to the asking socket only (loopback browser
+        only, never sent to peers). `more` = rows were cut (list cap, or the
+        full-text search stopped at its hit/byte budget).
+      type: object
+      additionalProperties: false
+      required: [type, q, body, sessions, more]
+      properties:
+        type:
+          const: sessionsFound
+        q:
+          type: string
+        body:
+          type: boolean
+        sessions:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/UsageTopSession'
+        more:
+          type: boolean
 
     UsageLoaded:
       description: >-
@@ -1280,14 +1322,17 @@ components:
         title:
           type: string
           maxLength: 60
-          description: The session's title for this PC's own agents (the local snapshot only; never sent to peers).
+          description: The session's title (this PC's agents; LAN peers' since 1.0.65 — a subagent's own task prompt stays local).
         usage:
           $ref: '#/components/schemas/AgentUsage'
+        seat:
+          type: string
+          description: A LAN peer's agent only, the seat uid its own PC sat it in.
         peer:
           $ref: '#/components/schemas/PeerInfoMessage'
 
     AgentContext:
-      description: Context window use of this PC's own agent (the local snapshot only; never sent to peers).
+      description: Context window use (this PC's agents; LAN peers' since 1.0.65).
       type: object
       additionalProperties: false
       required: [used, window]
@@ -1300,7 +1345,7 @@ components:
           minimum: 1
 
     AgentUsage:
-      description: Token usage of this PC's own agent. THIS PC's browser only; never sent to peers.
+      description: Token usage (this PC's agents; LAN peers' since 1.0.65 carry tokens, rate, model and sum only).
       type: object
       additionalProperties: false
       required: [tokens, rate]
@@ -1932,6 +1977,36 @@ components:
         dir:
           $ref: '#/components/schemas/AvatarDir'
 
+    AgentSeats:
+      description: >-
+        Where this PC's page seated its own agents in the office on screen
+        (loopback browser only): view id → layout seat uid. Sent when it
+        changes; the server adds each one's `seat` to the presence of that
+        office so LAN peers seat them alike. Replaces the previous report.
+      type: object
+      additionalProperties: false
+      required: [type, seats]
+      properties:
+        type:
+          const: agentSeats
+        seats:
+          type: array
+          maxItems: 256
+          items:
+            $ref: '#/components/schemas/AgentSeat'
+
+    AgentSeat:
+      type: object
+      additionalProperties: false
+      required: [id, seat]
+      properties:
+        id:
+          type: string
+          maxLength: 200
+        seat:
+          type: string
+          pattern: '^[\w.:-]{1,64}$'
+
     ArcadeStart:
       description: >-
         A run is about to start (loopback browser only): this PC's server asks
@@ -2017,6 +2092,25 @@ components:
           const: openUsage
         range:
           $ref: '#/components/schemas/UsageRange'
+
+    FindSessions:
+      description: >-
+        List this PC's past sessions whose title or folder contains `q` (all
+        when empty), newest first; `body` = search the prompts and replies of
+        the transcripts instead (loopback browser only). Answered with
+        sessionsFound; a newer findSessions from the same socket cancels a
+        running full-text search.
+      type: object
+      additionalProperties: false
+      required: [type, q]
+      properties:
+        type:
+          const: findSessions
+        q:
+          type: string
+          maxLength: 100
+        body:
+          type: boolean
 
     CloseUsage:
       description: >-

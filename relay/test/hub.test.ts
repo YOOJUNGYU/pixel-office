@@ -6,6 +6,7 @@ import {
   authorized,
   charge,
   type Conn,
+  currentClient,
   DEFAULT_LIMITS as L,
   exhausted,
   isSilent,
@@ -27,6 +28,15 @@ const PK2 = 'A'.repeat(42) + 'E=';
 const conn = (id: string, pk = PK): Conn => ({ id, pk, win: 0, n: 0 });
 const wire = (from: string, to: string) =>
   JSON.stringify({ t: 'send', w: [{ v: 2, t: 'pub', from, to, n: 'n', c: 'c' }] });
+
+describe('currentClient', () => {
+  it('serves 1.0.64 and later only (older PCs flood the budget)', () => {
+    for (const v of ['1.0.64', '1.0.65', '1.1.0', '2.0.0', '1.0.64-beta.1'])
+      expect(currentClient(v)).toBe(true);
+    for (const v of ['1.0.63', '0.9.99', 'smoke', '', null, '1.0', '1.0.64 '])
+      expect(currentClient(v)).toBe(false);
+  });
+});
 
 describe('admit', () => {
   it('rejects the peer past maxPeers as full', () => {
