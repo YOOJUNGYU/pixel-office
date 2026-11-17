@@ -47,33 +47,6 @@ function initialCollapsed(): boolean {
   return window.matchMedia(MOBILE_MEDIA_QUERY).matches || window.innerWidth < PEOPLE_WIDE_MIN_PX;
 }
 
-function counts(r: PersonRow): string {
-  const parts = [];
-  if (r.claude) parts.push(`Claude ${r.claude}`);
-  if (r.codex) parts.push(`Codex ${r.codex}`);
-  return parts.length ? parts.join(' · ') : t('people.noAgents');
-}
-
-function StatusMark({ status }: { status: PersonRow['status'] }) {
-  const label = t(`people.status.${status}`);
-  if (status === 'attention') {
-    return (
-      <span role="img" aria-label={label} title={label} className="w-12 text-center shrink-0">
-        ❗
-      </span>
-    );
-  }
-  return (
-    <span className="w-12 flex justify-center shrink-0" title={label}>
-      <span
-        role="img"
-        aria-label={label}
-        className={`w-6 h-6 ${status === 'working' ? 'bg-status-success' : 'bg-text-muted'}`}
-      />
-    </span>
-  );
-}
-
 function Face({ person }: { person: DirectoryPersonMessage }) {
   return (
     <span className="shrink-0 flex bg-bg-dark border-2 border-border">
@@ -93,13 +66,24 @@ function Face({ person }: { person: DirectoryPersonMessage }) {
 const verTitle = (p: DirectoryPersonMessage): string =>
   p.ver ? `v${p.ver}` : t('people.verOldTitle');
 
-/** After the name, only when the version differs from mine: ` · v1.0.41` / ` · 구버전`. */
-function VerMark({ person, mine }: { person: DirectoryPersonMessage; mine: string | undefined }) {
-  if (!versionDiffers(person.ver, mine)) return null;
+/** A row's second line: the app version (warning colour when it differs from mine) + the net badge. */
+function SubLine({
+  person,
+  mine,
+  net,
+}: {
+  person: DirectoryPersonMessage;
+  mine: string | undefined;
+  net: number | undefined;
+}) {
   return (
-    <span className="text-2xs text-text-muted">
-      {' · '}
-      {person.ver ? `v${person.ver}` : t('people.verOld')}
+    <span className="flex items-center gap-4 min-w-0 text-xs">
+      <span
+        className={`truncate ${versionDiffers(person.ver, mine) ? 'text-warning' : 'text-text-muted'}`}
+      >
+        {person.ver ? `v${person.ver}` : t('people.verOld')}
+      </span>
+      <NetBadge n={net} />
     </span>
   );
 }
@@ -176,12 +160,13 @@ function PlainRow({
       className={`flex items-center gap-8 py-3 px-8 text-text${kick ? ' relative group' : ''}`}
     >
       <Face person={person} />
-      <span className="flex-1 min-w-0 truncate">
-        {peerLabel(person)}
-        {person.self && ` ${t('people.you')}`}
-        <VerMark person={person} mine={mine} />
+      <span className="flex-1 min-w-0 flex flex-col">
+        <span className="truncate">
+          {peerLabel(person)}
+          {person.self && ` ${t('people.you')}`}
+        </span>
+        <SubLine person={person} mine={mine} net={net} />
       </span>
-      <NetBadge n={net} />
       {kick && <KickButton person={person} />}
     </li>
   );
@@ -353,17 +338,18 @@ export function PeoplePanel({
               {r.person.account}
               {r.person.nickname && <span className="text-text-muted"> ({r.person.nickname})</span>}
               {r.person.self && ` ${t('people.you')}`}
-              <VerMark person={r.person} mine={myVer} />
             </span>
-            <span
-              className={`text-xs truncate ${hint === r.person.peerId ? 'text-warning' : 'text-text-muted'}`}
-            >
-              {hint === r.person.peerId ? t(focusHintKey(r)) : counts(r)}
-            </span>
+            {hint === r.person.peerId ? (
+              <span className="text-xs truncate text-warning">{t(focusHintKey(r))}</span>
+            ) : (
+              <SubLine
+                person={r.person}
+                mine={myVer}
+                net={publicViewed ? netOf(r.person) : undefined}
+              />
+            )}
           </span>
-          <StatusMark status={r.status} />
         </button>
-        {publicViewed && <NetBadge n={netOf(r.person)} />}
         {publicViewed && canKick && !r.person.self && <KickButton person={r.person} />}
       </li>
     ),
