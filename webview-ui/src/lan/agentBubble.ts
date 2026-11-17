@@ -23,6 +23,7 @@ export interface BubbleParts {
   title: string;
   todo: string;
   elapsed: string;
+  /** The body ('' = header only: other PCs' agents, whose room tells what they do). */
   text: string;
   /** Wrap the text to ≤ LAN_ACTIVITY_MAX_LINES (else one clipped line). */
   wrap: boolean;
@@ -54,6 +55,9 @@ export function agentBubbleLayout(p: BubbleParts, m: BubbleMeasures): BubbleLayo
     (p.title ? STATUS_PART_GAP_PX + m.title(p.title) : 0) +
     chip(p.todo) +
     chip(p.elapsed);
+  const pad = 2 * (LAN_ACTIVITY_PAD_Y_PX + CHAT_BORDER_PX);
+  if (!p.text)
+    return { w: Math.min(LAN_ACTIVITY_MAX_WIDTH_PX, chrome + header), h: LAN_TAG_LINE_PX + pad };
   const rows = p.wrap
     ? clampRows(wrapLines(p.text, inner, m.text), LAN_ACTIVITY_MAX_LINES, inner, m.text)
     : undefined;
@@ -66,7 +70,7 @@ export function agentBubbleLayout(p: BubbleParts, m: BubbleMeasures): BubbleLayo
       LAN_TAG_LINE_PX +
       LAN_BUBBLE_HEADER_GAP_PX +
       lines * (lines > 1 ? LAN_ACTIVITY_LINE_PX : LAN_TAG_LINE_PX) +
-      2 * (LAN_ACTIVITY_PAD_Y_PX + CHAT_BORDER_PX),
+      pad,
     rows,
   };
 }

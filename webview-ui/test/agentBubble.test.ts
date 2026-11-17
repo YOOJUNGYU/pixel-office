@@ -22,6 +22,12 @@ const parts = {
 const inner = LAN_ACTIVITY_MAX_WIDTH_PX - 2 * (LAN_ACTIVITY_PAD_X_PX + CHAT_BORDER_PX);
 
 describe('agentBubbleLayout', () => {
+  it("no text = the header line alone (other PCs' agents)", () => {
+    const full = agentBubbleLayout(parts, m);
+    const head = agentBubbleLayout({ ...parts, text: '' }, m);
+    expect(head.rows).toBeUndefined();
+    expect(head.h).toBeLessThan(full.h);
+  });
   it('a model label (Sonnet) widens the header badge', () => {
     const t = { ...parts, title: 'x', text: 'a' };
     const base = agentBubbleLayout({ ...t, provider: 'Claude' }, m);

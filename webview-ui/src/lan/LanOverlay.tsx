@@ -493,7 +493,8 @@ export function LanOverlay({
         !hasBubble(lan.isMine(a), othersBubbles)
       )
         continue;
-      const text = activityText(a);
+      // Other PCs' agents: the header line only (their room already says what they do).
+      const text = lan.isMine(a) ? activityText(a) : '';
       const typing = ch.state === CharacterState.TYPE;
       const head = project.toScreenY(
         ch.y +
@@ -642,7 +643,7 @@ export function LanOverlay({
             }}
           >
             <BubbleHeader a={l.a} icon={l.inline} elapsed={l.elapsed} />
-            {l.rows ? (
+            {!l.text ? null : l.rows ? (
               <span
                 className="min-w-0 flex flex-col"
                 style={{
