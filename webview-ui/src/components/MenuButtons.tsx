@@ -15,9 +15,13 @@ interface MenuButtonsProps {
   /** Other PCs' agents' speech bubbles shown (default) or hidden; null hides the button. */
   othersBubbles: boolean;
   onToggleOthersBubbles: (() => void) | null;
+  /** The ? manual panel (every feature, searchable, + the tour). */
+  isManualOpen: boolean;
+  onToggleManual: () => void;
 }
 
-/** Layout and Settings as icon buttons: the first two of the top-left row (ZoomControls). */
+/** Layout, Settings, usage, others' bubbles and the ? manual as icon buttons: the start of the
+ *  top-left row (ZoomControls). */
 export function MenuButtons({
   isEditMode,
   onToggleEditMode,
@@ -27,6 +31,8 @@ export function MenuButtons({
   isUsageOpen,
   othersBubbles,
   onToggleOthersBubbles,
+  isManualOpen,
+  onToggleManual,
 }: MenuButtonsProps) {
   useLang();
   return (
@@ -131,6 +137,33 @@ export function MenuButtons({
           </svg>
         </Button>
       )}
+      <Button
+        size="icon_lg"
+        variant={isManualOpen ? 'active' : 'default'}
+        onClick={onToggleManual}
+        aria-pressed={isManualOpen}
+        data-tour="manual-button"
+        className={BTN_CLASS}
+        data-tip={t('toolbar.manual')}
+        aria-label={t('toolbar.manual')}
+      >
+        {/* Pixel question mark */}
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 18 18"
+          fill="currentColor"
+          aria-hidden
+          shapeRendering="crispEdges"
+        >
+          <rect x="5" y="2" width="8" height="2" />
+          <rect x="3" y="4" width="3" height="3" />
+          <rect x="12" y="4" width="3" height="4" />
+          <rect x="10" y="8" width="3" height="2" />
+          <rect x="8" y="10" width="3" height="2" />
+          <rect x="8" y="14" width="3" height="3" />
+        </svg>
+      </Button>
     </>
   );
 }

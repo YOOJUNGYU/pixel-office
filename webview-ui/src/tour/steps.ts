@@ -38,6 +38,8 @@ export interface Scene {
   legend?: boolean;
   /** The 📊 usage panel open. */
   usage?: boolean;
+  /** The ? manual panel open. */
+  manual?: boolean;
 }
 
 /** Things a step needs on this screen; steps whose needs are unmet are dropped. */
@@ -90,6 +92,7 @@ export type StepId =
   | 'editorMore'
   | 'save'
   | 'install'
+  | 'manual'
   | 'done';
 
 export const STEPS: Step[] = [
@@ -199,6 +202,12 @@ export const STEPS: Step[] = [
   },
   // Falls back to a centred explanation when the install popup is not shown.
   { id: 'install', targets: [{ dom: 'install' }] },
+  // Last: where every feature (and this tour) can be found again.
+  {
+    id: 'manual',
+    targets: [{ dom: 'manual-button' }, { dom: 'manual-panel' }],
+    scene: { manual: true },
+  },
   { id: 'done', targets: [] },
 ];
 

@@ -515,7 +515,6 @@ const ko = {
   'color.copyTitle': '다른 물건의 색상 복사 — 사무실에서 하나를 클릭하세요',
   'color.reset': '초기화',
   'color.resetTitle': '기본값으로 되돌리기',
-  'settings.replayTour': '사용법 다시 보기',
 
   'tour.skip': '건너뛰기',
   'tour.prev': '이전',
@@ -617,9 +616,196 @@ const ko = {
     'Edge나 Chrome에서는 Pixel Office를 앱으로 설치할 수 있어요. 설치하면 탭이 아니라 따로 창이 열립니다.\n안내 창을 닫았다면 주소창의 설치 아이콘을 누르세요.',
   'tour.done.title': '준비 끝!',
   'tour.done.body':
-    '이제 에이전트를 실행하면 사무실에 나타날 거예요.\n안내는 설정 → "사용법 다시 보기"에서 언제든 다시 볼 수 있어요.',
+    '이제 에이전트를 실행하면 사무실에 나타날 거예요.\n안내는 왼쪽 위 ? 버튼(사용 설명서)에서 언제든 다시 볼 수 있어요.',
   'tour.done.bodyDemo':
-    '이제 에이전트를 실행하면 사무실에 나타날 거예요. 예시 캐릭터들은 사라집니다.\n안내는 설정 → "사용법 다시 보기"에서 언제든 다시 볼 수 있어요.',
+    '이제 에이전트를 실행하면 사무실에 나타날 거예요. 예시 캐릭터들은 사라집니다.\n안내는 왼쪽 위 ? 버튼(사용 설명서)에서 언제든 다시 볼 수 있어요.',
+  'toolbar.manual': '사용 설명서',
+  'manual.title': '사용 설명서',
+  'manual.search': '기능 검색 (예: 채팅, 토큰, 팀)',
+  'manual.none': '찾는 기능이 없어요. 다른 말로 찾아 보세요.',
+  'manual.startTour': '온보딩 시작',
+  'manual.startTourTip': '화면을 하나씩 짚어 주는 처음 안내를 다시 봅니다',
+  'manual.close': '사용 설명서 닫기',
+  'manual.cat.basics': '기본',
+  'manual.cat.agents': '에이전트 읽기',
+  'manual.cat.sessions': '세션 · 사용량',
+  'manual.cat.people': '사람 · 소통',
+  'manual.cat.offices': '오피스',
+  'manual.cat.layout': '레이아웃 편집',
+  'manual.cat.system': '앱 · 시스템',
+  'manual.office.title': '픽셀 오피스',
+  'manual.office.body':
+    '이 PC와 같은 망 PC에서 돌고 있는 Claude Code와 Codex 에이전트가 캐릭터가 되어 사무실에서 일해요.\n에이전트가 지금 하는 일에 따라 알맞은 방으로 걸어가 자리에 앉고, 머리 위 말풍선에 하는 일이 보입니다.\n따로 설정할 건 없어요. 에이전트를 실행하면 알아서 나타나고, 끝나면 사라집니다.',
+  'manual.rooms.title': '방 네 개',
+  'manual.rooms.body':
+    '코딩실: 파일을 고칠 때 (Edit/Write, apply_patch, sed -i 같은 명령).\n자료실: 파일을 읽거나 코드·웹을 검색할 때, 그리고 생각 중일 때.\n서버실: 명령을 실행할 때와 백그라운드 셸.\n대기실: 입력이나 승인을 기다릴 때, 일을 마쳤을 때.\n같은 종류의 일을 3초쯤 계속해야 방을 옮겨서 왔다 갔다 하지 않아요.',
+  'manual.serverZones.title': '서버실 작업 구역',
+  'manual.serverZones.body':
+    '서버실은 바닥의 노란 테이프로 네 구역이 나뉘어 있어요.\n왼쪽 위 테스트(vitest, pytest, curl…), 오른쪽 위 빌드(tsc, lint, 설치, docker…), 왼쪽 아래 Git, 오른쪽 아래 나머지 실행.\n에이전트는 명령 종류에 맞는 구역에 앉고, 꽉 차면 서버실의 다른 빈자리로 갑니다. 구역 이름표에 마우스를 올리면 어떤 명령이 오는지 보여요.',
+  'manual.roomPlates.title': '방 이름표',
+  'manual.roomPlates.body':
+    '방 왼쪽 위 이름표 옆 숫자는 그 방에 있는 에이전트 수예요(서브에이전트와 셸 포함).\n이름표에 마우스를 올리면 어떤 일로 그 방에 오는지와 지금 있는 에이전트 카드가 나옵니다.',
+  'manual.map.title': '지도 움직이기',
+  'manual.map.body':
+    '드래그로 지도를 옮기고 마우스 휠로 확대·축소해요. 왼쪽 위 + / − 버튼도 있어요.\n네 모서리 버튼(화면 맞춤)을 누르면 사무실 전체가 창에 꼭 맞게 돌아옵니다.\n왼쪽 위 버튼에 마우스를 올리면 바로 아래에 버튼 이름이 떠요.',
+  'manual.theme.title': '다크 · 라이트 테마',
+  'manual.theme.body':
+    '왼쪽 위 해/달 버튼으로 다크와 라이트를 바로 바꿔요.\n설정 → 테마에서 "시스템"을 고르면 OS 설정을 따라갑니다. 다른 창(세션 대화 창)도 같이 바뀌어요.',
+  'manual.language.title': '언어',
+  'manual.language.body':
+    '설정 → 언어에서 한국어와 English를 고릅니다. 이 브라우저에만 저장돼요.\n방 이름, 에이전트가 하는 일, 알림까지 모두 고른 언어로 보입니다.',
+  'manual.agentTags.title': '이름표',
+  'manual.agentTags.body':
+    '캐릭터 아래 이름표: MAIN은 메인 에이전트, SUB는 서브에이전트, SHELL은 백그라운드 셸이에요.\n그 뒤에 #번호와 주인 이름(닉네임, 없으면 PC 계정)이 붙고, 서브에이전트와 셸은 부모 번호를 따라가요.\n내 에이전트 이름표 끝에는 컨텍스트 사용률(29%)이 붙습니다.',
+  'manual.agentBubble.title': '말풍선',
+  'manual.agentBubble.body':
+    '일하는 에이전트 머리 위 말풍선 첫 줄: Claude/Codex 배지, 하는 일 아이콘, 세션 제목, 할 일 진행(3/7), 지금 일을 시작하고 지난 시간.\n아래 줄은 하는 일이에요. 오래 걸리면 시간이 주황색이 됩니다.\n마우스를 올리면 전체 내용, 방, 이유, 바꾼 줄 수가 보여요. 많이 축소하면 아이콘만 남습니다.',
+  'manual.family.title': '서브에이전트 · 셸',
+  'manual.family.body':
+    '서브에이전트와 셸은 부모와 같은 모습이고, 같은 방이면 부모 옆 빈자리에 앉아요.\n부모가 일을 맡기거나 서브에이전트가 결과를 보고할 때는 둘이 마주 보고 잠깐 이야기를 나눕니다.',
+  'manual.waiting.title': '승인 대기 !',
+  'manual.waiting.body':
+    '머리 위에 빨간 !가 뜨면 내 승인이나 답을 기다리는 중이에요.\n대기실로 돌아온 에이전트는 사람 캐릭터에 합쳐지는데, 그때는 사람 머리 위에 !가 뜹니다.',
+  'manual.effects.title': '효과',
+  'manual.effects.body':
+    '파일을 고치면 +12 −3처럼 바꾼 줄 수가 떠올라요.\n도구가 실패하면 PC가 빨갛게 깜빡이고 연기가 나며, 머리 옆에 물방울이 맺혀요.\n할 일을 다 끝내거나 메인 에이전트가 일을 마치면 폭죽이 터지고, 도구 결과가 아주 크면 📦 +82k가 떠요.',
+  'manual.heat.title': '토큰 크기 · 불꽃',
+  'manual.heat.body':
+    '세션이 토큰을 30만 넘게 쓰면 1.5배, 100만 넘게 쓰면 2배로 커져요.\n1분에 1만 5천 넘게 쓰면 파란 테두리, 4만은 노란 불꽃, 7만 5천은 빨간 불꽃이 붙어요.\n이름표에는 토큰 수(1.4M · Σ1.9M)와 모델 배지가, 내 메인 에이전트가 기다리는 동안에는 프롬프트 캐시 남은 시간(❄ 4:23)이 붙습니다.',
+  'manual.pcScreens.title': 'PC 화면 · 서버 LED',
+  'manual.pcScreens.body':
+    '에이전트가 앉은 PC 화면이 하는 일에 따라 바뀌어요. 코드 수정은 초록 코드, 명령 실행은 터미널, 읽기는 흰 문서.\n일하는 자리의 PC는 은은하게 빛나고, 서버실에서 명령이 돌면 서버 PC의 LED가 깜빡입니다.',
+  'manual.othersBubbles.title': '다른 PC 말풍선 숨기기',
+  'manual.othersBubbles.body':
+    '말풍선이 많아 어지러우면 왼쪽 위 💬 버튼으로 다른 PC 에이전트의 말풍선을 숨겨요.\n내 말풍선은 그대로고, 숨긴 것도 마우스를 올리면 보입니다. 이 브라우저에 기억돼요.',
+  'manual.transcript.title': '세션 대화 창',
+  'manual.transcript.body':
+    '내 에이전트 캐릭터나 말풍선을 누르면 그 세션 대화 전체가 새 창으로 열려요. 질문, 답변, 도구 호출, 결과까지.\n위쪽에 지금 상태와 컨텍스트, 그 아래 최근 30분 활동 띠, 오른쪽에 대화 전체 미니맵이 있어요.\n[내 프롬프트만]으로 내가 쓴 것만 보고, Alt+↑/↓로 내 프롬프트 사이를 건너뛰어요. 슬라이더로 글자 크기를 바꾸고 Esc로 닫습니다.',
+  'manual.shellOutput.title': '셸 출력',
+  'manual.shellOutput.body':
+    'SHELL 캐릭터를 누르면 그 명령의 출력이 터미널처럼 보여요.\n출력 파일이 없으면 그 셸을 띄운 세션 대화가 열립니다.',
+  'manual.usage.title': '토큰 사용량 (📊)',
+  'manual.usage.body':
+    '왼쪽 위 📊 버튼을 누르면 사용량 패널이 열려요. 오른쪽·아래 끝과 모서리를 끌어 크기를 바꿀 수 있어요.\n"지금"에는 오늘 쓴 토큰과 일하는 에이전트별 토큰·모델·분당 사용량이 나와요.\n아래 기록은 7일/30일/전체: 날짜별 막대, 캐시 읽기, 프로젝트·모델 비중, 많이 쓴 세션 10개. 이 PC에서만 보여요.',
+  'manual.sessionFinder.title': '세션 찾기',
+  'manual.sessionFinder.body':
+    '사용량 패널의 세션 탭에 지난 세션이 최신순으로 나와요. 실제로 일한 시간, 도구 횟수, 고친 횟수도 함께.\n제목과 폴더로 찾고, [대화 내용까지]를 켜면 프롬프트와 답변에서 찾아요.\n결과를 누르면 대화 창이 그 자리에서 열리고 ↑/↓로 일치한 곳을 오갑니다.',
+  'manual.codexLimits.title': 'Codex 한도',
+  'manual.codexLimits.body':
+    'Codex를 쓰면 사용량 패널에 5시간·주간 한도를 몇 % 썼는지 나와요.\n남은 시간에 비해 빨리 쓰는지(⇡) 여유 있는지(⇣), 이 속도면 언제 한도에 닿는지도 알려 줘요.\nClaude는 기록에 한도를 남기지 않아 보여 줄 수 없어요.',
+  'manual.avatar.title': '내 캐릭터',
+  'manual.avatar.body':
+    '에이전트와 따로 사람마다 캐릭터가 하나 있어요. 방향키로 한 칸씩 걷고, 누르고 있으면 계속 걸어요.\n대기실 의자로 걸어가면 앉고, 빈 바닥 쪽으로 누르면 일어나요. 위치는 앱을 다시 켜도 그대로입니다.',
+  'manual.chat.title': '채팅',
+  'manual.chat.body':
+    '화면 아래 가운데 채팅창에 쓰고 Enter를 누르면 내 캐릭터 머리 위에 말풍선이 떠요.\n한 사람에 말풍선 하나, 새로 쓰면 바뀌고 ×로 지워요. 100자까지, 2초에 한 번.\nSpace+Enter로 채팅창에 가고, Esc로 나오면 다시 방향키로 걸어요.',
+  'manual.peoplePanel.title': '접속자 목록',
+  'manual.peoplePanel.body':
+    '오른쪽 목록에 이 오피스에 들어와 있는 사람이 에이전트가 있든 없든 다 나와요. 공개 오피스 / 팀 / 개인용으로 나뉘어요.\n이름 아래에 앱 버전이 있고, 나와 다르면 색이 바뀌어요. 망이 둘 이상이면 망 1, 망 2 배지가 붙어요.\n같은 망 사람 이름을 누르면 그 사람 쪽으로 화면이 따라갑니다.',
+  'manual.selectPc.title': 'PC 골라 보기',
+  'manual.selectPc.body':
+    '다른 사람의 캐릭터나 에이전트를 누르면 그 PC의 캐릭터 전부에 흰 테두리가 쳐져요.\n같은 캐릭터를 다시 누르거나 빈 바닥을 누르면 풀립니다.',
+  'manual.lounge.title': '대기실은 사람 자리',
+  'manual.lounge.body':
+    '대기실로 돌아온 에이전트는 따로 보이지 않고 주인의 사람 캐릭터에 합쳐져요. 다시 일하러 나가면 사람에게서 걸어 나와요.\n내 사람 캐릭터를 누르면 합쳐진 내 에이전트 목록이 나오고, 카드를 누르면 그 대화 창이 열려요.',
+  'manual.profile.title': '프로필 · 옷장',
+  'manual.profile.body':
+    '설정 → 내 프로필에서 캐릭터(사람 6종, 펫 Claudio·Gitcat), 색, 닉네임, 이름표 색을 골라요.\n옷장에서는 몸, 눈, 머리, 옷, 신발, 모자, 장신구를 하나씩 고르고 색을 바꿔요.\n이름 앞에는 항상 PC 계정 이름이 붙어요. 닉네임이 겹치면 나중에 정한 쪽에 · a1b2 같은 표시가 붙습니다.',
+  'manual.arcade.title': '오락실',
+  'manual.arcade.body':
+    '대기실 윗벽 게임기 여섯 대: 방화벽 깨기, 케이블, 버그 잡기, 드론 배송, 머지, 랙 쌓기.\n게임기 앞 의자에 앉으면 바로 시작돼요. 왼쪽에 하는 법, 오른쪽에 명예의 전당.\n게임기 하나에 한 명씩. 점수는 중계 서버가 입력을 다시 돌려 매겨요. M이나 🔊로 소리를 끄고, Esc로 그만둡니다.',
+  'manual.switcher.title': '오피스 바꾸기',
+  'manual.switcher.body':
+    '화면 맨 위 버튼으로 🏠 개인용, 🌐 공개 오피스, 🔒 팀을 언제든 오가요.\n오피스마다 배치, 내 캐릭터 위치, 채팅이 따로예요. 마지막에 고른 오피스로 다시 열립니다.',
+  'manual.personal.title': '개인용',
+  'manual.personal.body':
+    '나 혼자 쓰는 작은 사무실이에요. 에이전트, 채팅, 캐릭터 위치가 다른 PC로 나가지 않아요.\n다른 사람 목록의 "개인용"에 이름만 보여요. 팀에서 나간 게 아니라 코드 없이 팀으로 돌아갈 수 있어요.',
+  'manual.public.title': '공개 오피스',
+  'manual.public.body':
+    '같은 망에서 앱을 쓰는 사람은 설정 없이 함께 들어와요. 에이전트, 캐릭터, 채팅, 배치는 같은 망 안에서만 오가요.\n다른 망 사람은 중계를 거쳐 오른쪽 목록에만 나와요(누가 접속했는지만).\n작업 내용(파일, 명령, 답변)은 보이지 않고 일의 종류, 세션 제목, 토큰 같은 것만 보여요.',
+  'manual.team.title': '팀 오피스',
+  'manual.team.body':
+    '설정 → 오피스에서 팀 이름을 정해 만들면 초대 코드(PO2-…)가 나와요. 팀원은 그 코드로 들어옵니다.\n내용은 암호화돼 팀원끼리 같은 망에서만 오가고, 프로그램·파일 이름까지 보여요.\n팀은 한 번에 하나만. 팀에 있는 동안 공개 오피스에서는 내가 안 보여요.',
+  'manual.adminKick.title': '관리자 강퇴',
+  'manual.adminKick.body':
+    '중계 관리자는 설정 → 관리자 토큰을 넣으면 공개 오피스 목록 줄에 [강퇴] 버튼이 생겨요.\n강퇴된 PC는 중계에서만 빠지고(기본 24시간) 같은 망 공개 오피스는 그대로 씁니다.',
+  'manual.editFloor.title': '바닥 · 벽 칠하기',
+  'manual.editFloor.body':
+    '왼쪽 위 레이아웃 버튼으로 편집을 열어요. 바닥 무늬와 색을 고르고 방을 누르면 방 전체가 칠해져요. 서버실은 구역 하나씩.\n벽은 위치는 고정이고 색만 바꿔요. [복사]로 칠해진 바닥을 집어 올 수 있어요.',
+  'manual.editFurniture.title': '가구 놓기',
+  'manual.editFurniture.body':
+    '목록에서 골라 놓고, 드래그로 옮기고, Alt+드래그로 복사해요. R로 돌리고 색 버튼으로 색을 바꿔요. 카펫도 여기 있어요.\n책상, 의자, PC, 게임기는 사무실이 돌아가는 데 필요해서 고정이에요.\n[지우기]로 가구와 카펫을 지우고, Ctrl+Z / Ctrl+Y로 되돌려요.',
+  'manual.editBackground.title': '바깥 배경',
+  'manual.editBackground.body': '사무실 바깥을 단색이나 바닥·카펫 무늬로 채울 수 있어요.',
+  'manual.editSave.title': '저장 · 함께 쓰는 배치',
+  'manual.editSave.body':
+    '고친 내용은 [저장]을 눌러야 반영돼요. [취소]나 Esc는 다 버리고, [초기화]는 처음 배치로 돌려요.\n공개·팀 오피스는 저장하는 순간 같은 오피스 사람 모두에게 보여요. 여럿이 고치면 마지막 저장이 남아요.\n개인용 배치는 내 PC에만 저장됩니다.',
+  'manual.importExport.title': '배치 내보내기 · 가져오기',
+  'manual.importExport.body':
+    '설정 → 레이아웃 내보내기로 지금 배치를 JSON 파일로 저장하고, 레이아웃 가져오기로 파일에서 불러와 바로 저장해요.',
+  'manual.notifications.title': 'PC 알림',
+  'manual.notifications.body':
+    '앱 창을 닫아도 트레이가 떠 있으면 OS 알림이 와요.\n공개 오피스에 누가 들어오거나 나갈 때, 내 메인 에이전트가 답을 기다리거나 일을 다 마쳤을 때, 새 채팅이 올 때.\n설정에서 종류별로 끌 수 있어요.',
+  'manual.tray.title': '트레이 아이콘',
+  'manual.tray.body':
+    'Windows 알림 영역과 Mac 메뉴 막대에 Pixel Office 아이콘이 떠요.\n열기로 사무실 창을 띄우고, 종료로 앱을 완전히 끕니다.',
+  'manual.autostart.title': '로그인할 때 자동 실행',
+  'manual.autostart.body':
+    '설정에서 켜면 PC에 로그인할 때 Pixel Office가 창 없이 알아서 켜져요. 알림과 동료 화면이 늘 준비됩니다.',
+  'manual.updates.title': '자동 업데이트',
+  'manual.updates.body':
+    '켤 때와 6시간마다 새 버전을 확인해서 조용히 받고 다시 시작해요. 열린 창은 알아서 새로고침돼요.\n새 버전이 제대로 안 켜지면 이전 버전으로 돌아가요. 설정 → 업데이트 확인으로 바로 확인할 수 있어요.\n아주 가끔 설치 파일이 필요한 버전만 오른쪽 위에 업데이트 버튼이 떠요.',
+  'manual.installApp.title': '앱으로 설치',
+  'manual.installApp.body':
+    'Edge나 Chrome에서 앱으로 설치하면 탭이 아니라 따로 창으로 열려요.\n안내 창을 닫았다면 주소창의 설치 아이콘을 누르세요. 한 번에 창 하나만 열리고, 새로 열면 예전 창은 닫힙니다.',
+  'manual.quit.title': '완전 종료 · 다시 시작',
+  'manual.quit.body':
+    '설정 → 완전 종료나 트레이 종료로 앱을 끄면 화면에 "서버가 꺼져 있어요"가 나와요.\n[시작]을 누르면 다시 켜지고 화면이 알아서 돌아옵니다.',
+  'manual.tour.title': '온보딩 안내',
+  'manual.tour.body':
+    '처음 열면 화면 기능을 하나씩 짚어 주는 안내가 나와요. 예시 캐릭터로 직접 보여 줍니다.\n이 설명서 위쪽 [온보딩 시작]으로 언제든 다시 볼 수 있어요. ← → 키로 넘기고 Esc로 그만둡니다.',
+  'tour.manual.title': '사용 설명서',
+  'tour.manual.body':
+    '왼쪽 위 ? 버튼을 누르면 모든 기능의 설명서가 열려요. 왼쪽에서 기능을 고르면 오른쪽에 애니메이션과 설명이 나와요.\n위쪽 검색창으로 찾고, [온보딩 시작]으로 이 안내를 다시 볼 수 있어요.',
+  'manual.demo.bg': '배경',
+  'manual.demo.chat': '점심 같이 가요?',
+  'manual.demo.chatHint': 'Space+Enter로 채팅',
+  'manual.demo.code': '코드',
+  'manual.demo.doc': '문서',
+  'manual.demo.term': '터미널',
+  'manual.demo.fetching': '새 버전 받는 중…',
+  'manual.demo.restarting': '다시 시작하는 중…',
+  'manual.demo.every6h': '켤 때 + 6시간마다 확인',
+  'manual.demo.fxBig': '큰 도구 결과',
+  'manual.demo.fxDiff': '파일 수정',
+  'manual.demo.fxDone': '할 일 완료',
+  'manual.demo.fxFail': '도구 실패',
+  'manual.demo.inviteCode': '초대 코드',
+  'manual.demo.join': '참여',
+  'manual.demo.lanAll': '같은 망: 사무실 전체',
+  'manual.demo.relayNames': '중계: 이름만',
+  'manual.demo.login': '로그인',
+  'manual.demo.loungeList': '대기실에 있는 내 에이전트',
+  'manual.demo.main': '메인 에이전트',
+  'manual.demo.sub': '서브에이전트',
+  'manual.demo.shell': '백그라운드 셸',
+  'manual.demo.min': '분',
+  'manual.demo.myPc': '내 PC',
+  'manual.demo.otherPc': '다른 PC',
+  'manual.demo.nJoin': '{name} 님이 들어왔어요',
+  'manual.demo.nWait': 'Claude #1 · app\n로그인 버그 수정 — 응답을 기다립니다',
+  'manual.demo.open': '열기',
+  'manual.demo.quit': '종료',
+  'manual.demo.prompt': '로그인 후 리다이렉트가 안 돼요',
+  'manual.demo.prompt2': '테스트도 돌려 줘',
+  'manual.demo.reply': '원인을 찾아볼게요.',
+  'manual.demo.reply2': 'redirect 경로를 고쳤어요.',
+  'manual.demo.serverOff': '서버가 꺼져 있어요',
+  'manual.demo.team': '우리 팀',
+  'manual.demo.title': '로그인 버그 수정',
+  'manual.demo.s2': '다크 모드 색 정리',
+  'manual.demo.s3': 'API 캐시 추가',
+  'manual.demo.s4': 'README 갱신',
 };
 
 export type Key = keyof typeof ko;
@@ -1131,7 +1317,6 @@ const en: Record<Key, string> = {
   'color.copyTitle': 'Copy color from another item — click one in the office',
   'color.reset': 'Reset',
   'color.resetTitle': 'Reset to default',
-  'settings.replayTour': 'Replay tour',
 
   'tour.skip': 'Skip',
   'tour.prev': 'Back',
@@ -1235,9 +1420,197 @@ const en: Record<Key, string> = {
     'In Edge or Chrome you can install Pixel Office as an app, so it opens in its own window instead of a tab.\nClosed the prompt? Use the install icon in the address bar.',
   'tour.done.title': 'All set!',
   'tour.done.body':
-    'Start an agent and watch it walk in.\nYou can replay this tour any time from Settings.',
+    'Start an agent and watch it walk in.\nThe ? button top left (Manual) replays this tour any time.',
   'tour.done.bodyDemo':
-    'Start an agent and watch it walk in. The tour characters are heading out now.\nYou can replay this tour any time from Settings.',
+    'Start an agent and watch it walk in. The tour characters are heading out now.\nThe ? button top left (Manual) replays this tour any time.',
+  'toolbar.manual': 'Manual',
+  'manual.title': 'Manual',
+  'manual.search': 'Search features (e.g. chat, tokens, team)',
+  'manual.none': 'No matching feature. Try other words.',
+  'manual.startTour': 'Start the tour',
+  'manual.startTourTip': 'Replay the first-run tour that points at each part of the screen',
+  'manual.close': 'Close the manual',
+  'manual.cat.basics': 'Basics',
+  'manual.cat.agents': 'Reading agents',
+  'manual.cat.sessions': 'Sessions · usage',
+  'manual.cat.people': 'People · talking',
+  'manual.cat.offices': 'Offices',
+  'manual.cat.layout': 'Layout editing',
+  'manual.cat.system': 'App · system',
+  'manual.office.title': 'The pixel office',
+  'manual.office.body':
+    'Claude Code and Codex agents running on this PC and on PCs of the same network become characters working in an office.\nEach walks to the room that fits what it is doing and sits down; the bubble over its head says what it does.\nNothing to set up: start an agent and it shows up, finish it and it leaves.',
+  'manual.rooms.title': 'Four rooms',
+  'manual.rooms.body':
+    'Coding Room: editing files (Edit/Write, apply_patch, commands like sed -i).\nLibrary: reading files, searching code or the web, and thinking.\nServer Room: running commands and background shells.\nLounge: waiting for input or approval, and when done.\nAn agent changes room only after about 3 s of the same kind of work, so it does not run back and forth.',
+  'manual.serverZones.title': 'Server Room work zones',
+  'manual.serverZones.body':
+    'Yellow floor tape splits the Server Room into four zones.\nTop left tests (vitest, pytest, curl…), top right builds (tsc, lint, installs, docker…), bottom left Git, bottom right everything else.\nAgents sit in the zone of their command; when it is full, anywhere free in the room. Hover a zone plate to see which commands go there.',
+  'manual.roomPlates.title': 'Room plates',
+  'manual.roomPlates.body':
+    "The number beside a room's plate (top left of the room) counts its agents, subagents and shells included.\nHover the plate for what brings agents there and a card for each agent in it.",
+  'manual.map.title': 'Moving the map',
+  'manual.map.body':
+    'Drag to pan, scroll to zoom; the + / − buttons top left do the same.\nThe four-corners button (fit) brings the whole office back into the window.\nHover any top-left button for its name right under it.',
+  'manual.theme.title': 'Dark · light theme',
+  'manual.theme.body':
+    'The sun/moon button top left switches between dark and light at once.\nSettings → Theme → System follows your OS. Session windows follow along.',
+  'manual.language.title': 'Language',
+  'manual.language.body':
+    'Settings → Language picks 한국어 or English, for this browser only.\nRoom names, what agents do and notifications all follow it.',
+  'manual.agentTags.title': 'Name tags',
+  'manual.agentTags.body':
+    "The tag under a character: MAIN = main agent, SUB = subagent, SHELL = background shell.\nThen #number and the owner's name (nickname, else the PC account); subagents and shells take their parent's number.\nYour own agents' tags end with their context use (29%).",
+  'manual.agentBubble.title': 'Speech bubbles',
+  'manual.agentBubble.body':
+    "The top line of a working agent's bubble: Claude/Codex badge, an icon for what it does, the session title, task progress (3/7) and how long the current work has taken.\nBelow it, what it does. The time turns orange when it runs long.\nHover for everything: full activity, room, reason, lines changed. Zoomed far out, only the icon stays.",
+  'manual.family.title': 'Subagents · shells',
+  'manual.family.body':
+    'Subagents and shells look like their parent and sit at the free seat closest to it in the same room.\nWhen the parent hands over a task, or a subagent reports back, the two face each other and talk for a moment.',
+  'manual.waiting.title': 'Waiting !',
+  'manual.waiting.body':
+    "A red ! over a head means the agent waits for your approval or answer.\nAgents back in the lounge fold into their owner's character; then the ! shows over that person.",
+  'manual.effects.title': 'Effects',
+  'manual.effects.body':
+    'Editing a file floats the lines changed, like +12 −3.\nA failed tool makes the PC flash red with smoke, and a drop forms by the head.\nFinishing a task list, or a main agent finishing its turn, fires confetti; a huge tool result shows 📦 +82k.',
+  'manual.heat.title': 'Token size · flames',
+  'manual.heat.body':
+    "A session past 300k tokens grows 1.5×, past 1M 2×.\nOver 15k tokens a minute gets a blue ring, 40k a gold flame, 75k a red flame.\nThe tag shows the tokens (1.4M · Σ1.9M) and a model badge; while your main agent waits, the prompt cache's time left (❄ 4:23).",
+  'manual.pcScreens.title': 'PC screens · server LEDs',
+  'manual.pcScreens.body':
+    "The PC an agent sits at shows what it does: green code for edits, a terminal for commands, a white page for reading.\nA working seat's PC glows softly, and the server PCs' LEDs blink while commands run in the Server Room.",
+  'manual.othersBubbles.title': "Hide others' bubbles",
+  'manual.othersBubbles.body':
+    "Too many bubbles? The 💬 button top left hides the bubbles of other PCs' agents.\nYours stay, hidden ones still show on hover, and the choice is remembered in this browser.",
+  'manual.transcript.title': 'Session window',
+  'manual.transcript.body':
+    'Click one of your agents or its bubble to open the whole session in its own window: prompts, replies, tool calls and results.\nAt the top the current status and context use, below it the last 30 minutes as a strip, on the right a minimap of the whole talk.\nMy prompts shows only what you typed, Alt+↑/↓ jumps between your prompts, the slider sets the text size, Esc closes.',
+  'manual.shellOutput.title': 'Shell output',
+  'manual.shellOutput.body':
+    "Click a SHELL character to see its command's output as a terminal.\nWithout an output file, the session that started it opens instead.",
+  'manual.usage.title': 'Token usage (📊)',
+  'manual.usage.body':
+    "The 📊 button top left opens the usage panel; drag its right or bottom edge or its corner to resize it.\nNow: today's tokens and each working agent's tokens, model and rate per minute.\nHistory over 7 days / 30 days / all: daily bars, cache reads, projects and models, the top 10 sessions. Only this PC sees it.",
+  'manual.sessionFinder.title': 'Finding sessions',
+  'manual.sessionFinder.body':
+    "The usage panel's Sessions tab lists past sessions newest first, with active time, tool calls and edits.\nSearch titles and folders, or turn on Conversations too to search prompts and replies.\nA hit opens the session window right there; ↑/↓ moves between matches.",
+  'manual.codexLimits.title': 'Codex limits',
+  'manual.codexLimits.body':
+    'With Codex, the usage panel shows how much of the 5-hour and weekly limits you used,\nwhether you are ahead (⇡) or behind (⇣) an even pace, and when you would hit the limit at this rate.\nClaude writes no limits to its logs, so none are shown for it.',
+  'manual.avatar.title': 'Your character',
+  'manual.avatar.body':
+    'Besides your agents, you have a character of your own. The arrow keys walk it one tile at a time; hold one to keep walking.\nWalk onto a lounge chair to sit, press toward open floor to stand up. It stays where you left it.',
+  'manual.chat.title': 'Chat',
+  'manual.chat.body':
+    'Type in the bar at the bottom centre and press Enter: a bubble appears over your character.\nOne bubble per person, a new one replaces it, × deletes it. Up to 100 characters, one every 2 s.\nSpace+Enter jumps to the bar, Esc leaves it so the arrows walk again.',
+  'manual.peoplePanel.title': 'People panel',
+  'manual.peoplePanel.body':
+    'The list on the right shows everyone in this office, agents or not, in three areas: public office / team / personal.\nUnder each name its app version, coloured when it differs from yours; with two or more networks, Net 1, Net 2 badges.\nClick someone on your network to follow them.',
+  'manual.selectPc.title': 'Picking a PC',
+  'manual.selectPc.body':
+    "Click someone else's character or agent and every character of that PC gets a white outline.\nClick it again, or empty floor, to clear it.",
+  'manual.lounge.title': 'The lounge is for people',
+  'manual.lounge.body':
+    "Agents back in the lounge fold into their owner's character, and step out of it when they go back to work.\nClick your own character for a list of your folded agents; a card opens its session window.",
+  'manual.profile.title': 'Profile · wardrobe',
+  'manual.profile.body':
+    'Settings → My profile: character (6 people, pets Claudio and Gitcat), colour, nickname and name tag colours.\nThe wardrobe picks body, eyes, hair, clothes, shoes, hats and accessories one by one, each with its colours.\nYour PC account always comes before the name. On a nickname clash, whoever set it later gets a mark like · a1b2.',
+  'manual.arcade.title': 'Arcade',
+  'manual.arcade.body':
+    'Six cabinets on the lounge top wall: Firewall Breaker, Cable Run, Bug Squash, Drone Delivery, Merge, Rack Stack.\nSit on the chair in front of one and its game starts at once: how to play on the left, the hall of fame on the right.\nOne player per cabinet. The relay replays your inputs to score them. M or 🔊 mutes, Esc quits.',
+  'manual.switcher.title': 'Switching offices',
+  'manual.switcher.body':
+    'The buttons at the top switch between 🏠 Personal, 🌐 Public office and 🔒 your team at any time.\nEach office has its own layout, character spot and chat; the app reopens in the one you used last.',
+  'manual.personal.title': 'Personal',
+  'manual.personal.body':
+    "A small office just for you: agents, chat and your character's spot never leave this PC.\nOthers only see your name under Personal in their list. You stay in your team, so you can go back without a code.",
+  'manual.public.title': 'Public office',
+  'manual.public.body':
+    'Everyone using the app on your network is in it, with nothing to set up. Agents, characters, chat and layout stay on that network.\nPeople on other networks come through the relay into the list on the right only (just who is online).\nNo work details (files, commands, replies) are shown there: only the kind of work, session titles, tokens and such.',
+  'manual.team.title': 'Team office',
+  'manual.team.body':
+    'Settings → Offices: name a team to create it and get an invite code (PO2-…); teammates join with that code.\nIts traffic is encrypted, stays on your network between teammates, and shows program and file names too.\nOne team at a time; while in it, you are not seen in the public office.',
+  'manual.adminKick.title': 'Admin kick',
+  'manual.adminKick.body':
+    'A relay admin who enters Settings → Admin token gets a Kick button on public-office rows.\nA kicked PC only leaves the relay (24 h by default); its public office on its own network keeps working.',
+  'manual.editFloor.title': 'Floors · walls',
+  'manual.editFloor.body':
+    'The layout button top left opens the editor. Pick a floor pattern and colour, then click a room to paint all of it (the Server Room one zone at a time).\nWalls are fixed in place; only their colour changes. Copy picks up a painted floor.',
+  'manual.editFurniture.title': 'Furniture',
+  'manual.editFurniture.body':
+    'Pick from the list and place it, drag to move, Alt+drag to copy, R to rotate, the colour button to recolour. Carpets are here too.\nDesks, chairs, PCs and arcade cabinets keep the office working, so they are fixed.\nErase removes furniture and carpets; Ctrl+Z / Ctrl+Y undo and redo.',
+  'manual.editBackground.title': 'Background',
+  'manual.editBackground.body':
+    'Fill the area outside the office with a colour or a floor/carpet pattern.',
+  'manual.editSave.title': 'Saving · shared layouts',
+  'manual.editSave.body':
+    'Edits apply only on Save. Cancel or Esc drops them, Reset puts the original layout back.\nIn the public and team offices a save shows at once for everyone there; when several edit, the last save wins.\nThe personal layout is saved on this PC only.',
+  'manual.importExport.title': 'Export · import layout',
+  'manual.importExport.body':
+    'Settings → Export layout saves the current layout as a JSON file; Import layout loads one and saves it at once.',
+  'manual.notifications.title': 'PC notifications',
+  'manual.notifications.body':
+    'With the tray running, OS notifications arrive even when the window is closed:\nsomeone joining or leaving the public office, your main agent waiting for you or completely done, a new chat message.\nTurn each kind off in Settings.',
+  'manual.tray.title': 'Tray icon',
+  'manual.tray.body':
+    'Pixel Office sits in the Windows notification area and the Mac menu bar.\nOpen brings up the office window; Quit stops the app completely.',
+  'manual.autostart.title': 'Start at login',
+  'manual.autostart.body':
+    'Turned on in Settings, Pixel Office starts without a window when you log in, so notifications and your colleagues are always there.',
+  'manual.updates.title': 'Automatic updates',
+  'manual.updates.body':
+    'At start and every 6 hours the app checks for a new version, fetches it quietly and restarts; open windows reload themselves.\nIf a new version fails to start, the previous one comes back. Settings → Check for updates checks now.\nRarely, a version needs the installer: then an update button shows top right.',
+  'manual.installApp.title': 'Install as an app',
+  'manual.installApp.body':
+    'In Edge or Chrome, install it as an app and it opens in its own window instead of a tab.\nClosed the prompt? Use the install icon in the address bar. One window at a time: opening a new one closes the old.',
+  'manual.quit.title': 'Quit · start again',
+  'manual.quit.body':
+    "Settings → Quit Pixel Office or the tray's Quit stops the app, and the page says the server is off.\nStart turns it back on and the office comes back by itself.",
+  'manual.tour.title': 'Onboarding tour',
+  'manual.tour.body':
+    'The first time, a tour points at each part of the screen, with example characters.\nStart the tour at the top of this manual replays it any time. ← → step through it, Esc stops.',
+  'tour.manual.title': 'Manual',
+  'tour.manual.body':
+    'The ? button top left opens the manual of every feature: pick one on the left, its animation and explanation show on the right.\nSearch at the top, and Start the tour replays this tour.',
+  'manual.demo.bg': 'Background',
+  'manual.demo.chat': 'Lunch, anyone?',
+  'manual.demo.chatHint': 'Space+Enter to chat',
+  'manual.demo.code': 'code',
+  'manual.demo.doc': 'page',
+  'manual.demo.term': 'terminal',
+  'manual.demo.fetching': 'Fetching the new version…',
+  'manual.demo.restarting': 'Restarting…',
+  'manual.demo.every6h': 'Checked at start + every 6 h',
+  'manual.demo.fxBig': 'Big tool result',
+  'manual.demo.fxDiff': 'File edited',
+  'manual.demo.fxDone': 'Tasks done',
+  'manual.demo.fxFail': 'Tool failed',
+  'manual.demo.inviteCode': 'Invite code',
+  'manual.demo.join': 'Join',
+  'manual.demo.lanAll': 'Same network: the whole office',
+  'manual.demo.relayNames': 'Relay: names only',
+  'manual.demo.login': 'Log in',
+  'manual.demo.loungeList': 'My agents in the lounge',
+  'manual.demo.main': 'main agent',
+  'manual.demo.sub': 'subagent',
+  'manual.demo.shell': 'background shell',
+  'manual.demo.min': 'm',
+  'manual.demo.myPc': 'My PC',
+  'manual.demo.otherPc': 'Another PC',
+  'manual.demo.nJoin': '{name} joined',
+  'manual.demo.nWait': 'Claude #1 · app\nFix login bug — waiting for your answer',
+  'manual.demo.open': 'Open',
+  'manual.demo.quit': 'Quit',
+  'manual.demo.prompt': 'Login does not redirect',
+  'manual.demo.prompt2': 'Run the tests too',
+  'manual.demo.reply': "I'll look for the cause.",
+  'manual.demo.reply2': 'Fixed the redirect path.',
+  'manual.demo.serverOff': 'The server is off',
+  'manual.demo.team': 'our team',
+  'manual.demo.title': 'Fix login bug',
+  'manual.demo.s2': 'Tidy dark mode colours',
+  'manual.demo.s3': 'Add API cache',
+  'manual.demo.s4': 'Update README',
 };
 
 export const DICT: Record<Lang, Record<Key, string>> = { ko, en };

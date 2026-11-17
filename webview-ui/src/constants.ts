@@ -985,3 +985,51 @@ export const OTHERS_BUBBLES_KEY = 'pixel-office.othersBubbles';
  *  legend's height kept inside the strip (it follows the pointer down). */
 export const LEGEND_GAP_PX = 6;
 export const LEGEND_MAP_H_PX = 190;
+
+// ── Manual (? under the top-left buttons) ──────────────────
+/** Default size (resized like the usage panel, remembered per viewer), the feature list's
+ *  width, and the animation stage: logical px (scaled to the column's width) + clock tick. */
+export const MANUAL_PANEL_DEFAULT_W_PX = 880;
+export const MANUAL_PANEL_DEFAULT_H_PX = 600;
+export const MANUAL_PANEL_SIZE_KEY = 'pixel-office.manual.size';
+export const MANUAL_LIST_WIDTH_PX = 220;
+export const MANUAL_STAGE_W = 192;
+export const MANUAL_STAGE_H = 112;
+export const MANUAL_STAGE_TICK_MS = 50;
+/** The stage's own palette: a little office drawn the same in both themes. */
+export const MANUAL_COLORS = {
+  floor: '#b9a68a',
+  floorAlt: '#ad9a7e',
+  wall: '#3a3a5c',
+  wallTop: '#55557f',
+  void: '#161624',
+  tape: '#d9a93c',
+  ink: '#10121c',
+  white: '#ffffff',
+  code: '#4ade80',
+  term: '#0b0b10',
+  termText: '#9be26a',
+  doc: '#f4f4f0',
+  docLine: '#9aa0aa',
+  ok: '#3fd07a',
+  warn: '#ffb547',
+  fail: '#ff5c6a',
+  blue: '#4aa8ff',
+  gold: '#ffd23a',
+  red: '#ff3b1a',
+  smoke: '#8d93a8',
+  glow: 'rgba(120, 220, 255, 0.35)',
+  dim: 'rgba(0, 0, 0, 0.45)',
+  panel: '#24243a',
+  panelLine: '#4a4a6a',
+  text: '#e8e8f0',
+  muted: '#9a9ab8',
+  sky: '#2a5a8a',
+  lightBg: '#eef0f6',
+  lightPanel: '#ffffff',
+  lightLine: '#c4c8d8',
+  lightText: '#1e1e2e',
+  accent: '#6030ff',
+  chatBg: '#ffffff',
+  confetti: ['#ff5c6a', '#ffd23a', '#3fd07a', '#4aa8ff', '#b39dff'],
+} as const;

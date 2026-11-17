@@ -15,9 +15,7 @@ import {
   USAGE_CACHE_H,
   USAGE_DAILY_H,
   USAGE_MODEL_COLORS,
-  USAGE_PANEL_CORNER_PX,
-  USAGE_PANEL_EDGE_PX,
-  USAGE_PANEL_MARGIN_PX,
+  USAGE_PANEL_SIZE_KEY,
   USAGE_RANGE_KEY,
   USAGE_SHARE_COLORS,
   USAGE_TOKEN_COLORS,
@@ -25,13 +23,13 @@ import {
 import { t, useLang } from '../i18n.js';
 import { transport } from '../transport/index.js';
 import { providerName, tagBadge } from './lanAgents.js';
+import { PanelGrips } from './PanelGrips.js';
 import { SessionFinder, SessionRow } from './SessionFinder.js';
 import { openPopout } from './transcriptWindows.js';
 import { DayBars, HBars, ShareBar, Swatch } from './UsageCharts.js';
 import { hitRate } from './usageCharts.js';
 import { cacheChipText, limitPace, spanText, windowName } from './usageLimits.js';
-import type { Grip as GripKind, Size } from './usagePanelSize.js';
-import { clampSize, dragSize, storedSize, storeSize } from './usagePanelSize.js';
+import { useResizable } from './usagePanelSize.js';
 import { burnTier, modelFamily, modelLabel, tokensText } from './usageSignals.js';
 
 const RANGES: UsageRange[] = ['7d', '30d', 'all'];
@@ -60,7 +58,7 @@ export function UsagePanel({ onClose }: { onClose: () => void }) {
   });
   const [data, setData] = useState<UsageLoaded | null>(null);
   const [agents, setAgents] = useState<OfficeAgent[]>([]);
-  const box = useResizable();
+  const box = useResizable(USAGE_PANEL_SIZE_KEY);
 
   useEffect(
     () =>
@@ -170,110 +168,7 @@ export function UsagePanel({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </div>
-      <Grip which="right" box={box} />
-      <Grip which="bottom" box={box} />
-      <Grip which="corner" box={box} />
-    </div>
-  );
-}
-
-interface Box {
-  ref: React.RefObject<HTMLDivElement | null>;
-  size: Size;
-  start: (which: GripKind, e: React.PointerEvent) => void;
-}
-
-/** The panel's size: remembered per viewer, kept inside the viewport (also when it shrinks). */
-function useResizable(): Box {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [size, setSize] = useState<Size>(storedSize);
-  const room = (): Size => {
-    const r = ref.current?.getBoundingClientRect();
-    return {
-      w: window.innerWidth - (r?.left ?? 0) - USAGE_PANEL_MARGIN_PX,
-      h: window.innerHeight - (r?.top ?? 0) - USAGE_PANEL_MARGIN_PX,
-    };
-  };
-  useEffect(() => {
-    const fit = () => setSize((s) => clampSize(s, room()));
-    fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
-  }, []);
-  const start = (which: GripKind, e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const el = e.currentTarget as HTMLElement;
-    el.setPointerCapture(e.pointerId);
-    const from = { x: e.clientX, y: e.clientY };
-    const base = size;
-    const max = room();
-    let last = base;
-    const move = (ev: PointerEvent) => {
-      last = dragSize(base, which, ev.clientX - from.x, ev.clientY - from.y, max);
-      setSize(last);
-    };
-    const up = () => {
-      el.removeEventListener('pointermove', move);
-      el.removeEventListener('pointerup', up);
-      el.removeEventListener('pointercancel', up);
-      storeSize(last);
-    };
-    el.addEventListener('pointermove', move);
-    el.addEventListener('pointerup', up);
-    el.addEventListener('pointercancel', up);
-  };
-  return { ref, size, start };
-}
-
-const GRIP_STYLE: Record<GripKind, React.CSSProperties> = {
-  right: {
-    top: 0,
-    right: -USAGE_PANEL_EDGE_PX / 2,
-    width: USAGE_PANEL_EDGE_PX,
-    bottom: USAGE_PANEL_CORNER_PX,
-    cursor: 'ew-resize',
-  },
-  bottom: {
-    left: 0,
-    bottom: -USAGE_PANEL_EDGE_PX / 2,
-    height: USAGE_PANEL_EDGE_PX,
-    right: USAGE_PANEL_CORNER_PX,
-    cursor: 'ns-resize',
-  },
-  corner: {
-    right: -USAGE_PANEL_EDGE_PX / 2,
-    bottom: -USAGE_PANEL_EDGE_PX / 2,
-    width: USAGE_PANEL_CORNER_PX,
-    height: USAGE_PANEL_CORNER_PX,
-    cursor: 'nwse-resize',
-  },
-};
-
-/** A resize handle on the right edge, the bottom edge or the bottom-right corner. */
-function Grip({ which, box }: { which: GripKind; box: Box }) {
-  return (
-    <div
-      data-usage-grip={which}
-      className="absolute touch-none"
-      style={GRIP_STYLE[which]}
-      onPointerDown={(e) => box.start(which, e)}
-    >
-      {which === 'corner' && (
-        // Two pixel steps in the corner, so the diagonal grip can be found
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 10 10"
-          aria-hidden
-          className="absolute right-4 bottom-4 text-text-muted"
-          shapeRendering="crispEdges"
-        >
-          <rect x="6" y="2" width="2" height="2" fill="currentColor" />
-          <rect x="2" y="6" width="2" height="2" fill="currentColor" />
-          <rect x="6" y="6" width="2" height="2" fill="currentColor" />
-        </svg>
-      )}
+      <PanelGrips box={box} />
     </div>
   );
 }

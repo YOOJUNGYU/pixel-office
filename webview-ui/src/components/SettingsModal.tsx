@@ -36,8 +36,6 @@ interface SettingsModalProps {
   offices: Omit<OfficesState, 'type'> | null;
   officeReply: OfficeReply | null;
   onOfficeReplyHandled: () => void;
-  /** Settings → 사용법 다시 보기 (restarts the onboarding tour). */
-  onReplayTour: () => void;
 }
 
 export function SettingsModal({
@@ -54,7 +52,6 @@ export function SettingsModal({
   offices,
   officeReply,
   onOfficeReplyHandled,
-  onReplayTour,
 }: SettingsModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lang = useLang();
@@ -101,14 +98,11 @@ export function SettingsModal({
     </label>
   );
 
-  const replayTour = <MenuItem onClick={onReplayTour}>{t('settings.replayTour')}</MenuItem>;
-
   if (readOnly) {
     return (
       <Modal isOpen={isOpen} onClose={onClose} title={t('toolbar.settings')}>
         {languageSelect}
         {themeSelect}
-        {replayTour}
       </Modal>
     );
   }
@@ -194,7 +188,6 @@ export function SettingsModal({
           {t('settings.checkUpdate')}
         </MenuItem>
       </div>
-      {replayTour}
       {/* Write-only: the stored token never comes back, only whether one is set. '' clears it. */}
       <div className="flex flex-col gap-4 py-4 px-10 text-sm">
         <label htmlFor="relay-admin-token" className="flex items-center justify-between gap-8">

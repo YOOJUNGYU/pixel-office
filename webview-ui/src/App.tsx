@@ -41,6 +41,7 @@ import { ChatLayer } from './lan/ChatLayer.js';
 import { areaSections } from './lan/directoryModel.js';
 import { InstallPrompt } from './lan/InstallPrompt.js';
 import { LanOverlay } from './lan/LanOverlay.js';
+import { ManualPanel } from './lan/ManualPanel.js';
 import { NicknameNotice } from './lan/NicknameNotice.js';
 import { isPersonal, wrapsActivity } from './lan/offices.js';
 import { OfficeSwitcher } from './lan/OfficeSwitcher.js';
@@ -147,7 +148,11 @@ function App() {
   // Overlay geometry: the root div is the canvas container's size.
   const containerRef = useRef<HTMLDivElement>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isUsageOpen, setIsUsageOpen] = useState(false);
+  // The panel under the top-left buttons: 📊 usage or the ? manual, one at a time.
+  const [topPanel, setTopPanel] = useState<'usage' | 'manual' | null>(null);
+  const isUsageOpen = topPanel === 'usage';
+  const isManualOpen = topPanel === 'manual';
+  const togglePanel = (p: 'usage' | 'manual') => setTopPanel((v) => (v === p ? null : p));
   // Other PCs' agents' speech bubbles (top-left toggle), remembered per viewer; shown by default.
   const [othersBubbles, setOthersBubbles] = useState(() => {
     try {
@@ -501,6 +506,7 @@ function App() {
 
   const settingsOpen = touring ? scene?.settings === true : isSettingsOpen;
   const usageOpen = touring ? scene?.usage === true : isUsageOpen;
+  const manualOpen = touring ? scene?.manual === true : isManualOpen;
   const profileOpen = touring ? scene?.profile === true : isProfileOpen;
 
   const handleExportLayout = useCallback(() => {
@@ -700,8 +706,10 @@ function App() {
               }
               isSettingsOpen={settingsOpen}
               onToggleSettings={() => setIsSettingsOpen((v) => !v)}
-              onToggleUsage={officeReadOnly || isMobile ? null : () => setIsUsageOpen((v) => !v)}
+              onToggleUsage={officeReadOnly || isMobile ? null : () => togglePanel('usage')}
               isUsageOpen={usageOpen}
+              isManualOpen={manualOpen}
+              onToggleManual={() => togglePanel('manual')}
               othersBubbles={othersBubbles}
               onToggleOthersBubbles={toggleOthersBubbles}
             />
@@ -762,7 +770,20 @@ function App() {
                 })()}
               </>
             ) : usageOpen && !officeReadOnly && !isMobile ? (
-              <UsagePanel onClose={() => setIsUsageOpen(false)} />
+              <UsagePanel onClose={() => setTopPanel(null)} />
+            ) : manualOpen ? (
+              <ManualPanel
+                onClose={() => setTopPanel(null)}
+                onStartTour={() => {
+                  setTopPanel(null);
+                  startTour();
+                }}
+                me={{
+                  palette: profile?.profile.palette ?? 0,
+                  hueShift: profile?.profile.hueShift ?? 0,
+                  outfit: profile?.profile.outfit,
+                }}
+              />
             ) : null
           }
         />
@@ -880,7 +901,6 @@ function App() {
           offices={offices}
           officeReply={officeReply}
           onOfficeReplyHandled={clearOfficeReply}
-          onReplayTour={startTour}
         />
       </div>
       {/* Outside the app root: the overlay makes the root inert while it runs. */}

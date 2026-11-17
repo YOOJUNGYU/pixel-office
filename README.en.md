@@ -204,7 +204,7 @@ Pixel Office can also send desktop notifications on Windows and Mac. They work w
   - Settings has Export and Import if you want a layout as a file.
 - **Install as an app**: Edge and Chrome offer it in a popup at the top right. You get a window without tabs. If you open it while the server is off, it shows a Start button.
 - **Automatic updates**: Pixel Office checks at start and every 6 hours, downloads quietly, restarts into the new version and reloads open windows. You can't turn this off. If a new version fails to start, it rolls back. The rare release that changes the bundled Node needs the installer, and an Update button shows up at the top right for that.
-- **Replay the tour** from Settings.
+- **Manual**: the **?** button at the top left opens a manual of every feature under it. Pick one on the left to see an animation and an explanation on the right, or search at the top (Korean or English words both work). Resize it like the usage panel, by its right or bottom edge or its corner. **Start the tour** replays the first-run tour.
 
 ## Security and privacy
 
