@@ -11,6 +11,8 @@ import {
   LAN_KIND_BADGES,
   LAN_PROVIDER_BADGE_FG,
   LAN_PROVIDER_COLORS,
+  LEGEND_GAP_PX,
+  LEGEND_MAP_H_PX,
   TRANSCRIPT_FOLD_LINES,
   TRANSCRIPT_JUMP_MARGIN_PX,
   TRANSCRIPT_MINIMAP_MIN_MARK_PX,
@@ -22,7 +24,7 @@ import {
   TRANSCRIPT_ZOOM_STEP,
 } from '../constants.js';
 import { t, useLang } from '../i18n.js';
-import { isPromptEntry, type MapMark, mapMark, stripCells } from './activityStrip.js';
+import { isPromptEntry, type MapMark, mapMark, STRIP_ORDER, stripCells } from './activityStrip.js';
 import { badgeColors } from './badgeColors.js';
 import type { Family } from './highlight.js';
 import { highlight, languageOf } from './highlight.js';
@@ -140,8 +142,10 @@ export const TranscriptPanel = memo(function TranscriptPanel({
       e.preventDefault();
       jumpRef.current(e.key === 'ArrowUp' ? -1 : 1);
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Capture phase: the panel's own onKeyDown stops propagation (keys never walk my avatar), so a
+    // bubbling window listener never heard Alt+↑/↓ once the panel had focus.
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, []);
   // Find: mark matches, load earlier pages until one is there, then show the latest once.
   const [find, setFind] = useState(findInit?.trim().toLowerCase() ?? '');
@@ -417,6 +421,45 @@ function StatusBar({
 }
 
 const markColor = (m: MapMark) => (m === 'reply' ? 'var(--color-text-muted)' : `var(--strip-${m})`);
+/** On the minimap a reply has its own mark, so `think` there is thinking alone. */
+const markLabel = (m: MapMark) =>
+  t(m === 'reply' ? 'strip.reply' : m === 'think' ? 'strip.thinking' : `strip.${m}`);
+/** Minimap marks in legend order (what a prompt, a reply and each work kind look like). */
+const MAP_LEGEND: readonly MapMark[] = [
+  'user',
+  'reply',
+  ...STRIP_ORDER.filter((c) => c !== 'user'),
+];
+
+/** An instant tooltip (no native `title` delay): a heading, then each colour and what it means. */
+function Legend({
+  head,
+  items,
+  style,
+}: {
+  head: string;
+  items: ReadonlyArray<{ color: string; label: string; on?: boolean }>;
+  style: CSSProperties;
+}) {
+  return (
+    <div
+      data-legend
+      className="absolute z-20 pixel-panel px-8 py-6 text-xs pointer-events-none whitespace-nowrap flex flex-col gap-3"
+      style={style}
+    >
+      <div className="font-bold">{head}</div>
+      {items.map((x) => (
+        <div key={x.label} className={`flex items-center gap-6 ${x.on ? 'font-bold' : ''}`}>
+          <span
+            className="shrink-0 w-[10px] h-[10px] border border-border"
+            style={{ background: x.color }}
+          />
+          {x.label}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /** The loaded session on one strip beside the entries: a mark per entry where it sits, the
  *  view's window over it; click or drag to move there. Re-measured whenever the content's
@@ -461,6 +504,12 @@ function Minimap({
       el.removeEventListener('scroll', onScroll);
     };
   }, [scroller, content]);
+  /** Hovered spot (0..1 down the strip), for the legend and its "under the pointer" mark. */
+  const [hover, setHover] = useState<number | null>(null);
+  const under =
+    hover === null
+      ? undefined
+      : marks.find((k) => hover >= k.top && hover <= k.top + Math.max(k.h, 0.004))?.m;
   const go = (e: React.PointerEvent) => {
     const el = scroller.current;
     if (!el) return;
@@ -471,7 +520,6 @@ function Minimap({
   return (
     <div
       data-transcript-minimap
-      title={t('transcript.minimap')}
       className="absolute inset-y-0 right-0 cursor-pointer touch-none border-l-2 border-border"
       style={{ width: TRANSCRIPT_MINIMAP_WIDTH_PX, background: 'var(--strip-none)' }}
       onPointerDown={(e) => {
@@ -479,9 +527,28 @@ function Minimap({
         go(e);
       }}
       onPointerMove={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        setHover((e.clientY - r.top) / r.height);
         if (e.currentTarget.hasPointerCapture(e.pointerId)) go(e);
       }}
+      onPointerLeave={() => setHover(null)}
     >
+      {hover !== null && (
+        <Legend
+          head={
+            under ? `${t('transcript.minimap')} · ${markLabel(under)}` : t('transcript.minimap')
+          }
+          items={MAP_LEGEND.map((m) => ({
+            color: markColor(m),
+            label: markLabel(m),
+            on: m === under,
+          }))}
+          style={{
+            right: `calc(100% + ${String(LEGEND_GAP_PX)}px)`,
+            top: `min(${String(hover * 100)}%, calc(100% - ${String(LEGEND_MAP_H_PX)}px))`,
+          }}
+        />
+      )}
       {marks.map((k, i) => (
         <span
           key={i}
@@ -517,18 +584,31 @@ function ActivityStrip({ entries, more }: { entries: readonly TranscriptEntry[];
   const first = Math.floor(now / 60_000) - ACTIVITY_STRIP_MINUTES + 1;
   const clock = (m: number) =>
     new Date(m * 60_000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const [hover, setHover] = useState<number | null>(null);
+  const cell = hover === null ? undefined : (cells[hover] ?? 'none');
   return (
     <div
       data-activity-strip
-      className="flex gap-1 px-10 py-3 border-b-2 border-border"
-      title={t('strip.title', { n: String(ACTIVITY_STRIP_MINUTES) })}
+      className="relative flex gap-1 px-10 py-3 border-b-2 border-border"
+      onPointerLeave={() => setHover(null)}
     >
+      {hover !== null && (
+        <Legend
+          head={`${t('strip.title', { n: String(ACTIVITY_STRIP_MINUTES) })} · ${clock(first + hover)} ${t(`strip.${cell ?? 'none'}`)}`}
+          items={STRIP_ORDER.map((c) => ({
+            color: `var(--strip-${c})`,
+            label: t(`strip.${c}`),
+            on: c === cell,
+          }))}
+          style={{ top: `calc(100% + ${String(LEGEND_GAP_PX)}px)`, left: 10 }}
+        />
+      )}
       {cells.map((c, i) => (
         <span
           key={i}
           data-strip={c ?? 'none'}
           className="flex-1"
-          title={`${clock(first + i)} · ${t(`strip.${c ?? 'none'}`)}`}
+          onPointerEnter={() => setHover(i)}
           style={{
             height: ACTIVITY_STRIP_HEIGHT_PX,
             background:

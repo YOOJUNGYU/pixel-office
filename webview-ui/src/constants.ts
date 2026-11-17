@@ -980,3 +980,8 @@ export const SESSION_RANK_INDENT_PX = 26;
 
 /** localStorage: other PCs' agents' speech bubbles, 'off' = hidden (top-left toggle). */
 export const OTHERS_BUBBLES_KEY = 'pixel-office.othersBubbles';
+
+/** Session window legends (activity strip, minimap): gap to what they explain, and the minimap
+ *  legend's height kept inside the strip (it follows the pointer down). */
+export const LEGEND_GAP_PX = 6;
+export const LEGEND_MAP_H_PX = 190;

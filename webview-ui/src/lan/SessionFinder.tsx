@@ -56,7 +56,12 @@ export function SessionFinder() {
   const busy = !found || found.q !== q.trim() || found.body !== (body && !!q.trim());
   return (
     <div data-session-finder className="flex flex-col gap-8">
-      <div className="flex items-center gap-8">
+      {/* Stays at the top of the panel's scroll area; the negative margins cover its padding so
+          rows scroll under it, not past it. */}
+      <div
+        data-session-search
+        className="sticky top-0 z-10 flex items-center gap-8 -mx-12 -mt-12 px-12 pt-12 pb-8 bg-bg border-b-2 border-border"
+      >
         <input
           type="search"
           value={q}
