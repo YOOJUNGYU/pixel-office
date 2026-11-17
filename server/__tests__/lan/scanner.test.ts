@@ -312,6 +312,23 @@ describe('Scanner', () => {
       expect(scanner.transcriptOf('sh/sh/bg1')).toMatchObject({ file: f, kind: 'shell', num: 1 });
     });
 
+    it.each([
+      'Command did not complete within its 120s timeout and was moved to the background (ID: bg9). Output is being written to: /tmp/x/tasks/bg9.output.',
+      'Command was manually backgrounded by user with ID: bg9. Output is being written to: /tmp/x/tasks/bg9.output.',
+    ])('a Bash call backgrounded later is a shell too: %s', async (content) => {
+      const f = join(proj, 'late.jsonl');
+      writeFileSync(
+        f,
+        assistant([{ type: 'tool_use', id: 'b9', name: 'Bash', input: { command: 'npm test' } }]) +
+          line({
+            type: 'user',
+            message: { content: [{ type: 'tool_result', tool_use_id: 'b9', content }] },
+          }),
+      );
+      await scanner.discover();
+      expect(scanner.views().map((v) => v.id)).toContain('late/sh/bg9');
+    });
+
     it('claude shell with an output file → that file, read as plain text, titled by its command', async () => {
       const out = join(proj, 'tasks', 'bg2.output');
       const f = join(proj, 'sh2.jsonl');

@@ -49,7 +49,10 @@ const NO_PROMPT_MODES = new Set(['bypassPermissions', 'auto', 'dontAsk']);
 export const setPermissionMode = (s: SessionState, mode: string): void => {
   s.bypass = NO_PROMPT_MODES.has(mode);
 };
-const BG_RE = /Command running in background with ID: ([\w-]+)/;
+/** A Bash result that left a shell running: `run_in_background`, a call past its timeout that
+ *  Claude moved to the background, or one the user backgrounded by hand (Ctrl+B). */
+const BG_RE =
+  /^Command (?:running in background with ID|did not complete within .*? moved to the background \(ID|was manually backgrounded by user with ID): ([\w-]+)/;
 const TASK_ID_RE = /<task-id>([^<]+)<\/task-id>/;
 const OUTPUT_RE = /Output is being written to: (.+?\.output)(?=[.\s]|$)/;
 const DONE_RE = /<status>(completed|failed|killed)<\/status>/;
@@ -170,12 +173,12 @@ function onUser(s: SessionState, content: unknown, now: number, meta: boolean): 
     s.permission = false;
     for (const r of results) {
       const text = textOf(r.content);
-      const id = BG_RE.exec(text)?.[1];
+      const id = BG_RE.exec(text.trimStart())?.[1];
       const call = turnOf(s).tools.get(str(r.tool_use_id));
       const command = call?.name === 'Bash' ? str(call.input.command) : '';
       if (r.is_error === true && isFailure(text, command)) s.failUntil = now + FAIL_SHOW_MS;
       if (call && r.is_error !== true) addDiff(s, editDiff(call.name, call.input));
-      if (id && call?.input.run_in_background === true) {
+      if (id && call?.name === 'Bash') {
         s.shells.set(id, {
           target: call.target,
           brief: call.brief,
