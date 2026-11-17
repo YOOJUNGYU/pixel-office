@@ -46,6 +46,7 @@ import { isPersonal, wrapsActivity } from './lan/offices.js';
 import { OfficeSwitcher } from './lan/OfficeSwitcher.js';
 import { peopleRows } from './lan/peopleModel.js';
 import { PeoplePanel } from './lan/PeoplePanel.js';
+import { sameProfile } from './lan/profileEcho.js';
 import { ProfileModal } from './lan/ProfileModal.js';
 import { RoomPlates } from './lan/RoomPlates.js';
 import { openPopout, usePopoutIds } from './lan/transcriptWindows.js';
@@ -906,14 +907,5 @@ function App() {
     </>
   );
 }
-
-/** The server echoes the saved profile; anything else means the save was rejected. */
-const sameProfile = (a: ProfileMessage, b: ProfileMessage): boolean =>
-  a.nickname === b.nickname &&
-  a.palette === b.palette &&
-  a.hueShift === b.hueShift &&
-  a.pet === b.pet &&
-  JSON.stringify(a.outfit ?? null) === JSON.stringify(b.outfit ?? null) &&
-  a.manualPeers.join('\n') === b.manualPeers.join('\n');
 
 export default App;
