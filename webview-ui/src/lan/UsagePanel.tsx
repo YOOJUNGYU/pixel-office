@@ -109,26 +109,37 @@ export function UsagePanel({ onClose }: { onClose: () => void }) {
       style={{ width: box.size.w, height: box.size.h }}
       onWheel={(e) => e.stopPropagation()}
     >
-      <div className="flex items-center gap-8 shrink-0 px-12 pt-8 pb-6 border-b-2 border-border">
-        <div className="flex gap-2" role="tablist">
-          {(['usage', 'sessions'] as const).map((v) => (
-            <button
-              key={v}
-              role="tab"
-              aria-selected={v === view}
-              data-usage-view={v}
-              onClick={() => setView(v)}
-              className={`border-0 border-b-2 rounded-none px-4 py-1 text-sm font-bold cursor-pointer bg-transparent ${
-                v === view
-                  ? 'border-accent text-text'
-                  : 'border-transparent text-text-muted hover:text-text'
-              }`}
-            >
-              {t(`usage.view.${v}`)}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2" role="tablist" hidden={view !== 'usage'}>
+      {/* Two tabs, half the width each, so the panel plainly holds 사용량 and 세션. */}
+      <div className="flex items-stretch shrink-0 border-b-2 border-border" role="tablist">
+        {(['usage', 'sessions'] as const).map((v, i) => (
+          <button
+            key={v}
+            role="tab"
+            aria-selected={v === view}
+            data-usage-view={v}
+            onClick={() => setView(v)}
+            className={`flex-1 rounded-none py-6 text-sm font-bold cursor-pointer border-0 border-t-4 ${
+              i > 0 ? 'border-l-2 border-l-border' : ''
+            } ${
+              v === view
+                ? 'bg-bg text-text border-t-accent'
+                : 'bg-bg-dark text-text-muted border-t-transparent hover:text-text hover:bg-btn-hover'
+            }`}
+          >
+            {t(`usage.view.${v}`)}
+          </button>
+        ))}
+        <button
+          onClick={onClose}
+          title={t('usage.close')}
+          aria-label={t('usage.close')}
+          className="w-32 shrink-0 bg-bg-dark border-0 border-l-2 border-border rounded-none text-text-muted hover:text-text cursor-pointer text-lg leading-none"
+        >
+          ×
+        </button>
+      </div>
+      {view === 'usage' && (
+        <div className="flex gap-2 shrink-0 px-12 py-6 border-b-2 border-border" role="tablist">
           {RANGES.map((r) => (
             <button
               key={r}
@@ -145,15 +156,7 @@ export function UsagePanel({ onClose }: { onClose: () => void }) {
             </button>
           ))}
         </div>
-        <button
-          onClick={onClose}
-          title={t('usage.close')}
-          aria-label={t('usage.close')}
-          className="ml-auto w-24 h-24 shrink-0 bg-transparent border-0 text-text-muted hover:text-text cursor-pointer text-lg leading-none"
-        >
-          ×
-        </button>
-      </div>
+      )}
       <div className="flex-1 min-h-0 overflow-y-auto pixel-scrollbar">
         <div className="flex flex-col gap-10 p-12">
           {view === 'sessions' ? (
