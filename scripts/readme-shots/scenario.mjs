@@ -302,18 +302,18 @@ export function peerAgents() {
 }
 
 const chat = (id, text) => ({ id, text });
-/** Everyone's avatar spot (an unwalkable one moves to the closest free tile) and chat bubbles. */
+/** Everyone's avatar spot (an unwalkable one moves to the closest free tile) and status messages. */
 export function people(view = 'public') {
   if (view === 'gallery') view = 'personal';
   const spots = {
     [SELF]: { col: 49, row: 44, dir: 'right' },
-    'p-minji': { col: 52, row: 44, dir: 'left', chat: chat('c1', '사용량 패널 좋네요 👍') },
+    'p-minji': { col: 52, row: 44, dir: 'left', chat: chat('c1', '☕ 커피 사러 감') },
     'p-jun': { col: 60, row: 40, dir: 'down' },
-    'p-seo': { col: 66, row: 46, dir: 'up', chat: chat('c2', '빌드 5분 뒤 끝나요') },
+    'p-seo': { col: 66, row: 46, dir: 'up', chat: chat('c2', '🚀 배포 중, 5분 뒤 복귀') },
     'p-choi': { col: 72, row: 41, dir: 'down' },
     'p-ha': { col: 76, row: 47, dir: 'left' },
     'p-kang': { col: 56, row: 48, dir: 'up' },
-    'p-yoon': { col: 63, row: 43, dir: 'right', chat: chat('c3', '점심 뭐 먹죠?') },
+    'p-yoon': { col: 63, row: 43, dir: 'right', chat: chat('c3', '🍜 점심 먹는 중') },
     'p-han': { col: 70, row: 45, dir: 'left' },
     'p-oh': { col: 79, row: 43, dir: 'down' },
   };
@@ -529,11 +529,11 @@ const EN = {
   '버튼 토큰 다크모드': 'Dark-mode button tokens',
   '불꽃 오라 스프라이트': 'Flame aura sprite',
   '브랜치 올리기': 'Push the branch',
-  '빌드 5분 뒤 끝나요': 'Build done in 5 min',
+  '🚀 배포 중, 5분 뒤 복귀': '🚀 Deploying, back in 5',
   '빌드 정리': 'Clean the build',
   '사용량 집계 테스트 실행': 'Running the usage index tests',
   '사용량 집계': 'Usage index',
-  '사용량 패널 좋네요 👍': 'Love the usage panel 👍',
+  '☕ 커피 사러 감': '☕ Getting coffee',
   '사용량 패널을 왼쪽 위 버튼 아래로 옮기는 중':
     'Moving the usage panel under the top-left buttons',
   '설치 안내에서 알림 설명 찾기': 'Looking up the notifications in the install guide',
@@ -541,7 +541,7 @@ const EN = {
   '알림 설명': 'Notification docs',
   '야간 배치 중복 제거': 'Dedupe the nightly batch',
   윤: 'Yoon',
-  '점심 뭐 먹죠?': 'Lunch?',
+  '🍜 점심 먹는 중': '🍜 At lunch',
   준: 'Jun',
   '차트 레이아웃 타입 검사': 'Type-checking the chart layout',
   '차트 레이아웃': 'Chart layout',

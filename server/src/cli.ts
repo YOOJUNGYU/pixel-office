@@ -385,7 +385,7 @@ export async function main(boot = true): Promise<void> {
         local: scanner,
         settings: () => {
           const s = readConfig().standalone;
-          return { presence: s.notifyPresence, agents: s.notifyAgents, chat: s.notifyChat };
+          return { presence: s.notifyPresence, agents: s.notifyAgents };
         },
       },
       tray,

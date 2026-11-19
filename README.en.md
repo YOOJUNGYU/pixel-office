@@ -16,17 +16,17 @@
   <a href="#development">Development</a>
 </p>
 
-Pixel Office turns the Claude Code and Codex sessions on your PC into characters in a pixel-art office. Each agent walks to the room that fits what it's doing: the coding room when it edits files, the library when it reads or searches, the server room (split into test, build, git and run zones) when it runs commands, and the lounge when it's done or waiting for you. A bubble over its head says what it's working on. You can run the office alone, share it with your team over the LAN, or join the public office where everyone with the app on your network shows up (people on other networks appear in the people panel). There's also a token usage panel with a searchable list of past sessions, people avatars you can dress up in a wardrobe, chat, a small lounge arcade with a shared hall of fame, a window with each session's full conversation, desktop notifications, a layout editor, and Windows/Mac installers that update themselves. It started as a fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents); the differences are [below](#how-it-differs-from-the-original).
+Pixel Office turns the Claude Code and Codex sessions on your PC into characters in a pixel-art office. Each agent walks to the room that fits what it's doing: the coding room when it edits files, the library when it reads or searches, the server room (split into test, build, git and run zones) when it runs commands, and the lounge when it's done or waiting for you. A bubble over its head says what it's working on. You can run the office alone, share it with your team over the LAN, or join the public office where everyone with the app on your network shows up (people on other networks appear in the people panel). There's also a token usage panel with a searchable list of past sessions, people avatars you can dress up in a wardrobe, status messages, a small lounge arcade with a shared hall of fame, a window with each session's full conversation, desktop notifications, a layout editor, and Windows/Mac installers that update themselves. It started as a fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents); the differences are [below](#how-it-differs-from-the-original).
 
 ![The public office with ten people](docs/images/office-en.png)
 
-<sub>Made-up data: ten people in the public office on one network. The blue name tags are my agents. Everyone else's agents show their session title, model and tokens too, and what kind of work they're doing ("Editing a file", "Running a command"), but never which file or command; only mine show that. People and their chat bubbles hang out in the lounge. The people panel on the right also lists people on other networks (`Net 2`) and someone in personal mode.</sub>
+<sub>Made-up data: ten people in the public office on one network. The blue name tags are my agents. Everyone else's agents show their session title, model and tokens too, and what kind of work they're doing ("Editing a file", "Running a command"), but never which file or command; only mine show that. People hang out in the lounge with status messages over their heads. The people panel on the right also lists people on other networks (`Net 2`) and someone in personal mode.</sub>
 
 There are three offices, and you can switch between them any time with the buttons at the top:
 
 - 🌐 **Public office**: everyone who has the app on your network. People elsewhere only show up in the people panel, through an internet relay that says who's online.
 - 🔒 **Team office**: people who have your invite code, on the same network only.
-- 🏠 **Personal**: just your PC. Your agents and chat stay on it.
+- 🏠 **Personal**: just your PC. Your agents and status message stay on it.
 
 ### How it differs from the original
 
@@ -40,7 +40,7 @@ The token usage feature is modeled on [token-dashboard](https://github.com/nateh
 | Agents      | Claude Code, launched from the extension | Claude Code and Codex, whatever you already run                               |
 | Who you see | Your own PC                              | Your network, your team, or just you                                          |
 | Office      | Free-form layout                         | Rooms mean activities; layouts are shared                                     |
-| People      | None                                     | Avatars you dress up and walk around, chat, a people panel                    |
+| People      | None                                     | Avatars you dress up and walk around, status messages, a people panel         |
 | Status      | Character animation                      | Bubbles, icons, progress, PC screens and effects                              |
 | Tokens      | None                                     | Usage panel, Codex limits, cache countdown; characters grow and glow with use |
 | Extras      | None                                     | Session windows, past-session search, notifications, light theme, ko/en       |
@@ -142,22 +142,22 @@ The tabs at the top switch offices: 🏠 Personal, 🌐 Public office, then your
 
 The people panel on the right is split into Public office, Team and Personal, so you can see who's around even in the offices you're not looking at. The Team area only appears once you've joined a team.
 
-**🌐 Public office.** Everyone with the app on your network shares it, with nothing to set up. Agents, avatars, chat and the layout stay on the network (UDP).
+**🌐 Public office.** Everyone with the app on your network shares it, with nothing to set up. Agents, avatars, status messages and the layout stay on the network (UDP).
 
 - People on other networks (home, another office, a café) don't appear in the office, only in the people panel: a Cloudflare relay, over one outbound `wss` connection on port 443, tells everyone who's online. The panel groups people by network with yours on top; with two or more networks, rows get a `Net 1` (yours) / `Net 2` badge. Only the first 10 rows are drawn; scroll for more.
-- People on your network see your account name, nickname, character, chat, your agents' room and seat, session title, model, tokens, context, task progress, elapsed time and changed lines. Never what they actually work on: no file names, commands or reply text.
+- People on your network see your account name, nickname, character, status message, your agents' room and seat, session title, model, tokens, context, task progress, elapsed time and changed lines. Never what they actually work on: no file names, commands or reply text.
 - The relay takes 1,000 people at a time. When it's full, paused for the day, has removed you, or can't be reached, a chip next to the panel's "Public office" title says so (nothing shows while it's fine). Your network keeps working and the relay reconnects on its own.
 
 **🔒 Team office.** Only people with the invite code (`PO2-…`) on the same network. It never goes over the internet and doesn't connect to the relay. Create a team, join one or leave in Settings → Offices; creating a team gives you the code to send around. You can be in one team at a time, and joining another replaces it after asking. **While you're in a team office you're not in the public office at all.** You can still see who's there in the people panel, but they can't see you.
 
-**🏠 Personal.** A small office that's just yours. Agents, chat and your avatar's spot stay on your PC. Other people only see a name card for you (account, nickname, character) under Personal in their people panel (through the relay for other networks). Your team membership is kept, so you can switch back without the code.
+**🏠 Personal.** A small office that's just yours. Agents, status message and your avatar's spot stay on your PC. Other people only see a name card for you (account, nickname, character) under Personal in their people panel (through the relay for other networks). Your team membership is kept, so you can switch back without the code.
 
-### Your character and chat
+### Your character and status message
 
 - Everyone has one person character besides their agents. Walk it anywhere with the arrow keys and sit on lounge chairs. It remembers where you left it.
 - **Settings → My profile → Dress up (wardrobe)** lets you pick a body, eyes, hair, top, jacket, trousers, shoes, a full outfit, a hat and accessories like beards and glasses, each with its own colours (the wardrobe comes from [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents)). The look is used for your person and your agents, and everyone sees it. PCs on 1.0.63 or older show your plain character instead.
-- Type in the chat bar at the bottom and press Enter to put a bubble over your head. A new message replaces the old one and × removes it. There's no history. Messages are up to 100 characters, one every 2 seconds.
-- Space+Enter (with nothing focused) jumps to the chat bar. Esc gives the arrow keys back.
+- Type what you're up to ("🍜 At lunch") in the bar at the bottom and press Enter: it shows as one line over your head, clipped with … when long; hover it to read it all. The bar holds your current status, so just edit it; clear it and press Enter, or click ×, to remove it. No history, no notifications. Up to 100 characters, one change every 2 seconds.
+- Space+Enter (with nothing focused) jumps to the bar. Esc gives the arrow keys back.
 
 ### Arcade
 
@@ -191,7 +191,6 @@ Pixel Office can also send desktop notifications on Windows and Mac. They work w
 
 - **Join and leave**: someone enters or leaves the public office.
 - **Your agents**: a Claude or Codex session is waiting for you or has finished. "Finished" only fires when the main agent ends its own turn and all its subagents and shells are done. A subagent finishing on its own never triggers it. The notification includes the session title and project folder.
-- **Chat**: someone in the office you're viewing posts a new bubble. Bubbles that were already up, or that someone had when they came online, don't count.
 
 ### More
 
@@ -210,7 +209,7 @@ Pixel Office can also send desktop notifications on Windows and Mac. They work w
 
 - PCs only share status. Nobody can reach your terminal, your agents or your settings, and the UI only opens in your own PC's browser.
 - Everything between PCs is encrypted. In the public office each pair of PCs agrees on its own key (X25519, then AES-256-GCM). A team office uses AES-256-GCM with a key derived from the invite code. Codes never go over the network, and a known PC whose key suddenly changes is ignored.
-- The relay only says who is online. Public-office and personal PCs send it their peer id, public key, display name (account and nickname), character look, app version and whether they're in personal mode. That is protected by TLS only and readable by the relay. Agents, chat and layouts never go to the relay. It doesn't store IP addresses; it only keeps a hashed tag for the network badge. Cloudflare, which hosts it, does see your IP. Team PCs don't connect to it. The arcade, from any office, sends your peer id and display name to keep your scores.
+- The relay only says who is online. Public-office and personal PCs send it their peer id, public key, display name (account and nickname), character look, app version and whether they're in personal mode. That is protected by TLS only and readable by the relay. Agents, status messages and layouts never go to the relay. It doesn't store IP addresses; it only keeps a hashed tag for the network badge. Cloudflare, which hosts it, does see your IP. Team PCs don't connect to it. The arcade, from any office, sends your peer id and display name to keep your scores.
 - File paths, user names, IPs and host names, URL paths, anything that looks like a token, and AI reply text never leave your PC. Commands go out as just the program name. Session titles go to your network only when they're a real name (Claude's own title, one you set, a Codex thread name), never when the first prompt stands in for one, and the same redaction applies to them. Your PC account name is your name tag, so that one is always visible.
 - The public office (your network) gets your agents' room and seat, kind and kind of work, the waiting !, session title, model, tokens, context, task counts, elapsed time and changed lines. A team office also gets program and file names, within the rules above.
 - Pixel Office never touches your Claude Code or Codex settings. It only reads their transcript files.
@@ -248,7 +247,7 @@ Pixel Office can also send desktop notifications on Windows and Mac. They work w
 - Seats match only between PCs with the same layout. When two PCs pick the same seat, one gives way, so you may briefly see an agent move.
 - Codex doesn't log approval requests, so the ! only shows up for Codex when it asks you a question.
 - Redaction can miss a password typed straight into a command or search.
-- Older versions miss some things: 0.4.x doesn't show PCs with lots of agents or pets, 1.0.0 and older don't show people or chat, 1.0.13 and older don't get shared layouts, 1.0.63 and older don't show wardrobe looks, and 1.0.64 and older don't share session titles, tokens or seats. 1.0.24 and older may not list personal-mode PCs, and 1.0.63 and older can't join the relay (their network still works; their chip says removed). Get everyone on the latest version.
+- Older versions miss some things: 0.4.x doesn't show PCs with lots of agents or pets, 1.0.0 and older don't show people or status messages, 1.0.13 and older don't get shared layouts, 1.0.63 and older don't show wardrobe looks, and 1.0.64 and older don't share session titles, tokens or seats. 1.0.24 and older may not list personal-mode PCs, and 1.0.63 and older can't join the relay (their network still works; their chip says removed). Get everyone on the latest version.
 - On Mac, notifications may show up as coming from "Script Editor". Linux and WSL have no tray icon or notifications.
 
 ## Development

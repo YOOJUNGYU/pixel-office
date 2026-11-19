@@ -10,8 +10,6 @@ export interface AdapterSettings {
   notifyPresence: boolean;
   /** OS notification when one of this PC's agents waits for an answer or finishes. */
   notifyAgents: boolean;
-  /** OS notification for a new chat bubble in the office on screen. */
-  notifyChat: boolean;
   /** Relay admin token (kick from the internet public office); '' = none. Never sent to a page. */
   relayAdminToken: string;
 }
@@ -21,7 +19,6 @@ export const ADAPTER_SETTING_KEYS = [
   'alwaysShowLabels',
   'notifyPresence',
   'notifyAgents',
-  'notifyChat',
   'relayAdminToken',
 ] as const;
 
@@ -36,7 +33,6 @@ const DEFAULT_ADAPTER_SETTINGS: AdapterSettings = {
   alwaysShowLabels: false,
   notifyPresence: true,
   notifyAgents: true,
-  notifyChat: true,
   relayAdminToken: '',
 };
 
@@ -60,8 +56,6 @@ function parseAdapterSettings(raw: unknown): AdapterSettings {
       typeof obj.notifyAgents === 'boolean'
         ? obj.notifyAgents
         : DEFAULT_ADAPTER_SETTINGS.notifyAgents,
-    notifyChat:
-      typeof obj.notifyChat === 'boolean' ? obj.notifyChat : DEFAULT_ADAPTER_SETTINGS.notifyChat,
     relayAdminToken:
       typeof obj.relayAdminToken === 'string'
         ? obj.relayAdminToken

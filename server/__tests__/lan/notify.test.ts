@@ -8,7 +8,6 @@ import {
 import {
   agentText,
   AgentWatcher,
-  ChatWatcher,
   Notifier,
   presenceText,
   PresenceWatcher,
@@ -194,39 +193,8 @@ describe('AgentWatcher (my own agents)', () => {
   });
 });
 
-describe('ChatWatcher (new chat bubbles)', () => {
-  const said = (id: string, chatId: string, text = 'hi') => ({
-    ...p(id),
-    chat: { id: chatId, text },
-  });
-
-  it('bubbles up at the baseline or brought by a newcomer never notify; a new one once', () => {
-    const w = new ChatWatcher();
-    w.reset('public');
-    expect(w.apply([me, said('a', '1')])).toEqual([]);
-    expect(w.apply([me, said('a', '1'), said('b', '7')])).toEqual([]);
-    expect(w.apply([{ ...me, chat: { id: 'm', text: 'mine' } }, said('a', '1')])).toEqual([]);
-    expect(w.apply([me, said('a', '2', '점심 ㄱ'), said('b', '7')])).toEqual([
-      { label: 'a', text: '점심 ㄱ' },
-    ]);
-    expect(w.apply([me, said('a', '2', '점심 ㄱ')])).toEqual([]);
-    // gone for a tick, back with the same bubble: not again; deleted then a new one: once
-    expect(w.apply([me, said('b', '7')])).toEqual([]);
-    expect(w.apply([me, p('b')])).toEqual([]);
-    expect(w.apply([me, said('b', '8', 'yo')])).toEqual([{ label: 'b', text: 'yo' }]);
-  });
-
-  it('a reset (view switch) takes a new baseline', () => {
-    const w = new ChatWatcher();
-    w.reset('public');
-    w.apply([said('a', '1')]);
-    w.reset('team');
-    expect(w.apply([said('a', '2')])).toEqual([]);
-  });
-});
-
 describe('Notifier', () => {
-  function rig(settings: { presence: boolean; agents: boolean; chat?: boolean }) {
+  function rig(settings: { presence: boolean; agents: boolean }) {
     let people = [me, p('a')];
     let agents = [agent()];
     const sent: string[] = [];
@@ -235,7 +203,7 @@ describe('Notifier', () => {
         view: () => 'public',
         people: () => people,
         local: fake(() => agents),
-        settings: () => ({ chat: true, ...settings }),
+        settings: () => settings,
       },
       { lang: 'ko', notify: (b) => (sent.push(b), true) },
     );
@@ -246,8 +214,8 @@ describe('Notifier', () => {
     return sent;
   }
 
-  it('chat: a new bubble once, off = nothing', () => {
-    for (const chat of [true, false]) {
+  it('a status message (chat) change never notifies', () => {
+    {
       let people: {
         peerId: string;
         account: string;
@@ -261,7 +229,7 @@ describe('Notifier', () => {
           view: () => 'public',
           people: () => people,
           local: fake(() => []),
-          settings: () => ({ presence: false, agents: false, chat }),
+          settings: () => ({ presence: true, agents: true }),
         },
         { lang: 'ko', notify: (b) => (sent.push(b), true) },
       );
@@ -269,7 +237,7 @@ describe('Notifier', () => {
       people = [me, { ...p('a', 'Ann'), chat: { id: '1', text: '회의 5분 전' } }];
       n.tick(1000);
       n.tick(2000);
-      expect(sent).toEqual(chat ? ['a (Ann): 회의 5분 전'] : []);
+      expect(sent).toEqual([]);
     }
   });
 
@@ -297,7 +265,7 @@ describe('Notifier', () => {
         view: () => 'personal',
         people: () => people,
         local: fake(() => agents),
-        settings: () => ({ presence: true, agents: true, chat: true }),
+        settings: () => ({ presence: true, agents: true }),
       },
       { lang: 'en', notify: (b) => (sent.push(b), true) },
     );
@@ -319,7 +287,7 @@ describe('Notifier', () => {
           s1: { title: '검진라이브러리 검색 index 설정', folder: 'pixel-office-lan' },
           s2: { title: 'x'.repeat(100), folder: '' },
         }),
-        settings: () => ({ presence: true, agents: true, chat: true }),
+        settings: () => ({ presence: true, agents: true }),
       },
       { lang: 'ko', notify: (b) => (sent.push(b), true) },
     );
@@ -351,7 +319,7 @@ describe('Notifier', () => {
         view: () => 'public',
         people: () => [me, p('p')],
         local: fake(() => views),
-        settings: () => ({ presence: true, agents: true, chat: true }),
+        settings: () => ({ presence: true, agents: true }),
       },
       { lang: 'ko', notify: (b) => (sent.push(b), true) },
     );

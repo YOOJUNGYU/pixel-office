@@ -358,7 +358,6 @@ components:
         - externalAssetDirectories
         - notifyPresence
         - notifyAgents
-        - notifyChat
         - relayAdmin
       properties:
         type:
@@ -375,9 +374,6 @@ components:
         notifyAgents:
           type: boolean
           description: OS notification when one of this PC's agents waits for an answer or finishes (default true).
-        notifyChat:
-          type: boolean
-          description: OS notification, once per bubble, for a new chat of someone in the office on screen (default true).
         relayAdmin:
           type: boolean
           description: Whether a relay admin token is set (config.json); the token itself is never sent.
@@ -1691,8 +1687,6 @@ components:
         presence:
           type: boolean
         agents:
-          type: boolean
-        chat:
           type: boolean
 
     # ── Supporting schemas ─────────────────────────────────────────

@@ -381,6 +381,28 @@ function ChatBubble({ x, y, children }: Pt & { children: ReactNode }) {
   );
 }
 
+/** A status message tag above a head: one line, pixel square, a stem down to the head. */
+function StatusTag({ x, y, children }: Pt & { children: ReactNode }) {
+  return (
+    <>
+      <div style={abs(x - 0.5, y, { width: 1, height: 4, background: C.ink })} />
+      <div
+        style={abs(x, y, {
+          transform: 'translate(-50%, -100%)',
+          background: C.chatBg,
+          color: C.ink,
+          border: `1px solid ${C.ink}`,
+          padding: '1px 4px',
+          fontSize: 6,
+          whiteSpace: 'nowrap',
+        })}
+      >
+        {children}
+      </div>
+    </>
+  );
+}
+
 function Provider({ name = 'Claude' }: { name?: 'Claude' | 'Codex' }) {
   return (
     <span
@@ -2019,9 +2041,9 @@ const scenes: Record<string, Scene> = {
           <Char look={me} x={70} y={78} pose="stand" dir={Direction.DOWN} t={t} />
           <Char look={o[0]} x={124} y={78} pose="stand" dir={Direction.LEFT} t={t} />
           {sent && (
-            <ChatBubble x={70} y={42}>
+            <StatusTag x={70} y={46}>
               {text} <span style={{ color: C.muted }}>×</span>
-            </ChatBubble>
+            </StatusTag>
           )}
           <Box
             x={36}
@@ -2885,16 +2907,14 @@ const scenes: Record<string, Scene> = {
   },
 
   notifications: {
-    period: 9000,
+    period: 6000,
     draw: (t) => {
       const k = Math.floor(t / 3000);
       const l = t % 3000;
       const y = lerp(H, 62, seg(l, 0, 300)) + lerp(0, 60, seg(l, 2600, 2900));
-      const body = [
-        tr('manual.demo.nJoin', { name: tr('tour.demo.b') }),
-        tr('manual.demo.nWait'),
-        `${tr('tour.demo.c')}: ${tr('manual.demo.chat')}`,
-      ][k];
+      const body = [tr('manual.demo.nJoin', { name: tr('tour.demo.b') }), tr('manual.demo.nWait')][
+        k
+      ];
       return (
         <>
           <Box x={0} y={0} w={W} h={H} style={{ background: C.sky }} />

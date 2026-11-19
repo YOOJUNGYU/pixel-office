@@ -303,16 +303,14 @@
     @apply bg-bg border-2 border-border rounded-none shadow-pixel;
   }
 
-  /* Speech bubbles (rounded on purpose, unlike the pixel chrome) with a tail at the bottom
-     centre pointing at the head below: an agent's activity, and a person's chat. */
-  .bubble-agent,
-  .bubble-chat {
+  /* An agent's speech bubble (rounded on purpose, unlike the pixel chrome) with a tail at the
+     bottom centre pointing at the head below. */
+  .bubble-agent {
     position: absolute;
     border-width: 2px;
     border-style: solid;
   }
-  .bubble-agent::after,
-  .bubble-chat::after {
+  .bubble-agent::after {
     content: '';
     position: absolute;
     left: 50%;
@@ -331,11 +329,14 @@
     border-color: var(--agent-bubble-border);
     border-radius: 6px;
   }
-  .bubble-chat {
+  /* A person's status message: a one-line pixel tag above the avatar, no tail (a stem
+     line joins it to the head), so it never reads as a speech bubble. */
+  .status-tag {
+    position: absolute;
+    border: 2px solid var(--chat-bubble-border);
+    border-radius: 0;
     background: var(--chat-bubble-bg);
     color: var(--chat-bubble-fg);
-    border-color: var(--chat-bubble-border);
-    border-radius: 12px;
     box-shadow: 2px 2px 0 var(--color-backdrop);
   }
 
@@ -551,11 +552,11 @@
 }
 
 /* Unlayered, so it beats the delete button's text-muted utility on the white chat bubble. */
-.bubble-chat button {
+.status-tag button {
   color: var(--chat-bubble-fg);
   opacity: 0.55;
 }
-.bubble-chat button:hover {
+.status-tag button:hover {
   opacity: 1;
 }
 

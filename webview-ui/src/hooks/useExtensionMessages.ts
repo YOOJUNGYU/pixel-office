@@ -43,7 +43,6 @@ import { transport } from '../transport/index.js';
 export interface NotifySettings {
   presence: boolean;
   agents: boolean;
-  chat: boolean;
 }
 
 interface FurnitureAsset {
@@ -305,8 +304,6 @@ export function useExtensionMessages(
           setNotify({
             presence: msg.notifyPresence,
             agents: msg.notifyAgents,
-            // an older server (no field) has no chat notifications: shown on, as it would be
-            chat: msg.notifyChat !== false,
           });
         }
         setRelayAdmin(msg.relayAdmin === true);

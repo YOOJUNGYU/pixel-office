@@ -184,7 +184,6 @@ export function SettingsModal({
             [
               ['presence', 'settings.notifyPresence'],
               ['agents', 'settings.notifyAgents'],
-              ['chat', 'settings.notifyChat'],
             ] as const
           ).map(([k, label]) => (
             <Checkbox

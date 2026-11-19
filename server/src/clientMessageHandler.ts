@@ -98,7 +98,6 @@ export function relayStateMessage({ state, retryInMs }: RelayStatus) {
 const KEY_ALWAYS_SHOW_LABELS = 'pixel-agents.alwaysShowLabels';
 const KEY_NOTIFY_PRESENCE = 'pixel-agents.notifyPresence';
 const KEY_NOTIFY_AGENTS = 'pixel-agents.notifyAgents';
-const KEY_NOTIFY_CHAT = 'pixel-agents.notifyChat';
 const KEY_RELAY_ADMIN_TOKEN = 'pixel-agents.relayAdminToken';
 
 /**
@@ -147,7 +146,6 @@ export function handleClientMessage(
     case 'setNotifications':
       if (typeof msg.presence === 'boolean') adapter.setSetting(KEY_NOTIFY_PRESENCE, msg.presence);
       if (typeof msg.agents === 'boolean') adapter.setSetting(KEY_NOTIFY_AGENTS, msg.agents);
-      if (typeof msg.chat === 'boolean') adapter.setSetting(KEY_NOTIFY_CHAT, msg.chat);
       break;
 
     case 'addExternalAssetDirectory': {
@@ -511,7 +509,6 @@ function settingsSnapshot(ctx: ClientMessageContext) {
     externalAssetDirectories: externalAssetDirectoriesFor(ctx),
     notifyPresence: adapter.getSetting(KEY_NOTIFY_PRESENCE, true),
     notifyAgents: adapter.getSetting(KEY_NOTIFY_AGENTS, true),
-    notifyChat: adapter.getSetting(KEY_NOTIFY_CHAT, true),
     relayAdmin: adapter.getSetting(KEY_RELAY_ADMIN_TOKEN, '') !== '',
   } as const;
 }

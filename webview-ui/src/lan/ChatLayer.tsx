@@ -16,6 +16,7 @@ import {
   CHAT_STACK_GAP_PX,
   CHAT_TAIL_PX,
   CHAT_TEXT_MAX_PX,
+  CHAT_TEXT_OPEN_MAX_PX,
   CHAT_Z_INDEX,
   LAN_BUBBLE_HEAD_OFFSET,
   PET_HEAD_DROP_PX,
@@ -41,13 +42,13 @@ interface ChatLayerProps {
   panRef: MutableRefObject<{ x: number; y: number }>;
   /** The chat bar is shown (I am in the viewed office; not editing, touring, read-only or on touch). */
   canType: boolean;
-  /** Say a line; false = refused (empty, too soon). */
+  /** Set my status; false = refused (empty, too soon). */
   onSend: (text: string) => boolean;
-  /** Delete my bubble. */
+  /** Clear my status. */
   onDelete: () => void;
 }
 
-/** The × that deletes my bubble (on the bubble and next to the chat bar). */
+/** The × that clears my status (on its tag and next to the bar). */
 function DeleteButton({ onDelete, testId }: { onDelete: () => void; testId: string }) {
   return (
     <button
@@ -65,8 +66,9 @@ function DeleteButton({ onDelete, testId }: { onDelete: () => void; testId: stri
 }
 
 /**
- * Chat bubbles above each person's avatar (they follow it as it walks, and
- * pan/zoom), and the chat bar at the bottom centre. Space+Enter with nothing
+ * Status messages: a one-line tag above each person's avatar (it follows the avatar as it
+ * walks, and pan/zoom; a clipped one shows whole on hover), and the status bar at the bottom
+ * centre, which edits my current status in place. Space+Enter with nothing
  * focused focuses the bar; Esc leaves it (the arrow keys move the avatar
  * again). Re-rendered after every canvas frame. All text is React text nodes.
  */
@@ -84,6 +86,9 @@ export function ChatLayer({
   const [, setTick] = useState(0);
   useEffect(() => onFrame(() => setTick((n) => n + 1)), []);
   const [draft, setDraft] = useState('');
+  const [editing, setEditing] = useState(false);
+  /** The clipped status tag under the pointer (`peerId:id`): shown whole. */
+  const [hovered, setHovered] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -130,12 +135,20 @@ export function ChatLayer({
   const k = bubbleScale(zoom, dpr);
 
   const avatarOf = new Map(lan.avatars().map((a) => [a.peerId, a.id] as const));
-  const bubbles = chats.active().flatMap((b) => {
+  const measure = (s: string) => textWidth(s, CHAT_FONT);
+  const tags = chats.active().flatMap((b) => {
     const id = avatarOf.get(b.peerId);
     const ch = id !== undefined ? officeState.characters.get(id) : undefined;
     if (!ch || ch.matrixEffect === 'despawn') return [];
-    const lines = wrapLines(b.text, CHAT_TEXT_MAX_PX, (s) => textWidth(s, CHAT_FONT));
-    const text = Math.ceil(Math.max(...lines.map((l) => textWidth(l, CHAT_FONT))));
+    // One line, clipped with …; hovered = the whole status, wrapped.
+    const open = hovered === `${b.peerId}:${b.id}`;
+    const full = Math.ceil(measure(b.text));
+    const clipped = full > CHAT_TEXT_MAX_PX;
+    const lines = open && clipped ? wrapLines(b.text, CHAT_TEXT_OPEN_MAX_PX, measure) : [b.text];
+    const text =
+      open && clipped
+        ? Math.ceil(Math.max(...lines.map(measure)))
+        : Math.min(full, CHAT_TEXT_MAX_PX);
     const inner = text + (b.self ? CHAT_DELETE_GAP_PX + CHAT_DELETE_PX : 0);
     const at = {
       x: project.toScreenX(ch.x),
@@ -150,7 +163,10 @@ export function ChatLayer({
       {
         b,
         at,
-        // On screen (× k); the bubble itself is laid out unscaled and transformed.
+        open,
+        clipped,
+        lines: lines.length,
+        // On screen (× k); the tag itself is laid out unscaled and transformed.
         box: {
           x: at.x,
           bottom: at.y - CHAT_TAIL_PX * k,
@@ -161,56 +177,76 @@ export function ChatLayer({
     ];
   });
   const bottoms = stackBubbles(
-    bubbles.map((x) => x.box),
+    tags.map((x) => x.box),
     CHAT_STACK_GAP_PX * k,
   );
 
-  const nodes = bubbles.map(({ b, at, box }, i) => (
-    <div key={`${b.peerId}:${b.id}`} className="pointer-events-none" data-chat-peer={b.peerId}>
-      {/* Connector: from the bubble down to the head, however far stacking moved it up. */}
-      <div
-        className="absolute"
-        style={{
-          left: at.x - (CHAT_BORDER_PX * k) / 2,
-          top: bottoms[i],
-          width: CHAT_BORDER_PX * k,
-          height: Math.max(0, at.y - bottoms[i]),
-          background: 'var(--chat-bubble-border)',
-          zIndex: CHAT_Z_INDEX,
-        }}
-      />
-      <div
-        className="bubble-chat flex items-start"
-        style={{
-          left: box.x - box.w / 2,
-          top: bottoms[i] - box.h,
-          width: box.w / k,
-          transform: `scale(${k})`,
-          transformOrigin: '0 0',
-          padding: `${CHAT_PAD_Y_PX}px ${CHAT_PAD_X_PX}px`,
-          gap: CHAT_DELETE_GAP_PX,
-          zIndex: CHAT_Z_INDEX,
-        }}
-      >
-        <span
-          data-chat-text
-          className="flex-1 min-w-0 text-sm"
-          style={{ lineHeight: `${CHAT_LINE_PX}px`, overflowWrap: 'anywhere' }}
+  const nodes = tags.map(({ b, at, box, open, clipped }, i) => {
+    const key = `${b.peerId}:${b.id}`;
+    return (
+      <div key={key} className="pointer-events-none" data-chat-peer={b.peerId}>
+        {/* Stem from the tag down to the head, however far stacking moved it up. */}
+        <div
+          className="absolute"
+          style={{
+            left: at.x - (CHAT_BORDER_PX * k) / 2,
+            top: bottoms[i],
+            width: CHAT_BORDER_PX * k,
+            height: Math.max(0, at.y - bottoms[i]),
+            background: 'var(--chat-bubble-border)',
+            zIndex: CHAT_Z_INDEX,
+          }}
+        />
+        <div
+          className={`status-tag flex items-start${clipped ? ' pointer-events-auto' : ''}`}
+          data-status-open={open || undefined}
+          onMouseEnter={clipped ? () => setHovered(key) : undefined}
+          onMouseLeave={clipped ? () => setHovered(null) : undefined}
+          // the canvas zooms on its own wheel listener: hand the wheel on to it
+          onWheel={
+            clipped
+              ? (e) =>
+                  el.querySelector('canvas')?.dispatchEvent(new WheelEvent('wheel', e.nativeEvent))
+              : undefined
+          }
+          style={{
+            left: box.x - box.w / 2,
+            top: bottoms[i] - box.h,
+            width: box.w / k,
+            transform: `scale(${k})`,
+            transformOrigin: '0 0',
+            padding: `${CHAT_PAD_Y_PX}px ${CHAT_PAD_X_PX}px`,
+            gap: CHAT_DELETE_GAP_PX,
+            zIndex: open ? CHAT_Z_INDEX + 1 : CHAT_Z_INDEX,
+          }}
         >
-          {b.text}
-        </span>
-        {b.self && (
-          <span style={{ marginTop: (CHAT_LINE_PX - CHAT_DELETE_PX) / 2 }}>
-            <DeleteButton onDelete={onDelete} testId="chat-delete" />
+          <span
+            data-chat-text
+            className={`flex-1 min-w-0 text-sm${open ? '' : ' whitespace-nowrap overflow-hidden text-ellipsis'}`}
+            style={{ lineHeight: `${CHAT_LINE_PX}px`, overflowWrap: 'anywhere' }}
+          >
+            {b.text}
           </span>
-        )}
+          {b.self && (
+            <span style={{ marginTop: (CHAT_LINE_PX - CHAT_DELETE_PX) / 2 }}>
+              <DeleteButton onDelete={onDelete} testId="chat-delete" />
+            </span>
+          )}
+        </div>
       </div>
-    </div>
-  ));
+    );
+  });
 
   if (canType) {
-    const send = () => {
-      if (onSend(draft)) setDraft('');
+    const mine = chats.mine()?.text ?? '';
+    /** Enter: set my status (empty = clear it; unchanged = nothing to send), then leave the bar. */
+    const apply = (input: HTMLInputElement) => {
+      const text = draft.trim();
+      if (text === mine) input.blur();
+      else if (!text) {
+        onDelete();
+        input.blur();
+      } else if (onSend(text)) input.blur();
     };
     nodes.push(
       <div
@@ -225,12 +261,19 @@ export function ChatLayer({
           aria-label={t('chat.label')}
           className="pixel-panel flex-1 min-w-0 text-sm text-text px-8 py-4 outline-none"
           placeholder={t('chat.placeholder')}
-          value={draft}
+          // Unfocused it shows my current status; focused it edits a copy of it.
+          value={editing ? draft : mine}
+          onFocus={(e) => {
+            setDraft(mine);
+            setEditing(true);
+            e.currentTarget.select();
+          }}
+          onBlur={() => setEditing(false)}
           onChange={(e) => setDraft(takeCodePoints(e.target.value, CHAT_MAX_CHARS))}
           onKeyDown={(e) => {
             e.stopPropagation(); // never reaches the editor/tour shortcuts or the avatar keys
             if (e.nativeEvent.isComposing || e.keyCode === IME_KEYCODE) return;
-            if (e.key === 'Enter') send();
+            if (e.key === 'Enter') apply(e.currentTarget);
             else if (e.key === 'Escape') e.currentTarget.blur();
           }}
         />

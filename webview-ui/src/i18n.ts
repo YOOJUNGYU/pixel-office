@@ -219,7 +219,7 @@ const ko = {
   'relay.kickFail.network': '강퇴 실패: 중계 서버에 연결할 수 없습니다',
   'relay.kickFail.bad': '강퇴 실패: 잘못된 요청입니다',
   'relay.kickFail.noToken': '강퇴 실패: 관리자 토큰이 없습니다',
-  'chat.placeholder': '채팅 입력 (Space+Enter) · 방향키로 캐릭터 이동',
+  'chat.placeholder': '상태 메시지 (Space+Enter) · 방향키로 캐릭터 이동',
   'arcade.title': '오락실',
   'arcade.empty': '아직 기록이 없어요',
   'arcade.close': '닫기',
@@ -233,8 +233,8 @@ const ko = {
   'arcade.unranked': '기록 서버에 연결되지 않아 이번 판은 기록되지 않았어요',
   'arcade.refused': '기록 서버가 이번 판을 인정하지 않았어요',
   'game.ready': '준비 중…',
-  'chat.label': '채팅 메시지',
-  'chat.delete': '내 말풍선 지우기',
+  'chat.label': '상태 메시지',
+  'chat.delete': '내 상태 메시지 지우기',
   'nickname.conflict':
     '이 닉네임은 다른 PC가 먼저 쓰고 있었습니다. 다른 사람에게는 내 닉네임 뒤에 짧은 구분 표시가 붙어 보이니 닉네임을 바꿔 주세요.',
   'nickname.change': '닉네임 바꾸기',
@@ -269,7 +269,6 @@ const ko = {
   'settings.autostart': '로그인할 때 자동 실행',
   'settings.notifyPresence': '접속·퇴장 알림 (PC 알림)',
   'settings.notifyAgents': '내 에이전트 알림 (응답 대기·작업 완료)',
-  'settings.notifyChat': '채팅 알림 (새 말풍선마다 한 번)',
   'settings.relayAdmin': '관리자 토큰',
   'settings.relayAdminSet': '설정됨',
   'settings.relayAdminUnset': '설정 안 됨',
@@ -293,7 +292,7 @@ const ko = {
   'office.unnamed': '이름 모를 팀',
   'office.personal': '🏠 개인용',
   'office.personalHint':
-    '이 PC 혼자 쓰는 작은 오피스 — 에이전트·채팅·아바타는 다른 PC 로 보내지 않고, 접속자 목록에 이름만 보입니다 (팀 오피스는 그대로 남습니다)',
+    '이 PC 혼자 쓰는 작은 오피스 — 에이전트·상태 메시지·아바타는 다른 PC 로 보내지 않고, 접속자 목록에 이름만 보입니다 (팀 오피스는 그대로 남습니다)',
   'office.publicDisabled': '팀 오피스에 있는 동안은 공개 오피스에 보이지 않습니다',
   'office.create': '팀 오피스 만들기',
   'office.namePlaceholder': '팀 이름 (1–20자)',
@@ -568,9 +567,9 @@ const ko = {
   'tour.people.title': '접속 중인 사람',
   'tour.people.body':
     '지금 이 오피스에 있는 사람이 모두 나와요. 에이전트가 없는 사람, 다른 망에서 접속한 사람까지요. 같은 망끼리 묶이고 내 망이 맨 위예요.\n❗는 승인을 기다리는 에이전트가 있다는 뜻이고, 같은 망 사람 이름을 누르면 그 사람 에이전트 쪽으로 화면이 따라갑니다.',
-  'tour.chat.title': '내 캐릭터와 채팅',
+  'tour.chat.title': '내 캐릭터와 상태 메시지',
   'tour.chat.body':
-    '에이전트와 따로 사람마다 캐릭터가 하나 있어요. 방향키로 어디든 걸어 다니고, 대기실 의자에 앉을 수 있어요. 대기실 윗벽 게임기 앞 의자에 앉으면 그 게임이 바로 시작되고, 점수는 명예의 전당에 남아요(한 게임기에 한 명씩).\n아래 채팅창에 쓰고 Enter를 누르면 머리 위에 말풍선이 뜹니다. Space+Enter로 채팅창에 가고, Esc로 빠져나와요.',
+    '에이전트와 따로 사람마다 캐릭터가 하나 있어요. 방향키로 어디든 걸어 다니고, 대기실 의자에 앉을 수 있어요. 대기실 윗벽 게임기 앞 의자에 앉으면 그 게임이 바로 시작되고, 점수는 명예의 전당에 남아요(한 게임기에 한 명씩).\n아래 입력창에 상태를 쓰고 Enter를 누르면 머리 위에 상태 메시지가 걸려요. Space+Enter로 입력창에 가고, Esc로 빠져나와요.',
   'tour.transcript.title': '세션 상세',
   'tour.transcript.body':
     '내 에이전트 캐릭터나 말풍선을 누르면 그 세션의 대화 전체가 새 창으로 열려요. 대기실에 합쳐진 에이전트는 내 캐릭터를 눌러서 고르면 됩니다.\n[내 프롬프트만]과 Alt+↑/↓로 내가 쓴 프롬프트만 골라 보고, 오른쪽 작은 지도로 원하는 곳에 바로 갈 수 있어요.',
@@ -590,9 +589,9 @@ const ko = {
     '팀 이름을 정해서 만들면 초대 코드(PO2-…)가 나와요. 팀원에게 이 코드를 알려 주면 됩니다.\n팀 오피스 내용은 암호화돼서 팀원끼리만 오가요.',
   'tour.system.title': '자동 실행 · 알림 · 업데이트',
   'tour.system.body':
-    '로그인할 때 자동 실행과 PC 알림을 켜고 끕니다. 알림은 누가 들어오고 나갈 때, 내 에이전트가 답을 기다리거나 일을 마쳤을 때, 새 채팅이 올 때 와요.\n새 버전은 알아서 받아서 다시 시작합니다.',
+    '로그인할 때 자동 실행과 PC 알림을 켜고 끕니다. 알림은 누가 들어오고 나갈 때, 내 에이전트가 답을 기다리거나 일을 마쳤을 때 와요.\n새 버전은 알아서 받아서 다시 시작합니다.',
   'tour.system.bodyNoAutostart':
-    'PC 알림을 켜고 끕니다. 알림은 누가 들어오고 나갈 때, 내 에이전트가 답을 기다리거나 일을 마쳤을 때, 새 채팅이 올 때 와요.\n새 버전은 알아서 받아서 다시 시작합니다.',
+    'PC 알림을 켜고 끕니다. 알림은 누가 들어오고 나갈 때, 내 에이전트가 답을 기다리거나 일을 마쳤을 때 와요.\n새 버전은 알아서 받아서 다시 시작합니다.',
   'tour.layoutButton.title': '레이아웃 편집',
   'tour.layoutButton.body': '사무실을 직접 꾸밀 수 있어요. 편집기를 한번 열어 볼게요.',
   'tour.floor.title': '바닥',
@@ -621,7 +620,7 @@ const ko = {
     '이제 에이전트를 실행하면 사무실에 나타날 거예요. 예시 캐릭터들은 사라집니다.\n안내는 왼쪽 위 ? 버튼(사용 설명서)에서 언제든 다시 볼 수 있어요.',
   'toolbar.manual': '사용 설명서',
   'manual.title': '사용 설명서',
-  'manual.search': '기능 검색 (예: 채팅, 토큰, 팀)',
+  'manual.search': '기능 검색 (예: 상태, 토큰, 팀)',
   'manual.none': '찾는 기능이 없어요. 다른 말로 찾아 보세요.',
   'manual.startTour': '온보딩 시작',
   'manual.startTourTip': '화면을 하나씩 짚어 주는 처음 안내를 다시 봅니다',
@@ -696,9 +695,9 @@ const ko = {
   'manual.avatar.title': '내 캐릭터',
   'manual.avatar.body':
     '에이전트와 따로 사람마다 캐릭터가 하나 있어요. 방향키로 한 칸씩 걷고, 누르고 있으면 계속 걸어요.\n대기실 의자로 걸어가면 앉고, 빈 바닥 쪽으로 누르면 일어나요. 위치는 앱을 다시 켜도 그대로입니다.',
-  'manual.chat.title': '채팅',
+  'manual.chat.title': '상태 메시지',
   'manual.chat.body':
-    '화면 아래 가운데 채팅창에 쓰고 Enter를 누르면 내 캐릭터 머리 위에 말풍선이 떠요.\n한 사람에 말풍선 하나, 새로 쓰면 바뀌고 ×로 지워요. 100자까지, 2초에 한 번.\nSpace+Enter로 채팅창에 가고, Esc로 나오면 다시 방향키로 걸어요.',
+    '화면 아래 가운데 입력창에 지금 상태를 쓰고 Enter를 누르면 내 캐릭터 머리 위에 한 줄로 걸려요. 길면 …로 줄고, 마우스를 올리면 전부 보여요.\n입력창에는 지금 상태가 들어 있어 그 자리에서 고치면 되고, 비우고 Enter나 ×로 지워요. 100자까지, 2초에 한 번.\nSpace+Enter로 입력창에 가고, Esc로 나오면 다시 방향키로 걸어요.',
   'manual.peoplePanel.title': '접속자 목록',
   'manual.peoplePanel.body':
     '오른쪽 목록에 이 오피스에 들어와 있는 사람이 에이전트가 있든 없든 다 나와요. 공개 오피스 / 팀 / 개인용으로 나뉘어요.\n이름 아래에 앱 버전이 있고, 나와 다르면 색이 바뀌어요. 망이 둘 이상이면 망 1, 망 2 배지가 붙어요.\n같은 망 사람 이름을 누르면 그 사람 쪽으로 화면이 따라갑니다.',
@@ -716,13 +715,13 @@ const ko = {
     '대기실 윗벽 게임기 여섯 대: 방화벽 깨기, 케이블, 버그 잡기, 드론 배송, 머지, 랙 쌓기.\n게임기 앞 의자에 앉으면 바로 시작돼요. 왼쪽에 하는 법, 오른쪽에 명예의 전당.\n게임기 하나에 한 명씩. 점수는 중계 서버가 입력을 다시 돌려 매겨요. M이나 🔊로 소리를 끄고, Esc로 그만둡니다.',
   'manual.switcher.title': '오피스 바꾸기',
   'manual.switcher.body':
-    '화면 맨 위 버튼으로 🏠 개인용, 🌐 공개 오피스, 🔒 팀을 언제든 오가요.\n오피스마다 배치, 내 캐릭터 위치, 채팅이 따로예요. 마지막에 고른 오피스로 다시 열립니다.',
+    '화면 맨 위 버튼으로 🏠 개인용, 🌐 공개 오피스, 🔒 팀을 언제든 오가요.\n오피스마다 배치, 내 캐릭터 위치, 상태 메시지가 따로예요. 마지막에 고른 오피스로 다시 열립니다.',
   'manual.personal.title': '개인용',
   'manual.personal.body':
-    '나 혼자 쓰는 작은 사무실이에요. 에이전트, 채팅, 캐릭터 위치가 다른 PC로 나가지 않아요.\n다른 사람 목록의 "개인용"에 이름만 보여요. 팀에서 나간 게 아니라 코드 없이 팀으로 돌아갈 수 있어요.',
+    '나 혼자 쓰는 작은 사무실이에요. 에이전트, 상태 메시지, 캐릭터 위치가 다른 PC로 나가지 않아요.\n다른 사람 목록의 "개인용"에 이름만 보여요. 팀에서 나간 게 아니라 코드 없이 팀으로 돌아갈 수 있어요.',
   'manual.public.title': '공개 오피스',
   'manual.public.body':
-    '같은 망에서 앱을 쓰는 사람은 설정 없이 함께 들어와요. 에이전트, 캐릭터, 채팅, 배치는 같은 망 안에서만 오가요.\n다른 망 사람은 중계를 거쳐 오른쪽 목록에만 나와요(누가 접속했는지만).\n작업 내용(파일, 명령, 답변)은 보이지 않고 일의 종류, 세션 제목, 토큰 같은 것만 보여요.',
+    '같은 망에서 앱을 쓰는 사람은 설정 없이 함께 들어와요. 에이전트, 캐릭터, 상태 메시지, 배치는 같은 망 안에서만 오가요.\n다른 망 사람은 중계를 거쳐 오른쪽 목록에만 나와요(누가 접속했는지만).\n작업 내용(파일, 명령, 답변)은 보이지 않고 일의 종류, 세션 제목, 토큰 같은 것만 보여요.',
   'manual.team.title': '팀 오피스',
   'manual.team.body':
     '설정 → 오피스에서 팀 이름을 정해 만들면 초대 코드(PO2-…)가 나와요. 팀원은 그 코드로 들어옵니다.\n내용은 암호화돼 팀원끼리 같은 망에서만 오가고, 프로그램·파일 이름까지 보여요.\n팀은 한 번에 하나만. 팀에 있는 동안 공개 오피스에서는 내가 안 보여요.',
@@ -742,7 +741,7 @@ const ko = {
     '설정 → 레이아웃 내보내기로 지금 배치를 JSON 파일로 저장하고, 레이아웃 가져오기로 파일에서 불러와 바로 저장해요.',
   'manual.notifications.title': 'PC 알림',
   'manual.notifications.body':
-    '앱 창을 닫아도 트레이가 떠 있으면 OS 알림이 와요.\n공개 오피스에 누가 들어오거나 나갈 때, 내 메인 에이전트가 답을 기다리거나 일을 다 마쳤을 때, 새 채팅이 올 때.\n설정에서 종류별로 끌 수 있어요.',
+    '앱 창을 닫아도 트레이가 떠 있으면 OS 알림이 와요.\n공개 오피스에 누가 들어오거나 나갈 때, 내 메인 에이전트가 답을 기다리거나 일을 다 마쳤을 때.\n설정에서 종류별로 끌 수 있어요.',
   'manual.tray.title': '트레이 아이콘',
   'manual.tray.body':
     'Windows 알림 영역과 Mac 메뉴 막대에 Pixel Office 아이콘이 떠요.\n열기로 사무실 창을 띄우고, 종료로 앱을 완전히 끕니다.',
@@ -765,8 +764,8 @@ const ko = {
   'tour.manual.body':
     '왼쪽 위 ? 버튼을 누르면 모든 기능의 설명서가 열려요. 왼쪽에서 기능을 고르면 오른쪽에 애니메이션과 설명이 나와요.\n위쪽 검색창으로 찾고, [온보딩 시작]으로 이 안내를 다시 볼 수 있어요.',
   'manual.demo.bg': '배경',
-  'manual.demo.chat': '점심 같이 가요?',
-  'manual.demo.chatHint': 'Space+Enter로 채팅',
+  'manual.demo.chat': '🍜 점심 먹는 중',
+  'manual.demo.chatHint': 'Space+Enter로 상태 메시지',
   'manual.demo.code': '코드',
   'manual.demo.doc': '문서',
   'manual.demo.term': '터미널',
@@ -1020,7 +1019,7 @@ const en: Record<Key, string> = {
   'relay.kickFail.network': 'Kick failed: cannot reach the relay',
   'relay.kickFail.bad': 'Kick failed: bad request',
   'relay.kickFail.noToken': 'Kick failed: no admin token set',
-  'chat.placeholder': 'Chat (Space+Enter) · arrow keys move your character',
+  'chat.placeholder': 'Status message (Space+Enter) · arrow keys move your character',
   'arcade.title': 'Arcade',
   'arcade.empty': 'No scores yet',
   'arcade.close': 'Close',
@@ -1034,8 +1033,8 @@ const en: Record<Key, string> = {
   'arcade.unranked': 'Record server unreachable: this run was not recorded',
   'arcade.refused': 'The record server did not accept this run',
   'game.ready': 'Getting ready…',
-  'chat.label': 'Chat message',
-  'chat.delete': 'Delete my bubble',
+  'chat.label': 'Status message',
+  'chat.delete': 'Clear my status',
   'nickname.conflict':
     'Another PC was using this nickname first. Others see yours with a short tag after it, so please change your nickname.',
   'nickname.change': 'Change nickname',
@@ -1070,7 +1069,6 @@ const en: Record<Key, string> = {
   'settings.autostart': 'Start at login',
   'settings.notifyPresence': 'Join/leave notifications (PC)',
   'settings.notifyAgents': 'My agents: waiting for me / finished (PC)',
-  'settings.notifyChat': 'Chat notifications (once per new bubble)',
   'settings.relayAdmin': 'Admin token',
   'settings.relayAdminSet': 'Set',
   'settings.relayAdminUnset': 'Not set',
@@ -1093,7 +1091,7 @@ const en: Record<Key, string> = {
   'office.unnamed': 'Unnamed team',
   'office.personal': '🏠 Personal',
   'office.personalHint':
-    'A small office for this PC alone — agents, chat and avatar stay here; other PCs see only your name in their people list (your team offices are kept)',
+    'A small office for this PC alone — agents, status message and avatar stay here; other PCs see only your name in their people list (your team offices are kept)',
   'office.publicDisabled': "While you're in a team office you are not shown in the public office",
   'office.create': 'Create a team office',
   'office.namePlaceholder': 'Team name (1–20 chars)',
@@ -1368,9 +1366,9 @@ const en: Record<Key, string> = {
   'tour.people.title': "Who's online",
   'tour.people.body':
     'Everyone in this office is listed here, agents or not, people on other networks too, grouped by network with yours on top. A ❗ means one of their agents is waiting for them.\nClick someone on your network and the view follows their agents.',
-  'tour.chat.title': 'Your character and chat',
+  'tour.chat.title': 'Your character and status',
   'tour.chat.body':
-    'You have a character too. Walk it around with the arrow keys and sit down on a lounge chair. Sit in front of an arcade cabinet on the lounge top wall and its game starts at once; scores go to the hall of fame (one player per cabinet).\nType in the bar at the bottom and press Enter to put a bubble over your head. Space+Enter jumps to the chat bar, Esc leaves it.',
+    'You have a character too. Walk it around with the arrow keys and sit down on a lounge chair. Sit in front of an arcade cabinet on the lounge top wall and its game starts at once; scores go to the hall of fame (one player per cabinet).\nType a status in the bar at the bottom and press Enter to show it over your head. Space+Enter jumps to the bar, Esc leaves it.',
   'tour.transcript.title': 'Session details',
   'tour.transcript.body':
     'Click one of your agents, or its bubble, to open the whole session in its own window. For agents resting in the lounge, click your own character and pick one.\nMy prompts and Alt+↑/↓ take you through what you typed, and the minimap on the right jumps anywhere.',
@@ -1390,9 +1388,9 @@ const en: Record<Key, string> = {
     'Create a team and you get an invite code (PO2-…) to send to teammates.\nEverything inside a team office is encrypted, and you can leave whenever you want.',
   'tour.system.title': 'Start at login · Notifications · Updates',
   'tour.system.body':
-    'Choose whether Pixel Office starts at login and which PC notifications you get: people coming and going, your agents waiting or done, chat.\nUpdates install themselves. [Check for updates] checks right away.',
+    'Choose whether Pixel Office starts at login and which PC notifications you get: people coming and going, your agents waiting or done.\nUpdates install themselves. [Check for updates] checks right away.',
   'tour.system.bodyNoAutostart':
-    'Choose which PC notifications you get: people coming and going, your agents waiting or done, chat.\nUpdates install themselves. [Check for updates] checks right away.',
+    'Choose which PC notifications you get: people coming and going, your agents waiting or done.\nUpdates install themselves. [Check for updates] checks right away.',
   'tour.layoutButton.title': 'Layout editor',
   'tour.layoutButton.body': 'You can rearrange the office yourself. Let’s open the editor.',
   'tour.floor.title': 'Floor',
@@ -1422,7 +1420,7 @@ const en: Record<Key, string> = {
     'Start an agent and watch it walk in. The tour characters are heading out now.\nThe ? button top left (Manual) replays this tour any time.',
   'toolbar.manual': 'Manual',
   'manual.title': 'Manual',
-  'manual.search': 'Search features (e.g. chat, tokens, team)',
+  'manual.search': 'Search features (e.g. status, tokens, team)',
   'manual.none': 'No matching feature. Try other words.',
   'manual.startTour': 'Start the tour',
   'manual.startTourTip': 'Replay the first-run tour that points at each part of the screen',
@@ -1497,9 +1495,9 @@ const en: Record<Key, string> = {
   'manual.avatar.title': 'Your character',
   'manual.avatar.body':
     'Besides your agents, you have a character of your own. The arrow keys walk it one tile at a time; hold one to keep walking.\nWalk onto a lounge chair to sit, press toward open floor to stand up. It stays where you left it.',
-  'manual.chat.title': 'Chat',
+  'manual.chat.title': 'Status message',
   'manual.chat.body':
-    'Type in the bar at the bottom centre and press Enter: a bubble appears over your character.\nOne bubble per person, a new one replaces it, × deletes it. Up to 100 characters, one every 2 s.\nSpace+Enter jumps to the bar, Esc leaves it so the arrows walk again.',
+    'Type what you are up to in the bar at the bottom centre and press Enter: it shows as one line over your character, clipped with … when long — hover it to read it all.\nThe bar holds your current status, so just edit it; clear it and press Enter, or click ×, to remove it. Up to 100 characters, one change every 2 s.\nSpace+Enter jumps to the bar, Esc leaves it so the arrows walk again.',
   'manual.peoplePanel.title': 'People panel',
   'manual.peoplePanel.body':
     'The list on the right shows everyone in this office, agents or not, in three areas: public office / team / personal.\nUnder each name its app version, coloured when it differs from yours; with two or more networks, Net 1, Net 2 badges.\nClick someone on your network to follow them.',
@@ -1517,13 +1515,13 @@ const en: Record<Key, string> = {
     'Six cabinets on the lounge top wall: Firewall Breaker, Cable Run, Bug Squash, Drone Delivery, Merge, Rack Stack.\nSit on the chair in front of one and its game starts at once: how to play on the left, the hall of fame on the right.\nOne player per cabinet. The relay replays your inputs to score them. M or 🔊 mutes, Esc quits.',
   'manual.switcher.title': 'Switching offices',
   'manual.switcher.body':
-    'The buttons at the top switch between 🏠 Personal, 🌐 Public office and 🔒 your team at any time.\nEach office has its own layout, character spot and chat; the app reopens in the one you used last.',
+    'The buttons at the top switch between 🏠 Personal, 🌐 Public office and 🔒 your team at any time.\nEach office has its own layout, character spot and status message; the app reopens in the one you used last.',
   'manual.personal.title': 'Personal',
   'manual.personal.body':
-    "A small office just for you: agents, chat and your character's spot never leave this PC.\nOthers only see your name under Personal in their list. You stay in your team, so you can go back without a code.",
+    "A small office just for you: agents, status message and your character's spot never leave this PC.\nOthers only see your name under Personal in their list. You stay in your team, so you can go back without a code.",
   'manual.public.title': 'Public office',
   'manual.public.body':
-    'Everyone using the app on your network is in it, with nothing to set up. Agents, characters, chat and layout stay on that network.\nPeople on other networks come through the relay into the list on the right only (just who is online).\nNo work details (files, commands, replies) are shown there: only the kind of work, session titles, tokens and such.',
+    'Everyone using the app on your network is in it, with nothing to set up. Agents, characters, status messages and layout stay on that network.\nPeople on other networks come through the relay into the list on the right only (just who is online).\nNo work details (files, commands, replies) are shown there: only the kind of work, session titles, tokens and such.',
   'manual.team.title': 'Team office',
   'manual.team.body':
     'Settings → Offices: name a team to create it and get an invite code (PO2-…); teammates join with that code.\nIts traffic is encrypted, stays on your network between teammates, and shows program and file names too.\nOne team at a time; while in it, you are not seen in the public office.',
@@ -1544,7 +1542,7 @@ const en: Record<Key, string> = {
     'Settings → Export layout saves the current layout as a JSON file; Import layout loads one and saves it at once.',
   'manual.notifications.title': 'PC notifications',
   'manual.notifications.body':
-    'With the tray running, OS notifications arrive even when the window is closed:\nsomeone joining or leaving the public office, your main agent waiting for you or completely done, a new chat message.\nTurn each kind off in Settings.',
+    'With the tray running, OS notifications arrive even when the window is closed:\nsomeone joining or leaving the public office, your main agent waiting for you or completely done.\nTurn each kind off in Settings.',
   'manual.tray.title': 'Tray icon',
   'manual.tray.body':
     'Pixel Office sits in the Windows notification area and the Mac menu bar.\nOpen brings up the office window; Quit stops the app completely.',
@@ -1567,8 +1565,8 @@ const en: Record<Key, string> = {
   'tour.manual.body':
     'The ? button top left opens the manual of every feature: pick one on the left, its animation and explanation show on the right.\nSearch at the top, and Start the tour replays this tour.',
   'manual.demo.bg': 'Background',
-  'manual.demo.chat': 'Lunch, anyone?',
-  'manual.demo.chatHint': 'Space+Enter to chat',
+  'manual.demo.chat': '🍜 At lunch',
+  'manual.demo.chatHint': 'Space+Enter: status message',
   'manual.demo.code': 'code',
   'manual.demo.doc': 'page',
   'manual.demo.term': 'terminal',

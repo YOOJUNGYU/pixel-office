@@ -707,22 +707,24 @@ export const AVATAR_TELEPORT_TILES = 20;
 /** Avatar name tag box (CSS px), one line: text-sm leading-none + py-1 ×2; width = PAD ×2 + text. */
 export const AVATAR_TAG_HEIGHT_PX = LAN_TAG_LINE_PX + 2;
 
-// ── Chat bubbles (above the avatar) and the bottom chat bar ───
-/** Text column of a chat bubble wraps at this width (CSS px). */
+// ── Status tags (above the avatar) and the bottom status bar (protocol name: chat) ───
+/** A status tag's one line is clipped with … beyond this width (CSS px). */
 export const CHAT_TEXT_MAX_PX = 200;
+/** A hovered, clipped status tag shows the whole text wrapped at this width (CSS px). */
+export const CHAT_TEXT_OPEN_MAX_PX = 240;
 export const CHAT_FONT = '13px Pretendard';
 /** Line boxes (CSS px), set explicitly so the height estimate used for stacking holds. */
 export const CHAT_LINE_PX = 17;
 export const CHAT_PAD_X_PX = 8;
 export const CHAT_PAD_Y_PX = 4;
 export const CHAT_BORDER_PX = 2;
-/** Gap between the bubble and the head it points at (the tail), and between stacked bubbles. */
+/** Stem between the tag and the head below it, and the gap between stacked tags. */
 export const CHAT_TAIL_PX = 8;
 export const CHAT_STACK_GAP_PX = 4;
 /** The chat bar at the bottom centre (CSS px): width, gap from the bottom edge. */
 export const CHAT_BAR_WIDTH_PX = 440;
 export const CHAT_BAR_BOTTOM_PX = 10;
-/** The × on my own bubble (square, CSS px) and its gap from the text. */
+/** The × on my own status tag (square, CSS px) and its gap from the text. */
 export const CHAT_DELETE_PX = 16;
 export const CHAT_DELETE_GAP_PX = 6;
 /** Bubbles with the "!" sprites; the bar above everything but the top-right stack's modals. */

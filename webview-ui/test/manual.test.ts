@@ -34,10 +34,10 @@ test('every entry: unique id, a known category, title + body in ko/en, a scene',
 test('search: empty = all, words in either language, title hits first, none = []', () => {
   assert.equal(searchManual('').length, MANUAL.length);
   assert.equal(searchManual('   ').length, MANUAL.length);
-  const chat = searchManual('채팅');
+  const chat = searchManual('상태 메시지');
   assert.equal(chat[0].id, 'chat');
-  assert.equal(searchManual('chat')[0].id, 'chat'); // English word, any page language
-  assert.equal(searchManual('CHAT')[0].id, 'chat');
+  assert.equal(searchManual('status message')[0].id, 'chat'); // English word, any page language
+  assert.equal(searchManual('STATUS MESSAGE')[0].id, 'chat');
   assert.ok(searchManual('PO2').some((m) => m.id === 'team'));
   assert.ok(searchManual('토큰 불꽃').some((m) => m.id === 'heat'));
   assert.deepEqual(searchManual('zzqqxx'), []);
