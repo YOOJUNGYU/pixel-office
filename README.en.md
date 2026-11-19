@@ -13,7 +13,7 @@
   <a href="https://yoojungyu.github.io/pixel-office/en.html"><b>📖 Guide (GitHub Pages)</b></a> ·
   <a href="https://yoojungyu.github.io/pixel-office/architecture.html">Architecture (Korean)</a> ·
   <a href="https://github.com/YOOJUNGYU/pixel-office/releases/latest">⬇️ Download</a> ·
-  <a href="docs/INSTALL.en.md">Install guide</a>
+  <a href="https://yoojungyu.github.io/pixel-office/install-en.html">Install guide</a>
 </p>
 
 ![A public office with 10 people online](docs/images/office-en.png)

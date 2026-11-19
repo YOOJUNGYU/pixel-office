@@ -17,6 +17,8 @@
   --f-disp: 'Silkscreen', 'IBM Plex Sans KR', monospace;
   --f-body: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   --f-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  /* One reading column: text, tables, screenshots and the top bar share this width (+ gutters). */
+  --col: 912px;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -66,7 +68,7 @@ img {
   border-bottom: 2px solid var(--line);
 }
 .top-in {
-  max-width: 1040px;
+  max-width: var(--col);
   margin: 0 auto;
   padding-block: 10px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -119,7 +121,7 @@ img {
 }
 
 .wrap {
-  max-width: 1040px;
+  max-width: var(--col);
   margin: 0 auto;
   padding-block: 36px 80px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -159,7 +161,6 @@ h3 {
 }
 p {
   margin: 0;
-  max-width: 72ch;
 }
 .lead {
   color: var(--muted);
@@ -174,12 +175,17 @@ section {
   gap: 16px;
   min-width: 0;
 }
+section > *,
+.hero > * {
+  min-width: 0;
+}
 code,
 .mono {
   font-family: var(--f-mono);
   font-size: 0.88em;
 }
 code {
+  overflow-wrap: anywhere;
   background: var(--code-bg);
   padding: 1px 5px;
   border: 1px solid var(--soft);
@@ -197,8 +203,9 @@ ol {
   display: grid;
   gap: 6px;
 }
+/* Grid items default to min-width: auto, so a long <pre> inside a list item would widen the page. */
 li {
-  max-width: 72ch;
+  min-width: 0;
 }
 
 /* Blocks */
@@ -307,6 +314,7 @@ figure {
   gap: 8px;
 }
 figure img {
+  width: 100%;
   border: 2px solid var(--line);
   box-shadow: 2px 2px 0 var(--line);
   display: block;
@@ -314,7 +322,6 @@ figure img {
 figcaption {
   font-size: 13px;
   color: var(--muted);
-  max-width: 90ch;
 }
 .note {
   border: 2px dashed var(--accent);

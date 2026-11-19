@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install guide · Pixel Office</title>
+<meta name="description" content="How to install, open, update and uninstall Pixel Office on Windows and Mac, plus public, team and personal offices and what to check when other PCs do not show up.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=Silkscreen&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="brand" href="en.html">PIXEL OFFICE</a>
+  <nav aria-label="Site">
+    <a href="en.html">Guide</a>
+    <a href="architecture.html" lang="ko">Architecture (Korean)</a>
+    <a href="install-en.html" aria-current="page">Install guide</a>
+    <a href="https://github.com/YOOJUNGYU/pixel-office">GitHub</a>
+    <a href="install.html" lang="ko">한국어</a>
+  </nav>
+  <a class="dl" href="https://github.com/YOOJUNGYU/pixel-office/releases/latest">Download</a>
+</div></header>
+<main class="wrap">
+
+<header class="hero">
+  <h1>Install guide</h1>
+  <p>Pixel Office shows the coding agents (Claude Code, Codex) of every PC with the app as characters in one pixel office. You start in a personal office just for you, and can switch any time to the public office, which brings together everyone with the app on your network (people on other networks only show in the people panel), or to a team office (teammates on the same network) (<a href="#rooms">4-1</a>). The app reopens the office you used last. <b>Install it once on each PC</b>: it starts automatically at login and finds the other PCs by itself. Nothing else (such as Node) needs to be installed.</p>
+  <nav class="toc" aria-label="On this page">
+    <a href="#download">1. Download</a>
+    <a href="#windows">2. Windows</a>
+    <a href="#mac">3. Mac</a>
+    <a href="#open">4. How to open</a>
+    <a href="#rooms">4-1. Public, team and personal offices</a>
+    <a href="#trouble">5. Other PCs do not show up</a>
+    <a href="#uninstall">6. Uninstall</a>
+  </nav>
+</header>
+
+<section id="download">
+  <h2>1. Download</h2>
+  <p>Get the file for your PC from <a href="https://github.com/YOOJUNGYU/pixel-office/releases/latest">GitHub Releases</a>.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>PC</th><th>File</th></tr></thead>
+    <tbody>
+      <tr><td>Windows 10/11 (64-bit)</td><td><code>PixelOffice-&lt;ver&gt;-Windows.exe</code></td></tr>
+      <tr><td>Mac (Apple silicon or Intel, both)</td><td><code>PixelOffice-&lt;ver&gt;-Mac.pkg</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>There is one Mac file for every Mac, so no need to check your chip.</p>
+</section>
+
+<section id="windows">
+  <h2>2. Windows</h2>
+  <ol>
+    <li>Run <code>PixelOffice-&lt;ver&gt;-Windows.exe</code>.</li>
+    <li>If <b>"Windows protected your PC"</b> (SmartScreen) appears, click <b>More info</b> → <b>Run anyway</b>. The installer is not code-signed.</li>
+    <li>Approve the <b>User Account Control</b> prompt. Admin rights are used only to install into Program Files and add the Windows Firewall rule "Pixel Office".</li>
+    <li>On <b>Select Additional Tasks</b> both options are checked by default; untick what you don't want:
+      <ul>
+        <li><b>Create a desktop shortcut</b></li>
+        <li><b>Start automatically at login</b> (registered in your own user's Startup folder; you can change it later in the office's <b>Settings</b>)</li>
+      </ul>
+    </li>
+    <li>Finish the wizard; the office opens in your browser. Just pick a character and colour (a nickname is optional; you are shown by your PC account name).</li>
+  </ol>
+</section>
+
+<section id="mac">
+  <h2>3. Mac</h2>
+  <ol>
+    <li>Double-click the <code>.pkg</code>.</li>
+    <li>The installer is not notarized by Apple, so the first try is blocked. When <b>"'PixelOffice-&lt;version&gt;-Mac.pkg' Not Opened"</b> (macOS 15 and later) or <b>"unidentified developer"</b> appears:
+      <ol>
+        <li>Click <b>Done</b> (or <b>OK</b>). Do not click <b>Move to Trash</b>.</li>
+        <li>Open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b> next to "…Mac.pkg was blocked" (admin password). The button only shows for about an hour after the block; if it is missing, open the pkg once more and look again.</li>
+        <li>Open the pkg again, click <b>Open</b> and go through the installer (admin password).</li>
+      </ol>
+      <ul>
+        <li>Or install from Terminal (skips this check): <code>sudo installer -pkg ~/Downloads/PixelOffice-&lt;version&gt;-Mac.pkg -target /</code></li>
+        <li>On a company-managed Mac where <b>Open Anyway</b> is missing or keeps failing, a management (MDM) policy blocks it. Don't work around it; ask IT.</li>
+      </ul>
+    </li>
+    <li>When asked <b>Do you want the application "node" to accept incoming network connections?</b>, click <b>Allow</b> — otherwise other PCs cannot see your agents.</li>
+    <li>Open <b>Applications → Pixel Office</b> to open the office (<code>http://localhost:47801</code>).</li>
+  </ol>
+  <p>It starts at every login (<code>~/Library/LaunchAgents/com.pixeloffice.agent.plist</code>, can be turned off in the office's <b>Settings</b>); the log is <code>~/Library/Logs/PixelOffice.log</code>.</p>
+</section>
+
+<section id="open">
+  <h2>4. How to open</h2>
+  <ul>
+    <li><b>Start at login</b>: runs in the background without a window. Turn it off or on in the office under <b>Settings → Start at login</b> (applies from the next login; the running office keeps running). Installing an update keeps your choice.</li>
+    <li><b>Tray icon · quitting</b>: while it runs, a Pixel Office icon sits in the Windows notification area (the tray; look under <b>^</b> if hidden) or the Mac menu bar. Click it (on Windows a left click opens the office) → <b>Open Pixel Office</b> / <b>Quit Pixel Office</b>. Quitting removes this PC from the other PCs too, and it stays off until the next login (if start at login is on) or until you open it again from the shortcut / app. No icon? <b>Settings → Quit Pixel Office</b> in the office does the same (an open window then says it was quit).</li>
+    <li><b>Updates</b>: checked at start and every 6 hours, and installed <b>silently</b> (no admin password, no installer window); the open window reloads itself into the new version and briefly shows "Updated to v1.0.2". Updates cannot be turned off. <b>Install the 1.0.0 installer once yourself</b>; after that only releases that change the Node runtime use the <b>Update</b> button (installer) at the top right. The release's <code>…-app.tgz</code> / <code>.sha256</code> files are for the auto-update — don't download them.</li>
+    <li><b>PC notifications</b>: when someone joins or leaves the public office, and when one of your own Claude/Codex agents is waiting for your answer or has finished, Windows/Mac shows a notification (also with the window closed, as long as the tray icon runs). Turn them off separately in <b>Settings → Join/leave notifications / My agents</b>. On Windows they show with the "Pixel Office" name and icon (an entry "Pixel Office" appears under Settings → System → Notifications). Windows or macOS may ask you to allow notifications the first time — allow them. On a Mac they may appear under "Script Editor" or "osascript" (enable that entry in System Settings → Notifications). With Windows Focus assist / Do not disturb on they only land in the notification center.</li>
+    <li><b>Open the office</b>
+      <ul>
+        <li>Windows: the <b>Pixel Office</b> desktop shortcut, or Start → <b>Pixel Office 열기</b></li>
+        <li>Mac: <b>Pixel Office</b> in <b>Applications</b> or <b>Launchpad</b>. Following macOS convention there is no desktop alias (drag it to the Dock if you like).</li>
+        <li>On any PC: <code>http://localhost:47801</code> in that PC's browser (the UI opens on your own PC only; other PCs' browsers can't view it)</li>
+      </ul>
+    </li>
+    <li>On Windows a shortcut starts the office if needed and opens, in this order: <b>the installed Pixel Office app</b> (Edge, else Chrome) → a new Edge (or Chrome) window, where the install popup appears → the default browser. On a Mac it opens the default browser.</li>
+    <li>The first time you open it, a short tour walks through every feature. Replay it any time from the <b>?</b> button at the top left (Manual) → <b>Start the tour</b>.</li>
+  </ul>
+
+  <h3 id="pwa">Install as an app (PWA)</h3>
+  <p>Open the office in this PC's browser and an <b>Install Pixel Office as an app</b> popup appears top right.</p>
+  <ul>
+    <li><b>Edge / Chrome</b>: <b>Install</b> → <b>Install</b> in the browser's dialog. From then on the Windows shortcuts and Start menu open a tab-less app window (a Mac opens the default browser). The install icon at the right of the address bar works too.</li>
+    <li><b>Safari</b>: <b>Share → Add to Dock</b> (Mac) / <b>Add to Home Screen</b> (iPhone, iPad)</li>
+    <li><b>Firefox</b>: can't install apps; open it in Edge or Chrome.</li>
+    <li><b>Later</b> hides it for 7 days. It never shows inside the app or after installing.</li>
+    <li><b>Opened the PWA alone while the server is off?</b> It shows "The Pixel Office server is off" with a big <b>[Start]</b> button. Press it and the browser asks to <b>"Open Pixel Office"</b> → allow (tick <b>always allow</b> and it won't ask again). Once the server is up the window turns into the office by itself. Not up after 20 s? Start Pixel Office from the Start menu (Mac: Applications). A window left open after quitting shows the same [Start].
+      <ul>
+        <li>[Start] uses the <code>pixeloffice:</code> link the installer registers, so it <b>needs the new installer once</b> (in-app silent updates can't register it). The link always runs the same fixed launch command; nothing from the link is passed on.</li>
+      </ul>
+    </li>
+    <li>To remove the app, uninstall Pixel Office from <code>edge://apps</code> (Edge) or <code>chrome://apps</code> (Chrome). Shortcuts then open a new Edge (or Chrome) window again.</li>
+  </ul>
+</section>
+
+<section id="rooms">
+  <h2>4-1. Public, team and personal offices</h2>
+  <ul>
+    <li>A new install starts in 🏠 <b>Personal</b>. Switch with the tabs at the top (🏠 Personal · 🌐 Public office · 🔒 team); the app reopens the one you used last. The 🌐 <b>public office</b> is where everyone with the app <b>on your network</b> meets. Nothing to set up. Agents, avatars, status messages and the layout stay on the network (UDP), encrypted (an X25519 key per PC, AES-256-GCM under a key per pair of PCs).</li>
+    <li>People on <b>other networks</b> (home, another office, a café) don't appear in the office, only in the people panel on the right: a Cloudflare relay tells everyone who is online (nothing to install besides Pixel Office; it uses one outbound <code>wss</code> connection on 443). For that, public-office and personal PCs send the relay their peer id, public key, display name (account and nickname), character look, app version and whether they're in personal mode (protected by TLS only; the relay can read it). Agents, status messages and layouts never go to the relay. The relay stores no IP addresses (only a hashed tag to group networks), but Cloudflare, which hosts it, does see each PC's connecting IP address.</li>
+    <li><b>People on your network in the public office</b> see your account name, nickname, character, status message and avatar position, and your agents' room and seat, kind, kind of work (like "Editing a file"), session title, model, tokens, context, task counts, elapsed time and changed lines. Which file, which command and reply text are never sent (session titles only when they're a real name — Claude's title, one you set, a Codex thread name — with paths and addresses masked). A team office also shows program and file names. PCs on 1.0.64 or older only see size and flames.</li>
+    <li>Team offices don't connect to the relay, except for the lounge arcade: from any office, its score records send your peer id and display name to the relay (<code>wss</code>/<code>https</code> 443).</li>
+    <li><b>Connection chip</b>: next to the people panel's title while you view the public office, only when something is wrong (nothing shows while it's fine).
+      <ul>
+        <li><code>Connecting to the internet…</code>: connecting.</li>
+        <li><code>Internet: waiting, office full</code>: the relay's 1,000 concurrent slots are taken; retries in about 5 minutes.</li>
+        <li><code>Internet paused: daily limit reached</code>: 95 % of the free server's daily limit is used, so it pauses for the day (reconnects by itself after the 00:00 UTC (09:00 KST) reset).</li>
+        <li><code>Removed by the admin</code>: the admin removed you (reconnects after the time shown). PCs on 1.0.63 or older are turned away like this too (they retry a day later): update them.</li>
+        <li><code>No internet connection — same network only</code>: the internet is unreachable (offline, or a corporate proxy/firewall blocks outbound <code>wss</code> on 443). Same-network PCs still show; only people on other networks drop from the panel. In proxy environments the link may not work; ask IT for an exception rather than working around it.</li>
+        <li>In every case you <b>stay in the public office</b> (never switched to personal) and it reconnects by itself when the condition clears.</li>
+      </ul>
+    </li>
+    <li><b>People panel</b>: the public-office area groups people by network, yours on top. Only when two or more networks are seen do rows get a <code>Net 1</code> (yours) / <code>Net 2</code> badge. A company with several exit IPs may appear under different numbers. With many people only the first 10 rows are drawn; scroll for more.</li>
+    <li>The shared layout stays on your network: anyone in the public office can edit and save, the last save wins.</li>
+    <li>🔒 <b>Create a room (team office)</b> (one room at a time: creating or joining another replaces the current one after a confirmation): <b>Settings → Offices → Create a room</b>, enter a title and an optional access code, <b>Create</b>. You are its host. Without a code anyone on your network can join.</li>
+    <li><b>Join</b>: pick a room under <b>Settings → Offices → Rooms on your network</b> and press <b>Join</b> (🔒 rooms ask for the access code). Newcomers get in only while the host's PC is on; up to 20 people per room. Switch offices with the office buttons at the top of the screen.</li>
+    <li><b>People limit</b>: the public office and each room hold up to 20 people per network (you included); other networks count separately.</li>
+    <li><b>While you are in a team office you leave the public office</b> (agents and status messages neither sent nor seen). To return, <b>Leave</b> it in <b>Your room</b>. The people panel on the right lists names in all three areas (public, team, personal).</li>
+    <li>Room traffic is encrypted under a key the host hands only to the people it lets in; the access code also travels encrypted, to the host's PC only. Teams made with an invite code (≤ 1.0.74) keep working but are not listed.</li>
+    <li>🏠 <b>Personal</b>: press <b>Personal</b> in the office buttons at the top for a small office of your own (agents, status message and avatar position never leave the PC; only your name shows in other PCs' people panel under <code>Personal</code>). Your team offices are kept: press <b>Public office</b> or a team button to return, no code needed. Personal mode has its own layout, saved on this PC only (a public or team office's layout is shared by everyone in it).</li>
+    <li><b>Known limit</b>: names on the relay aren't verified. Copying another PC's peer id and key can show that name in the people panel or push that PC off the relay. The office itself stays on your network, encrypted.</li>
+    <li>Watching from another PC's browser without the app (remote viewing) was removed in v0.4.0. Install the app on that PC instead.</li>
+    <li>Mixed with 1.0.64 or older: those PCs don't show other agents' session titles, tokens, models or seats (1.0.63 or older also show wardrobe looks as the plain character and can't reach the relay, so they don't see other networks). Update every PC.</li>
+    <li>1.0.24 or older PCs may not appear in your people panel (team and personal names) and you not in theirs.</li>
+    <li>Mixed with 1.0.13 or older: those PCs neither get nor send the shared public/team layout and show their own default. Update every PC.</li>
+    <li>Mixed with 1.0.0 or older: those PCs do not show people's own characters (walked with the arrow keys) or status messages. Update every PC.</li>
+    <li>Mixed versions after v0.4.x: a PC running many agents now sends its state in several small packets, which v0.4.x PCs do not understand, so such a PC is missing on a v0.4.x PC (a PC with few agents still shows). Update every PC.</li>
+  </ul>
+</section>
+
+<section id="trouble">
+  <h2>5. Other PCs do not show up</h2>
+  <ul>
+    <li>Only PCs on <b>your network</b> appear in the office; people on other networks show in the people panel's public-office area only. If they're missing there and the chip reads <code>No internet connection</code>, check the internet side (a corporate proxy/firewall blocking outbound <code>wss</code> on 443, for example).</li>
+    <li>PCs on the same network appear automatically; no IP needs to be entered. They have to be on the <b>same network</b> (same router / subnet); guest Wi-Fi, VPN or other subnets may block discovery.</li>
+    <li>Only for PCs on another floor or network: add the other PC's IP under <b>Settings → My profile → Advanced: when a PC isn't found automatically → PC IPs to connect directly</b> (one per line) and save. Listing it on one side is enough to see each other; listing it on both is more reliable.</li>
+    <li>Make sure <b>both PCs run 0.2.0 or later</b>: 0.2.0 does not talk to the unencrypted 0.1.0.</li>
+    <li>If either of you is in a <b>team office</b> or 🏠 <b>Personal</b> mode, you don't see each other's characters or agents in the public office (a team PC still lists public PCs' names in its people panel, but a public PC does not list team PCs). Join the same team office, or both leave your teams.</li>
+    <li>Make sure UDP 47800 is not blocked (the Windows installer adds an inbound UDP 47800 rule; a Mac needs the "Allow" from step 3). TCP 47801 is used only inside your PC and needs no opening.</li>
+    <li>If <b>corporate security software</b> (antivirus, EDR, AppLocker, company firewall) blocks it, ask IT for an exception rather than working around it: program <code>C:\Program Files\PixelOffice\node.exe</code> / <code>/Applications/Pixel Office.app</code>, port UDP 47800 (the only inbound one; the TCP 47801 UI stays on the PC), and an outbound <code>wss</code> connection on 443 to the relay (who's online, arcade scores; a Cloudflare Workers address; nothing inbound).</li>
+  </ul>
+  <p>Other people's offices are <b>read-only</b>: nobody can run or change anything on your PC, or open your UI.</p>
+</section>
+
+<section id="uninstall">
+  <h2>6. Uninstall</h2>
+  <ul>
+    <li><b>Windows</b>: Settings → Apps → Installed apps → <b>Pixel Office</b> → Uninstall (or <code>unins000.exe</code> in the install folder). It stops the office and the tray icon and removes the whole install folder (<code>C:\Program Files\PixelOffice</code>), the firewall rule, shortcuts, the start-at-login entry and the <code>pixeloffice:</code> link.
+      <ul>
+        <li>At the end it asks <b>"Also delete your settings, layouts and office info?"</b>. <b>Yes</b> also deletes your <code>%USERPROFILE%\.pixel-office</code> (profile, keys, team offices, layouts, downloaded updates); <b>No</b> (default) keeps it for a later reinstall. A silent uninstall (<code>/VERYSILENT</code>) never asks and keeps it.</li>
+        <li>The uninstaller runs elevated: if another admin account's credentials were typed in, <b>that</b> account's <code>.pixel-office</code> is the one deleted. Delete your own <code>.pixel-office</code> by hand in that case.</li>
+      </ul>
+    </li>
+    <li><b>Mac</b>:
+<pre><code>curl -s -X POST http://127.0.0.1:47801/api/quit
+launchctl bootout gui/$(id -u)/com.pixeloffice.agent
+rm -f ~/Library/LaunchAgents/com.pixeloffice.agent.plist
+rm -f ~/.pixel-office/autostart-off   # the "start at login: off" record (if left, a reinstall keeps it off)
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -u "/Applications/Pixel Office.app"   # unregister the pixeloffice: link
+sudo rm -rf "/Applications/Pixel Office.app"
+sudo pkgutil --forget com.pixeloffice.pkg   # the install receipt
+rm -f ~/Library/Logs/PixelOffice.log</code></pre>
+      <p>If another account on this Mac turned start at login on in Settings, log in as that account and run the <code>launchctl bootout …</code> and <code>rm -f ~/Library/LaunchAgents/…</code> lines there too.</p>
+    </li>
+  </ul>
+  <p>Your settings and layout in <code>~/.pixel-office/</code> are kept (on Windows too: if you turned start at login off in Settings, that <code>autostart-off</code> record stays; ticking the checkbox in a new interactive install turns it back on); delete that folder to remove them too.</p>
+</section>
+
+</main>
+<footer class="foot"><div class="wrap"><p>MIT · based on <a href="https://github.com/pixel-agents-hq/pixel-agents">pixel-agents</a> · characters by <a href="https://jik-a-4.itch.io/metrocity-free-topdown-character-pack">JIK-A-4, Metro City</a></p></div></footer>
+</body>
+</html>

@@ -279,8 +279,13 @@ jobs:
           # Update over a running office: postinstall quits it, waits until it is gone, starts the new one.
           sudo installer -pkg "$PKG" -target /
           wait_up || { echo '::error::office did not come back after reinstall'; exit 1; }
-          # Uninstall = the exact commands from the user guide (section 6, Mac).
-          awk '/^## 6\./{s=1} s&&/```bash/{b=1;next} b&&/```/{exit} b' docs/설치-안내.md | sed 's/^  //' > "$RUNNER_TEMP/uninstall.sh"
+          # Uninstall = the exact commands from the install guide page (site/install.html, Mac uninstall block).
+          python3 - > "$RUNNER_TEMP/uninstall.sh" <<'PY'
+          import html, re, sys
+          page = open('site/install.html', encoding='utf-8').read()
+          block = re.search(r'<pre id="mac-uninstall"><code>(.*?)</code></pre>', page, re.S)
+          sys.stdout.write(html.unescape(block.group(1)).strip('\n') + '\n')
+          PY
           cat "$RUNNER_TEMP/uninstall.sh"
           grep -q 'pkgutil --forget' "$RUNNER_TEMP/uninstall.sh"
           bash "$RUNNER_TEMP/uninstall.sh"

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>설치 안내 · Pixel Office</title>
+<meta name="description" content="Pixel Office 설치 안내: Windows·Mac 설치, 실행 방법, 공개·팀·개인용 오피스, 다른 PC가 안 보일 때, 제거.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=Silkscreen&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="brand" href="./">PIXEL OFFICE</a>
+  <nav aria-label="사이트">
+    <a href="./">사용법</a>
+    <a href="architecture.html">기술 구조</a>
+    <a href="install.html" aria-current="page">설치 안내</a>
+    <a href="https://github.com/YOOJUNGYU/pixel-office">GitHub</a>
+    <a href="install-en.html" lang="en">English</a>
+  </nav>
+  <a class="dl" href="https://github.com/YOOJUNGYU/pixel-office/releases/latest">다운로드</a>
+</div></header>
+<main class="wrap">
+
+<header class="hero">
+  <h1>설치 안내</h1>
+  <p>Pixel Office 는 앱을 설치한 PC 들의 코딩 에이전트(Claude Code·Codex)를 한 픽셀 사무실에 캐릭터로 보여 줍니다. 처음에는 혼자 쓰는 개인용으로 시작하고, 같은 망의 앱 사용자가 모두 모이는 공개 오피스(다른 망 사람은 접속자 목록에만 보임)나 같은 망 팀원끼리만 쓰는 팀 오피스로 언제든 바꿀 수 있습니다(4-1). 다음에 켜면 마지막에 고른 오피스로 열립니다. <b>각 PC 에 한 번씩 설치</b>하면 로그인할 때 자동으로 켜지고, 다른 PC 를 저절로 찾습니다. Node 같은 다른 프로그램은 따로 설치할 필요가 없습니다.</p>
+  <nav class="toc" aria-label="이 페이지">
+    <a href="#download">1. 내려받기</a>
+    <a href="#windows">2. Windows 에 설치</a>
+    <a href="#mac">3. Mac 에 설치</a>
+    <a href="#run">4. 실행 방법</a>
+    <a href="#offices">4-1. 공개 오피스 · 팀 오피스 · 개인용</a>
+    <a href="#troubleshoot">5. 다른 PC 가 안 보일 때</a>
+    <a href="#uninstall">6. 제거</a>
+    <a href="#verify">검증 기록</a>
+  </nav>
+</header>
+
+<section id="download">
+  <h2>1. 내려받기</h2>
+  <p><a href="https://github.com/YOOJUNGYU/pixel-office/releases/latest">GitHub Releases</a> 에서 내 PC 에 맞는 파일을 받습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>PC</th><th>파일</th></tr></thead>
+    <tbody>
+      <tr><td>Windows 10/11 (64비트)</td><td><code>PixelOffice-&lt;버전&gt;-Windows.exe</code></td></tr>
+      <tr><td>Mac (Apple 칩, Intel 모두)</td><td><code>PixelOffice-&lt;버전&gt;-Mac.pkg</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>Mac 파일은 하나라서 칩 종류를 확인할 필요가 없습니다.</p>
+</section>
+
+<section id="windows">
+  <h2>2. Windows 에 설치</h2>
+  <ol>
+    <li>받은 <code>PixelOffice-&lt;버전&gt;-Windows.exe</code> 를 실행합니다.</li>
+    <li><b>"Windows의 PC 보호"</b> (SmartScreen) 창이 뜨면 <b>추가 정보</b> → <b>실행</b> 을 누릅니다. 설치 파일에 코드 서명이 없어서 뜨는 창입니다.<br>
+      <em>(스크린샷 자리: SmartScreen 추가 정보 → 실행)</em></li>
+    <li><b>사용자 계정 컨트롤</b>(UAC) 창에서 <b>예</b> 를 누릅니다. 관리자 권한은 프로그램 폴더 설치와 Windows 방화벽 규칙("Pixel Office") 추가에만 쓰입니다.<br>
+      <em>(스크린샷 자리: UAC 승인)</em></li>
+    <li><b>추가 작업 선택</b> 화면의 두 항목은 기본으로 체크되어 있습니다. 필요 없으면 풀고 진행합니다.
+      <ul>
+        <li><b>바탕화면에 바로가기 만들기</b></li>
+        <li><b>로그인할 때 자동으로 실행</b> (지금 사용자 계정의 시작프로그램에 등록. 나중에 사무실 <b>설정</b> 에서도 바꿀 수 있습니다)</li>
+      </ul>
+    </li>
+    <li>설치 마법사를 끝까지 진행하면 브라우저에 사무실이 열립니다. 캐릭터·색만 고르면 끝입니다(닉네임은 선택, 이름은 PC 계정 이름으로 표시).</li>
+  </ol>
+</section>
+
+<section id="mac">
+  <h2>3. Mac 에 설치</h2>
+  <ol>
+    <li>받은 <code>.pkg</code> 파일을 더블클릭합니다.</li>
+    <li>Apple 공증을 받지 않은 설치 파일이라 처음에는 막힙니다. <b>"'PixelOffice-&lt;버전&gt;-Mac.pkg'을(를) 열지 않음"</b>(macOS 15 이상) 또는 <b>"확인되지 않은 개발자"</b> 창이 뜨면:
+      <ol>
+        <li><b>완료</b>(또는 <b>확인</b>)를 누릅니다. <b>휴지통으로 이동</b> 은 누르지 마세요.</li>
+        <li><b>시스템 설정 → 개인정보 보호 및 보안</b> 을 열고 아래로 내려 "…Mac.pkg 의 사용이 차단되었습니다" 옆 <b>그래도 열기</b> 를 누릅니다(관리자 암호). 이 버튼은 막힌 뒤 1시간쯤만 보이니, 없으면 pkg 를 한 번 더 열었다가 다시 확인합니다.</li>
+        <li>pkg 를 다시 열고 <b>열기</b> → 설치를 진행합니다(관리자 암호 입력).</li>
+      </ol>
+      <ul>
+        <li>터미널로 설치해도 됩니다(이 검사를 거치지 않음): <code>sudo installer -pkg ~/Downloads/PixelOffice-&lt;버전&gt;-Mac.pkg -target /</code></li>
+        <li>회사가 관리하는 Mac 에서 <b>그래도 열기</b> 가 없거나 계속 막히면 관리 정책(MDM) 때문입니다. 우회하지 말고 IT 담당자에게 요청하세요.<br>
+          <em>(스크린샷 자리: 개인정보 보호 및 보안 → 그래도 열기)</em></li>
+      </ul>
+    </li>
+    <li>설치가 끝나면 사무실이 백그라운드에서 켜집니다. <b>"node" 가 들어오는 네트워크 연결을 허용하겠습니까?</b> 창이 뜨면 <b>허용</b> 을 누릅니다. 허용하지 않으면 다른 PC 에 내 에이전트가 보이지 않습니다.<br>
+      <em>(스크린샷 자리: macOS 방화벽 들어오는 연결 허용)</em></li>
+    <li><b>응용 프로그램 → Pixel Office</b> 를 열면 브라우저에 사무실이 열립니다 (<code>http://localhost:47801</code>).</li>
+  </ol>
+  <p>로그인할 때마다 자동으로 켜집니다 (<code>~/Library/LaunchAgents/com.pixeloffice.agent.plist</code>, 사무실 <b>설정</b> 에서 끌 수 있음). 기록은 <code>~/Library/Logs/PixelOffice.log</code> 에 남습니다.</p>
+</section>
+
+<section id="run">
+  <h2>4. 실행 방법</h2>
+  <ul>
+    <li><b>로그인할 때 자동 실행</b>: 창 없이 백그라운드에서 켜집니다. 끄거나 다시 켜려면 사무실 화면 <b>설정 → 로그인할 때 자동 실행</b> 을 누릅니다 (다음 로그인부터 적용, 지금 켜진 사무실은 그대로). 업데이트를 설치해도 이 선택은 유지됩니다.</li>
+    <li><b>트레이 아이콘 · 완전 종료</b>: 켜져 있는 동안 Windows 는 작업 표시줄 알림 영역(트레이, 안 보이면 <b>^</b> 안), Mac 은 메뉴 막대에 Pixel Office 아이콘이 있습니다. 클릭(Windows 는 왼쪽 클릭으로 바로 열림) → <b>Pixel Office 열기</b> / <b>Pixel Office 종료</b>. 종료하면 다른 PC 에서도 내 PC 가 사라지고, 다음 로그인(자동 실행이 켜져 있으면) 또는 바로가기·앱으로 다시 켤 때까지 꺼져 있습니다. 아이콘이 안 보이면 사무실 <b>설정 → 완전 종료</b> 로도 끌 수 있습니다 (열려 있던 창에는 "종료했습니다" 가 표시됩니다).</li>
+    <li><b>업데이트</b>: 앱을 켤 때와 6시간마다 새 버전을 확인해 <b>자동으로 조용히</b> 업데이트합니다(관리자 암호·설치 창 없음). 열려 있던 창은 새 버전으로 스스로 다시 열리고 "v1.0.2 로 업데이트됨" 이 잠깐 뜹니다. 자동 업데이트는 끌 수 없습니다. 단, <b>1.0.0 설치 파일은 한 번 직접 설치</b>해야 하고, 그 뒤에는 Node 런타임이 바뀌는 릴리스만 화면 오른쪽 위 <b>업데이트</b> 버튼(설치 파일)으로 설치합니다. 릴리스의 <code>…-app.tgz</code> / <code>.sha256</code> 파일은 자동 업데이트용이니 직접 받지 마세요.</li>
+    <li><b>PC 알림</b>: 공개 오피스에 누가 들어오거나 나가면, 그리고 내 PC 의 Claude·Codex 에이전트가 응답을 기다리거나 작업을 마치면 Windows/Mac 알림으로 알려 줍니다(창을 닫아 둬도 트레이 아이콘이 있으면 옵니다). <b>설정 → 접속·퇴장 알림 / 내 에이전트 알림</b> 으로 따로 끌 수 있습니다. Windows 에서는 "Pixel Office" 이름과 아이콘으로 뜹니다(설정 → 시스템 → 알림 에 "Pixel Office" 항목이 생깁니다). 처음에 Windows·Mac 이 알림 허용을 물어볼 수 있으니 허용해 주세요. Mac 에서는 알림이 "Script Editor" 또는 "osascript" 이름으로 보일 수 있습니다(시스템 설정 → 알림 에서 그 항목을 켜 두세요). Windows 에서 집중 지원(방해 금지)이 켜져 있으면 알림 센터에만 쌓입니다.</li>
+    <li><b>사무실 열기</b>
+      <ul>
+        <li>Windows: 바탕화면의 <b>Pixel Office</b> 바로가기, 또는 시작 메뉴 → <b>Pixel Office 열기</b></li>
+        <li>Mac: <b>응용 프로그램</b> 폴더나 <b>Launchpad</b> 의 <b>Pixel Office</b>. Mac 은 관례대로 바탕화면 바로가기를 만들지 않습니다 (Dock 에 끌어다 두면 편합니다).</li>
+        <li>어느 PC 든 그 PC 의 브라우저에서 <code>http://localhost:47801</code> (화면은 내 PC 에서만 열립니다. 다른 PC 브라우저로는 볼 수 없습니다)</li>
+      </ul>
+    </li>
+    <li>Windows 바로가기는 사무실이 꺼져 있으면 켜고, 다음 순서로 엽니다: <b>앱으로 설치한 Pixel Office</b>(Edge, 없으면 Chrome) → Edge(또는 Chrome) 새 창(여기서 앱 설치 창이 뜸) → 기본 브라우저. Mac 은 기본 브라우저로 엽니다.</li>
+    <li>처음 열면 화면 기능을 하나씩 짚어 주는 안내가 나옵니다. 언제든 왼쪽 위 <b>?</b> 버튼(사용 설명서) → <b>온보딩 시작</b> 으로 다시 볼 수 있습니다.</li>
+  </ul>
+
+  <h3 id="pwa">앱으로 설치 (PWA)</h3>
+  <p>내 PC 브라우저에서 사무실을 열면 오른쪽 위에 <b>Pixel Office 를 앱으로 설치하세요</b> 창이 뜹니다.</p>
+  <ul>
+    <li><b>Edge·Chrome</b>: <b>설치</b> → 브라우저의 설치 확인 창에서 <b>설치</b>. 이후 Windows 바로가기와 시작 메뉴가 탭 없는 앱 창으로 엽니다(Mac 은 기본 브라우저). 주소창 오른쪽의 앱 설치 아이콘으로 설치해도 됩니다.</li>
+    <li><b>Safari</b>: <b>공유 → Dock에 추가</b>(Mac) / <b>홈 화면에 추가</b>(iPhone·iPad)</li>
+    <li><b>Firefox</b>: 앱 설치를 지원하지 않습니다. Edge 나 Chrome 으로 여세요.</li>
+    <li><b>나중에</b> 를 누르면 7일 동안 다시 묻지 않습니다. 앱 창 안이나 설치를 마친 뒤에는 뜨지 않습니다.</li>
+    <li><b>PWA 만 실행했는데 서버가 꺼져 있으면</b>: "Pixel Office 서버가 꺼져 있습니다" 와 큰 <b>[시작]</b> 버튼이 뜹니다. 누르면 브라우저가 <b>"Pixel Office 열기"</b> 를 묻습니다 → 허용(<b>항상 허용</b>에 체크하면 다음부터 묻지 않음). 서버가 켜지면 창이 저절로 사무실로 바뀝니다. 20초가 지나도 안 켜지면 시작 메뉴(Mac 은 응용 프로그램)의 Pixel Office 로 실행하세요. 종료한 뒤 남아 있는 창에도 같은 [시작] 이 뜹니다.
+      <ul>
+        <li>[시작] 은 설치 프로그램이 등록하는 <code>pixeloffice:</code> 주소를 씁니다. <b>이 기능이 들어간 설치 프로그램으로 한 번 다시 설치해야</b> 동작합니다(앱 안 자동 업데이트로는 등록되지 않음). 이 주소는 늘 같은 실행 명령만 돌리고 주소 내용은 전혀 넘기지 않습니다.</li>
+      </ul>
+    </li>
+    <li>앱을 지우려면 Edge 는 <code>edge://apps</code>, Chrome 은 <code>chrome://apps</code> 에서 Pixel Office 를 제거합니다. 바로가기는 다시 Edge(또는 Chrome) 새 창으로 엽니다.</li>
+  </ul>
+</section>
+
+<section id="offices">
+  <h2>4-1. 공개 오피스 · 팀 오피스 · 개인용</h2>
+  <ul>
+    <li>처음 설치하면 🏠 <b>개인용</b>으로 시작합니다. 위쪽 탭(🏠 개인용 · 🌐 공개 오피스 · 🔒 팀)으로 바꾸면 다음에도 마지막에 고른 오피스로 열립니다. 🌐 <b>공개 오피스</b>는 <b>같은 망</b>에서 앱을 쓰는 사람이 모두 모이는 곳입니다. 설정할 것은 없습니다. 에이전트·사람 캐릭터·상태 메시지·배치는 같은 망 안에서만(UDP) 암호화돼 오갑니다(PC 마다 X25519 키, 두 PC 사이 키로 AES-256-GCM).</li>
+    <li><b>다른 망</b>(집·다른 회사·카페)에서 앱을 쓰는 사람은 사무실에는 나타나지 않고, 오른쪽 사람 패널에만 보입니다. Cloudflare 중계가 누가 접속해 있는지만 알려 줍니다(Pixel Office 외에 설치할 것은 없고, 나가는 <code>wss</code> 443 연결 하나만 씁니다). 이를 위해 공개 오피스·개인용 PC 는 중계에 PC 식별자·공개 키·표시 이름(계정·별명)·캐릭터 모양·앱 버전·개인용 여부를 보냅니다(TLS 로만 보호되고 중계는 읽을 수 있음). 에이전트·상태 메시지·배치는 중계로 가지 않습니다. 중계는 접속 IP 를 저장하지 않지만(같은 망 묶음용 해시 태그만), 중계를 호스팅하는 Cloudflare 에는 각 PC 의 접속 IP 주소가 보입니다.</li>
+    <li><b>공개 오피스의 같은 망 사람</b>에게 내 계정 이름·별명·캐릭터·상태 메시지·아바타 위치와, 에이전트의 방과 자리·종류·일의 종류(“파일 수정 중” 같은)·세션 제목·모델·토큰 수·컨텍스트·할 일 개수·걸린 시간·바꾼 줄 수가 보입니다. 무슨 파일을 고치는지, 어떤 명령인지, 답변 내용은 나가지 않습니다(세션 제목도 Claude 가 붙인 제목·직접 정한 제목·Codex 스레드 이름일 때만, 경로·주소는 가린 채 나갑니다). 팀 오피스에서는 여기에 프로그램 이름·파일 이름까지 보입니다. 1.0.64 이하 PC 에는 크기·불꽃만 보입니다.</li>
+    <li>팀 오피스는 중계에 연결하지 않습니다. 단, 대기실 오락실의 점수 기록만은 어느 오피스에서든 중계 서버(<code>wss</code>/<code>https</code> 443)에 PC 식별자와 표시 이름을 보내 저장합니다.</li>
+    <li><b>연결 상태 칩</b>: 공개 오피스 화면의 사람 패널 제목 옆에, 문제가 있을 때만 뜹니다(잘 연결돼 있으면 아무것도 안 뜸).
+      <ul>
+        <li><code>인터넷 연결 중…</code>: 접속하는 중.</li>
+        <li><code>인터넷 연결 대기: 만원</code>: 중계 동시 접속 1,000명이 찼습니다. 5분쯤 뒤 다시 시도합니다.</li>
+        <li><code>인터넷 연결 중단: 오늘 한도 소진</code>: 무료 서버 하루 한도의 95% 를 써서 그날은 멈춥니다(한국 시간 오전 9시 초기화 뒤 자동 재접속).</li>
+        <li><code>관리자에 의해 퇴장</code>: 관리자가 나를 내보냈습니다(표시된 시각 뒤 다시 연결). 1.0.63 이하 PC 도 중계에서 이렇게 거절됩니다(하루 뒤 다시 시도). 업데이트하세요.</li>
+        <li><code>인터넷 연결 안 됨 — 같은 망만 보임</code>: 인터넷에 못 닿습니다(오프라인, 회사 프록시·방화벽이 443 <code>wss</code> 를 막는 경우 등). 같은 망 PC 는 그대로 보이고, 다른 망 사람만 목록에서 빠집니다. 회사 프록시 환경에서는 연결이 안 될 수 있으니, 우회하지 말고 IT 담당자에게 예외를 요청하세요.</li>
+        <li>어느 경우에도 <b>공개 오피스에 그대로 머뭅니다</b>(개인용으로 바뀌지 않음). 조건이 풀리면 저절로 다시 연결됩니다.</li>
+      </ul>
+    </li>
+    <li><b>사람 패널</b>: 공개 오피스 영역은 같은 망 사람끼리 묶여 있고 내 망이 맨 위에 옵니다. 서로 다른 망이 둘 이상 보일 때만 <code>망 1</code>(내 망)·<code>망 2</code> 배지가 붙습니다. 회사가 출구 IP 를 여러 개 쓰면 같은 회사가 다른 번호로 보일 수 있습니다. 사람이 많으면 처음 10명만 그리고 스크롤하면 더 불러옵니다.</li>
+    <li>공유 레이아웃은 같은 망 안에서만 주고받습니다. 공개 오피스의 누구나 편집·저장할 수 있고 마지막 저장이 이깁니다.</li>
+    <li>🔒 <b>방(팀 오피스) 만들기</b>(방은 한 번에 하나만: 새로 만들거나 들어가면 확인 후 지금 방이 바뀝니다): <b>설정 → 오피스 → 방 만들기</b> 에 제목과 접속코드(선택)를 적고 <b>만들기</b>. 만든 사람이 방장입니다. 접속코드 없이 만들면 같은 망의 누구나 들어올 수 있습니다.</li>
+    <li><b>입장</b>: <b>설정 → 오피스 → 같은 망의 방 목록</b> 에서 방을 골라 <b>입장</b>(🔒 방은 접속코드 입력). 방장 PC 가 켜져 있어야 새로 들어올 수 있고, 한 방에 최대 20명입니다. 화면 위의 오피스 버튼으로 오피스를 오갑니다.</li>
+    <li><b>인원 제한</b>: 공개 오피스와 방 모두 같은 망 기준 최대 20명(나 포함)입니다. 다른 망 사람은 따로 셉니다.</li>
+    <li><b>팀 오피스에 들어가 있으면 공개 오피스에서 빠집니다</b>(에이전트·상태 메시지는 보내지도 보지도 않음). 공개 오피스로 돌아가려면 <b>내 방</b> 에서 <b>나가기</b> 합니다. 오른쪽 사람 패널에는 공개·팀·개인용 세 영역의 이름이 모두 보입니다.</li>
+    <li>방 안의 내용은 방장이 들어온 사람에게만 건네는 키로 암호화됩니다. 접속코드도 암호화돼 방장 PC 에만 갑니다. 1.0.74 이하에서 초대 코드로 만든 팀은 그대로 동작하지만 방 목록에는 나오지 않습니다.</li>
+    <li>🏠 <b>개인용</b>: 맨 위 오피스 버튼의 <b>개인용</b>을 누르면 혼자 쓰는 작은 사무실로 바뀝니다(이름 카드 — 계정·별명·모습 — 만 다른 PC 의 사람 패널 <code>개인용</code> 영역에 보이고, 에이전트·상태 메시지·캐릭터 위치는 나가지 않습니다). 팀 오피스는 그대로 남아, <b>공개 오피스</b>나 팀 버튼을 누르면 코드 없이 돌아갑니다. 개인용 사무실 배치는 이 PC 에만 따로 저장됩니다(공개·팀 오피스 배치는 그 오피스의 모두가 함께 씁니다).</li>
+    <li><b>알려진 한계</b>: 중계 위의 이름은 확인하지 않습니다. 다른 PC 의 식별자와 키를 베끼면 사람 패널에 그 이름으로 나오거나 그 PC 를 중계에서 밀어낼 수 있습니다. 사무실 내용은 같은 망에서 암호화돼 오가므로 보이지 않습니다.</li>
+    <li>앱 없이 다른 PC 브라우저로 구경하는 기능(원격 구경)은 v0.4.0 에서 없앴습니다. 보려면 그 PC 에도 앱을 설치하세요.</li>
+    <li>1.0.64 이하 버전과 섞어 쓸 때: 그 PC 에는 다른 사람 에이전트의 세션 제목·토큰·모델·자리가 보이지 않습니다(1.0.63 이하는 옷장 모습도 기본 캐릭터로 보이고, 중계에 연결되지 않아 다른 망 접속자를 못 봅니다). 모든 PC 를 업데이트하세요.</li>
+    <li>1.0.24 이하 버전과는 사람 패널에서 서로 안 보일 수 있습니다(팀·개인용 PC 의 이름 표시).</li>
+    <li>1.0.13 이하 버전과 섞어 쓸 때: 공개·팀 오피스의 공유 레이아웃을 주고받지 못해, 그 PC 는 자기 기본 배치를 봅니다. 모든 PC 를 업데이트하세요.</li>
+    <li>1.0.0 이하 버전과 섞어 쓸 때: 1.0.0 이하 PC 에는 사람 캐릭터(방향키로 움직이는 내 캐릭터)와 상태 메시지가 보이지 않습니다. 모든 PC 를 업데이트하세요.</li>
+    <li>v0.4.x 이후 버전과 섞어 쓸 때: 에이전트가 많은 PC 는 이제 상태를 여러 개의 작은 패킷으로 나눠 보내는데 v0.4.x 는 이를 읽지 못해, 그런 PC 는 v0.4.x PC 화면에 보이지 않습니다 (에이전트가 적은 PC 는 그대로 보임). 모든 PC 를 업데이트하세요.</li>
+  </ul>
+</section>
+
+<section id="troubleshoot">
+  <h2>5. 다른 PC 가 안 보일 때</h2>
+  <ul>
+    <li>사무실에는 <b>같은 망</b> PC 만 나타납니다. 다른 망 사람은 사람 패널의 공개 오피스 영역에만 보입니다. 패널에 다른 망 사람이 안 보이고 칩이 <code>인터넷 연결 안 됨</code> 이면 인터넷 쪽(회사 프록시·방화벽의 443 <code>wss</code> 차단 등)을 확인하세요.</li>
+    <li>같은 망의 PC 는 자동으로 보입니다. IP 를 적을 필요가 없습니다. 두 PC 가 <b>같은 네트워크</b>(같은 공유기·같은 사내망 대역)에 있어야 서로를 찾고, 게스트 Wi-Fi·VPN·다른 층 대역은 자동 탐색이 막혀 있을 수 있습니다.</li>
+    <li>다른 층이나 망에 있는 PC 만, 사무실 화면 <b>설정 → 내 프로필 → 고급: 자동으로 안 보일 때 → 직접 연결할 PC IP</b> 에 상대 PC 의 IP 를 한 줄에 하나씩 적고 저장합니다. 한쪽만 적어도 서로 보이지만, 상대 PC 도 내 IP 를 적어 두면 더 확실합니다.
+      <ul>
+        <li>Windows IP 확인: 명령 프롬프트에서 <code>ipconfig</code> → "IPv4 주소"</li>
+        <li>Mac IP 확인: 시스템 설정 → 네트워크 → 연결된 항목 → "IP 주소"</li>
+      </ul>
+    </li>
+    <li><b>양쪽 모두 0.2.0 이상</b>인지 확인합니다. 0.2.0 은 암호화하지 않는 0.1.0 과 통신하지 않습니다.</li>
+    <li>둘 중 한 명이라도 <b>팀 오피스</b>나 🏠 <b>개인용</b>에 들어가 있으면 공개 오피스에서는 서로의 캐릭터·에이전트가 보이지 않습니다(팀 PC 의 사람 패널에는 공개 PC 이름이 보이지만, 공개 PC 에는 팀 PC 가 보이지 않습니다). 같은 팀 오피스에 들어가거나 둘 다 팀에서 나옵니다.</li>
+    <li>방화벽에서 UDP 47800 이 막혀 있지 않은지 확인합니다. Windows 는 설치기가 규칙(들어오는 UDP 47800)을 추가하고, Mac 은 3번의 "허용" 이 필요합니다. TCP 47801 은 내 PC 안에서만 쓰므로 열 필요가 없습니다.</li>
+    <li><b>회사 보안 솔루션</b>(백신·EDR·AppLocker·사내 방화벽 등)이 설치나 실행, 통신을 막으면 직접 우회하지 말고 IT 담당자에게 예외 등록을 요청하세요. 알려 줄 정보: 프로그램 위치(Windows <code>C:\Program Files\PixelOffice\node.exe</code>, Mac <code>/Applications/Pixel Office.app</code>), 포트 UDP 47800(들어오는 연결은 이것뿐, TCP 47801 화면은 내 PC 안에서만), 중계로 나가는 <code>wss</code> 443 연결(접속자 목록·오락실 기록, Cloudflare Workers 주소, 들어오는 포트 없음).</li>
+  </ul>
+  <p>다른 사람 PC 의 화면은 <b>읽기 전용</b>입니다. 다른 PC 에서 내 PC 의 무엇을 실행하거나 바꿀 수 없고, 내 화면에 접속할 수도 없습니다.</p>
+</section>
+
+<section id="uninstall">
+  <h2>6. 제거</h2>
+  <ul>
+    <li><b>Windows</b>: 설정 → 앱 → 설치된 앱 → <b>Pixel Office</b> → 제거 (또는 설치 폴더의 <code>unins000.exe</code>). 실행 중인 사무실과 트레이 아이콘을 끄고, 설치 폴더(<code>C:\Program Files\PixelOffice</code>) 전체, 방화벽 규칙, 바로가기, 시작프로그램 등록, <code>pixeloffice:</code> 주소 등록을 지웁니다.
+      <ul>
+        <li>마지막에 <b>"설정·레이아웃·사무실 정보까지 모두 삭제할까요?"</b> 를 묻습니다. <b>예</b> = 내 <code>%USERPROFILE%\.pixel-office</code> (프로필·키·팀 오피스 정보·레이아웃·받아 둔 업데이트)까지 삭제, <b>아니요</b>(기본) = 남겨 두어 다시 설치하면 그대로 이어서 씁니다. 조용한 제거(<code>/VERYSILENT</code>)는 묻지 않고 남겨 둡니다.</li>
+        <li>제거는 관리자 권한으로 돌기 때문에, 다른 관리자 계정의 암호를 입력해 제거하면 지워지는 것은 <b>그 관리자 계정의</b> <code>.pixel-office</code> 입니다. 내 데이터를 지우려면 내 폴더의 <code>.pixel-office</code> 를 직접 지우세요.</li>
+      </ul>
+    </li>
+    <li><b>Mac</b>: 터미널에서 아래를 실행합니다.
+<pre id="mac-uninstall"><code>curl -s -X POST http://127.0.0.1:47801/api/quit
+launchctl bootout gui/$(id -u)/com.pixeloffice.agent
+rm -f ~/Library/LaunchAgents/com.pixeloffice.agent.plist
+rm -f ~/.pixel-office/autostart-off   # '자동 실행 끔' 기록 (남아 있으면 다시 설치해도 자동 실행이 꺼진 채로 남음)
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -u "/Applications/Pixel Office.app"   # pixeloffice: 주소 등록 해제
+sudo rm -rf "/Applications/Pixel Office.app"
+sudo pkgutil --forget com.pixeloffice.pkg   # 설치 기록
+rm -f ~/Library/Logs/PixelOffice.log</code></pre>
+      <p>이 Mac 의 다른 계정에서도 설정으로 자동 실행을 켰다면, 그 계정으로 로그인해 <code>launchctl bootout …</code> 과 <code>rm -f ~/Library/LaunchAgents/…</code> 두 줄도 실행합니다.</p>
+    </li>
+  </ul>
+  <p>내 설정·레이아웃(<code>~/.pixel-office/</code>)은 남겨 둡니다 (Windows 도 같음: 설정에서 자동 실행을 껐다면 그 기록 <code>autostart-off</code> 도 남아, 다시 설치할 때 <b>자동 실행 체크를 켜면</b> 다시 켜집니다). 완전히 지우려면 그 폴더도 삭제합니다.</p>
+</section>
+
+<section id="verify">
+  <h2>검증 기록</h2>
+  <p>실제 PC 설치 검증 결과 (사람이 직접 확인 후 기록).</p>
+  <div class="tbl"><table>
+    <thead><tr><th>날짜</th><th>항목</th><th>환경</th><th>결과</th></tr></thead>
+    <tbody>
+      <tr><td>TODO</td><td>Windows 설치 (SmartScreen → UAC → 사무실 열림)</td><td>Windows 11</td><td>TODO</td></tr>
+      <tr><td>TODO</td><td>Mac 설치 (그래도 열기 → 방화벽 허용 → 사무실 열림)</td><td>macOS arm64 / x64</td><td>TODO</td></tr>
+      <tr><td>TODO</td><td>재부팅 후 자동 실행</td><td>Windows · Mac</td><td>TODO</td></tr>
+      <tr><td>TODO</td><td>Windows 네이티브 Claude · WSL Claude · Mac Codex 가 한 사무실에 보임</td><td>Windows + Mac</td><td>TODO</td></tr>
+      <tr><td>TODO</td><td>한쪽을 끄면 5초 안에 그 PC 캐릭터가 사라짐</td><td>Windows + Mac</td><td>TODO</td></tr>
+      <tr><td>TODO</td><td>제거 시 실행 중인 사무실 종료·방화벽 규칙 삭제</td><td>Windows</td><td>TODO</td></tr>
+      <tr><td>TODO</td><td>앱으로 설치 후 바탕화면 바로가기가 설치한 앱 창을 엶</td><td>Windows (Edge)</td><td>TODO</td></tr>
+      <tr><td>TODO</td><td>팀 오피스 만들기 → 다른 PC 코드로 참여 → 둘 다 공개 오피스에서 빠짐</td><td>Windows + Mac</td><td>TODO</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+<footer class="foot"><div class="wrap"><p>MIT · 원작 <a href="https://github.com/pixel-agents-hq/pixel-agents">pixel-agents</a> · 캐릭터 <a href="https://jik-a-4.itch.io/metrocity-free-topdown-character-pack">JIK-A-4, Metro City</a></p></div></footer>
+</body>
+</html>

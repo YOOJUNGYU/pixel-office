@@ -13,7 +13,7 @@
   <a href="https://yoojungyu.github.io/pixel-office/"><b>📖 사용 설명서 (GitHub Pages)</b></a> ·
   <a href="https://yoojungyu.github.io/pixel-office/architecture.html">기술 구조</a> ·
   <a href="https://github.com/YOOJUNGYU/pixel-office/releases/latest">⬇️ 설치 파일 받기</a> ·
-  <a href="docs/설치-안내.md">설치 안내</a>
+  <a href="https://yoojungyu.github.io/pixel-office/install.html">설치 안내</a>
 </p>
 
 ![공개 오피스에 10명이 접속한 모습](docs/images/office-ko.png)
