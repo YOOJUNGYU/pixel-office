@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pixel Office 기술 구조</title>
+<meta name="description" content="Pixel Office의 프론트엔드·백엔드·릴레이 기술 스택, 전체 구조, 프로토콜, 보안, 빌드와 배포.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=Silkscreen&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="brand" href="./">PIXEL OFFICE</a>
+  <nav aria-label="사이트">
+    <a href="./">사용법</a>
+    <a href="architecture.html" aria-current="page">기술 구조</a>
+    <a href="https://github.com/YOOJUNGYU/pixel-office/blob/main/docs/%EC%84%A4%EC%B9%98-%EC%95%88%EB%82%B4.md">설치 안내</a>
+    <a href="https://github.com/YOOJUNGYU/pixel-office">GitHub</a>
+    <a href="en.html" lang="en">English</a>
+  </nav>
+  <a class="dl" href="https://github.com/YOOJUNGYU/pixel-office/releases/latest">다운로드</a>
+</div></header>
+<main class="wrap">
+
+<header class="hero">
+  <span class="pill core">PIXEL OFFICE · v1.0.74</span>
+  <h1>Pixel Office 기술 구조</h1>
+  <p class="lead">LAN 안의 모든 PC에서 돌아가는 코딩 에이전트(Claude Code, Codex)를 브라우저 속 픽셀 아트 사무실의 캐릭터로 보여주는 앱. 각 PC에 Node 서버가 하나씩 떠 있고, 브라우저 SPA는 그 서버에만 붙는다. 서버끼리는 UDP로 직접 통신하고, 인터넷 너머 "누가 접속 중인지"만 Cloudflare 릴레이가 중계한다.</p>
+  <div class="stats">
+    <div class="stat fe"><b>33,369</b><span>webview-ui/src 줄 (TS/TSX)</span></div>
+    <div class="stat be"><b>10,838</b><span>server/src 줄</span></div>
+    <div class="stat core"><b>3,634</b><span>core/src 줄 (생성 파일 제외)</span></div>
+    <div class="stat relay"><b>770</b><span>relay/src 줄</span></div>
+    <div class="stat core"><b>104</b><span>테스트 파일 (Vitest)</span></div>
+    <div class="stat be"><b>4</b><span>서버 런타임 의존성 (Fastify 계열만)</span></div>
+  </div>
+</header>
+
+<section>
+  <h2><span class="tag">00</span>한 줄 요약</h2>
+  <div class="grid">
+    <div class="panel"><span class="pill fe">FRONTEND</span><h3>React 19 + TypeScript + Canvas 2D</h3><p>Vite 8로 빌드하는 SPA. UI 패널은 React, 사무실 화면은 게임 라이브러리 없이 직접 만든 Canvas 엔진. Tailwind 4 + CSS 변수, 자체 i18n(ko/en), PWA.</p></div>
+    <div class="panel"><span class="pill be">BACKEND</span><h3>Node 22 + TypeScript + Fastify 5</h3><p>esbuild로 <code>dist/cli.js</code> 한 파일에 묶는 CLI 서버. HTTP·WebSocket은 Fastify, P2P는 Node 표준 <code>dgram</code> UDP, 암호는 <code>node:crypto</code>. 그 외 런타임 의존성 없음.</p></div>
+    <div class="panel"><span class="pill relay">RELAY</span><h3>Cloudflare Worker + Durable Object</h3><p>무료 플랜 안에서 돌아가는 WebSocket 허브 하나. 공개 오피스의 접속자 목록과 아케이드 점수 심판만 맡는다.</p></div>
+    <div class="panel"><span class="pill core">CORE</span><h3>공유 TypeScript 패키지</h3><p>AsyncAPI 3.0 스펙에서 생성한 메시지 타입, 프로토콜 상수, 게임 로직(고정 틱·정수 연산). 아무것에도 의존하지 않는다.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag">01</span>전체 구조</h2>
+  <p>PC 한 대 기준. 브라우저는 자기 PC의 서버(127.0.0.1:47801)에만 접속하고, 다른 PC와는 서버가 대신 이야기한다.</p>
+  <div class="diagram" role="img" aria-label="Pixel Office 전체 구조 다이어그램">
+  <svg viewBox="0 0 960 560">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--muted)"/></marker></defs>
+    <!-- this PC zone -->
+    <rect class="zone" x="10" y="10" width="640" height="540" style="stroke:var(--be)"/>
+    <text x="24" y="34" class="t" style="fill:var(--be)">이 PC</text>
+
+    <!-- browser -->
+    <rect class="box" x="30" y="50" width="280" height="150" style="stroke:var(--fe)"/>
+    <text x="46" y="76" class="t">브라우저 SPA (webview-ui)</text>
+    <text x="46" y="98" class="sm">React 19 · Canvas 2D 엔진 · PWA</text>
+    <text x="46" y="120" class="mono">OfficeState (명령형 게임 상태)</text>
+    <text x="46" y="138" class="mono">renderer.ts · gameLoop.ts</text>
+    <text x="46" y="156" class="mono">lan/* 패널 · 에디터 · 아케이드</text>
+    <text x="46" y="178" class="mono">WebSocketTransport (재접속)</text>
+
+    <!-- tray -->
+    <rect class="box" x="360" y="50" width="270" height="70"/>
+    <text x="376" y="76" class="t">트레이 헬퍼</text>
+    <text x="376" y="96" class="mono">Win: PixelOfficeTray.exe (C#)</text>
+    <text x="376" y="112" class="mono">Mac: osascript JXA</text>
+
+    <!-- server -->
+    <rect class="box" x="30" y="250" width="600" height="190" style="stroke:var(--be)"/>
+    <text x="46" y="276" class="t">Node 서버 (dist/cli.js)</text>
+    <text x="46" y="296" class="sm">Node 22 · Fastify 5 · esbuild 단일 번들</text>
+    <text x="46" y="324" class="mono">httpServer.ts  /ws /api/* SPA static</text>
+    <text x="46" y="342" class="mono">clientMessageHandler  권한 게이트</text>
+    <text x="46" y="360" class="mono">lan/scanner.ts  트랜스크립트 tail</text>
+    <text x="46" y="378" class="mono">lan/office.ts  LanService</text>
+    <text x="336" y="324" class="mono">lan/peerNet.ts  UDP P2P</text>
+    <text x="336" y="342" class="mono">lan/crypto.ts  X25519/AES-GCM</text>
+    <text x="336" y="360" class="mono">lan/relay.ts  WSS 클라이언트</text>
+    <text x="336" y="378" class="mono">lan/updater.ts  자동 업데이트</text>
+    <text x="46" y="414" class="mono">lan/usage.ts · transcript.ts · notify.ts · tray.ts · autostart.ts</text>
+
+    <!-- files -->
+    <rect class="box" x="30" y="470" width="290" height="66"/>
+    <text x="46" y="494" class="t">에이전트 기록 (읽기 전용)</text>
+    <text x="46" y="514" class="mono">~/.claude/projects/**/*.jsonl</text>
+    <text x="46" y="528" class="mono">~/.codex/sessions/**</text>
+    <rect class="box" x="340" y="470" width="290" height="66"/>
+    <text x="356" y="494" class="t">앱 데이터</text>
+    <text x="356" y="514" class="mono">~/.pixel-office/ profile.json</text>
+    <text x="356" y="528" class="mono">layout-*.json config.json usage.json</text>
+
+    <!-- links inside -->
+    <path class="ln" d="M170 200 V250" marker-end="url(#ar)" marker-start="url(#ar)"/>
+    <text x="178" y="222" class="lbl">WebSocket /ws (loopback)</text>
+    <text x="178" y="238" class="lbl">JSON · 1초마다 officeSnapshot</text>
+    <path class="ln" d="M495 120 V250" marker-end="url(#ar)" marker-start="url(#ar)"/>
+    <text x="503" y="190" class="lbl">stdin/stdout</text>
+    <text x="503" y="206" class="lbl">한 줄 명령</text>
+    <path class="ln" d="M175 470 V440" marker-end="url(#ar)"/>
+    <path class="ln" d="M485 470 V440" marker-end="url(#ar)" marker-start="url(#ar)"/>
+
+    <!-- other PCs -->
+    <rect class="box" x="690" y="230" width="250" height="110" style="stroke:var(--be)"/>
+    <text x="706" y="256" class="t">같은 LAN의 다른 PC</text>
+    <text x="706" y="278" class="sm">같은 Node 서버가 돌고 있음</text>
+    <text x="706" y="300" class="mono">에이전트·채팅·아바타</text>
+    <text x="706" y="318" class="mono">공유 레이아웃</text>
+    <path class="ln" d="M630 300 H690" marker-end="url(#ar)" marker-start="url(#ar)"/>
+    <text x="636" y="290" class="lbl">UDP 47800</text>
+    <text x="636" y="320" class="lbl">암호화</text>
+
+    <!-- relay -->
+    <rect class="box" x="690" y="50" width="250" height="130" style="stroke:var(--relay)"/>
+    <text x="706" y="76" class="t">Cloudflare 릴레이</text>
+    <text x="706" y="98" class="sm">Worker + Durable Object "hub"</text>
+    <text x="706" y="120" class="mono">접속자 명단 (me/person)</text>
+    <text x="706" y="138" class="mono">아케이드 점수 심판</text>
+    <path class="ln" d="M600 250 C600 200 640 120 690 120" marker-end="url(#ar)" marker-start="url(#ar)"/>
+    <text x="574" y="232" class="lbl">WSS 443</text>
+
+    <!-- github -->
+    <rect class="box" x="690" y="400" width="250" height="90"/>
+    <text x="706" y="426" class="t">GitHub Releases</text>
+    <text x="706" y="448" class="mono">설치 파일 .exe / .pkg</text>
+    <text x="706" y="466" class="mono">무음 업데이트 app.tgz</text>
+    <path class="ln" d="M630 400 C660 400 660 440 690 440" marker-end="url(#ar)"/>
+    <text x="636" y="470" class="lbl">HTTPS (6시간마다)</text>
+  </svg>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag">02</span>모노레포 레이어링</h2>
+  <p>npm workspaces 모노레포. <code>core/</code>는 아무것에도 의존하지 않고, 나머지 셋은 <code>core/</code>에만 의존한다. 서버와 웹뷰가 서로 import하지 않으니 둘 사이의 계약은 프로토콜 하나뿐이다.</p>
+  <div class="tbl"><table>
+    <tr><th>패키지</th><th>역할</th><th>런타임</th><th>빌드</th></tr>
+    <tr><td><span class="pill core">core/</span></td><td>WebSocket 프로토콜 스펙 <code>asyncapi.yaml</code>(2,152줄)과 생성된 <code>messages.ts</code>, LAN 도메인 타입·파서(<code>lan.ts</code>), 릴레이 프레임(<code>relay.ts</code>), PNG 디코딩, 아케이드 게임 로직(<code>games/</code>)</td><td>Node·브라우저·Worker 어디서나 (Node API 미사용)</td><td>각 소비자가 함께 번들</td></tr>
+    <tr><td><span class="pill be">server/</span></td><td>로컬 HTTP/WS 서버, 에이전트 감지, P2P, 업데이트, 트레이, 알림, 사용량 집계</td><td>Node 22.23.3 (설치본에 동봉)</td><td>esbuild → <code>dist/cli.js</code></td></tr>
+    <tr><td><span class="pill fe">webview-ui/</span></td><td>브라우저 SPA: 사무실 Canvas, 에디터, 패널, 아케이드, 투어, 매뉴얼</td><td>Chromium/Edge/Safari</td><td>Vite → <code>dist/webview/</code></td></tr>
+    <tr><td><span class="pill relay">relay/</span></td><td>인터넷 공개 오피스 접속자 중계, 아케이드 점수 검증</td><td>Cloudflare Workers</td><td>wrangler (루트 워크스페이스 아님)</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2><span class="tag">03</span>프론트엔드</h2>
+  <p>언어는 TypeScript 5.9 (target ES2022, <code>jsx: react-jsx</code>). 핵심 설계는 <b>React와 게임 상태의 분리</b>다. 사무실 안의 캐릭터·가구·이펙트는 React state가 아니라 명령형 객체 <code>OfficeState</code>에 있고, Canvas 렌더러가 그것을 그린다. React는 버튼, 패널, 모달, 말풍선 오버레이 같은 DOM 크롬만 맡는다.</p>
+  <div class="tbl"><table>
+    <tr><th>영역</th><th>기술</th><th>메모</th></tr>
+    <tr><td>UI 프레임워크</td><td>React 19.3 + react-dom</td><td>함수 컴포넌트 + hooks. 상태관리 라이브러리(Redux 등) 없음. 서버 메시지는 <code>hooks/useExtensionMessages.ts</code>가 OfficeState와 React state로 나눠 반영</td></tr>
+    <tr><td>빌드 / 개발 서버</td><td>Vite 8 + <span class="mono">@vitejs/plugin-react</span></td><td><code>tsc -b && vite build</code>. 개발 시 <code>browserMock.ts</code>가 서버 없이 가짜 데이터를 공급</td></tr>
+    <tr><td>스타일</td><td>Tailwind CSS 4 (<span class="mono">@tailwindcss/vite</span>) + CSS 변수</td><td>색은 <code>index.css :root</code> 변수와 <code>constants.ts</code>에만. 픽셀 스타일 규칙(radius 0, 2px 테두리, 2px 그림자)을 커스텀 ESLint 규칙이 강제</td></tr>
+    <tr><td>렌더링</td><td>Canvas 2D, 자체 엔진</td><td>게임 엔진·차트·마크다운·하이라이트 라이브러리 전부 없음. 정수 배율로 그리고 실수 줌으로 확대 blit, Y 정렬, 오프스크린 컬링</td></tr>
+    <tr><td>실시간 통신</td><td>브라우저 WebSocket</td><td><code>transport/webSocketTransport.ts</code>: 지수 백오프 재접속, 상태 <code>connected / disconnected / replaced</code></td></tr>
+    <tr><td>PWA</td><td>Service Worker + Web App Manifest</td><td><code>public/sw.js</code>: 페이지 프리캐시, 네비게이션 network-first, 버전별 캐시. 설치 시 앱 창으로 실행</td></tr>
+    <tr><td>다국어</td><td>자체 <code>i18n.ts</code></td><td><code>t(key, params)</code>, ko/en. 라이브러리 없음</td></tr>
+    <tr><td>폰트</td><td>Pretendard (번들, OFL)</td><td>ESLint 규칙 <code>pixel-agents/ui-font</code>로 강제</td></tr>
+    <tr><td>테스트</td><td>Vitest 4</td><td>순수 함수 위주 (레이아웃, 테마 변환, 렌더 스케줄러, 매뉴얼 등)</td></tr>
+  </table></div>
+
+  <h3>폴더별 책임</h3>
+  <div class="grid">
+    <div class="panel"><h3 class="mono">office/engine/</h3><ul>
+      <li><code>officeState.ts</code>: 캐릭터, 좌석, 선택, 아바타, 대화</li>
+      <li><code>renderer.ts</code>: 바닥·벽·가구·캐릭터 그리기</li>
+      <li><code>gameLoop.ts</code>: 온디맨드 렌더링. 움직일 게 없으면 프레임을 아예 안 돈다 (<code>nextFrameIn</code>: 0 / N초 / Infinity)</li>
+      <li><code>floorChunks.ts</code>: 바닥을 ~512px 청크 LRU 캐시</li>
+      <li><code>pcGlow · pcScreens · serverLeds · burnAura · blink</code>: 연출</li>
+    </ul></div>
+    <div class="panel"><h3 class="mono">office/editor · layout · sprites</h3><ul>
+      <li>레이아웃 에디터: 50단계 undo, 순수 함수 <code>editorActions.ts</code></li>
+      <li>레이아웃 모델 <code>{version, cols, rows, tiles, furniture, areas…}</code>, 최대 128×128</li>
+      <li><code>themeColors.ts</code>: 라이트 테마를 픽셀 단위 HSL 변환으로 (CSS filter 금지)</li>
+    </ul></div>
+    <div class="panel"><h3 class="mono">characters/</h3><ul>
+      <li>옷장(Wardrobe): 128×96 레이어드 시트 합성, 파츠·색상 팔레트</li>
+      <li>upstream pixel-agents(MIT)에서 포팅, Metro City 아트</li>
+    </ul></div>
+    <div class="panel"><h3 class="mono">lan/</h3><ul>
+      <li>React 패널: 사람 목록, 상태 메시지, 트랜스크립트 창, 사용량 차트(SVG 직접), 세션 검색, 매뉴얼, 아케이드</li>
+      <li><code>lanAgents.ts</code>: 스냅샷 → 캐릭터 동기화</li>
+      <li><code>highlight.ts</code>: 자체 정규식 구문 강조</li>
+      <li><code>games/</code>: 240×208 캔버스 아케이드 6종, Web Audio 효과음</li>
+    </ul></div>
+    <div class="panel"><h3 class="mono">tour/ · touch/</h3><ul>
+      <li>온보딩 투어: 데모 에이전트, 단계별 장면</li>
+      <li>모바일 터치 입력</li>
+    </ul></div>
+    <div class="panel"><h3 class="mono">components/ · hooks/</h3><ul>
+      <li>상단 좌측 버튼줄, 설정 모달, 에디터 액션바, 색 선택기</li>
+      <li>에디터 키보드·액션 훅</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag">04</span>백엔드 (로컬 서버)</h2>
+  <p>언어는 TypeScript (Node16 모듈, ES2022). 각 PC에 설치되는 데몬형 CLI다. 클라우드 서버가 아니라 <b>사용자 PC 위의 로컬 서버</b>라는 점이 중요하다. 브라우저 UI는 루프백에서만 받고, 다른 PC와의 통신은 UDP P2P로 한다. DB 없이 <code>~/.pixel-office/</code>의 JSON 파일(원자적 tmp+rename 저장)을 쓴다.</p>
+  <div class="tbl"><table>
+    <tr><th>영역</th><th>기술</th><th>메모</th></tr>
+    <tr><td>런타임</td><td>Node.js 22.23.3</td><td>공식 바이너리를 설치 파일에 동봉 (SHA-256 검증). 사용자가 Node를 깔 필요 없음</td></tr>
+    <tr><td>웹 서버</td><td>Fastify 5 + @fastify/websocket, @fastify/static, @fastify/cors</td><td>유일한 런타임 의존성 4개. <code>/ws</code>, <code>/ws/transcript</code>, <code>/api/health|ping|quit</code>, SPA 정적 파일</td></tr>
+    <tr><td>번들</td><td>esbuild 0.28</td><td>Fastify까지 전부 <code>dist/cli.js</code> 하나로. 실행에 <code>node_modules</code> 불필요. 버전은 빌드 시 <code>__APP_VERSION__</code>로 주입</td></tr>
+    <tr><td>P2P 네트워크</td><td><code>dgram</code> (UDP 47800)</td><td>평문 hello + 쌍별 암호 presence / 팀 브로드캐스트. 데이터그램 ≤ 1200B, 넘치면 deflate 후 최대 48조각 분할</td></tr>
+    <tr><td>암호</td><td><code>node:crypto</code></td><td>X25519 신원키, HKDF로 쌍·팀 키 유도, AES-256-GCM 봉인, TOFU 키 고정, 채널별 재전송 방지 seq</td></tr>
+    <tr><td>압축</td><td><code>zlib</code></td><td>큰 presence, 공유 레이아웃, 업데이트 tgz 해제</td></tr>
+    <tr><td>릴레이 클라이언트</td><td>Node 22 전역 <code>WebSocket</code></td><td>새 의존성 없이 WSS. 백오프, 하프오픈 감지, OS 인증서 저장소를 신뢰 CA에 추가(사내 TLS 검사 대응)</td></tr>
+    <tr><td>프로세스</td><td><code>child_process</code></td><td>트레이 헬퍼, WSL 프로세스 확인(<code>wsl.exe</code>), 업데이트 재시작, PWA 창 열기</td></tr>
+    <tr><td>테스트</td><td>Vitest 4 + ws</td><td>CLI·자동업데이트 e2e 포함 (가짜 GitHub API)</td></tr>
+  </table></div>
+
+  <h3>에이전트 감지 파이프라인</h3>
+  <p>서버는 에이전트에 훅을 걸지 않는다. Claude Code와 Codex가 디스크에 남기는 JSONL 트랜스크립트를 <b>tail</b>해서 무슨 일을 하는지 추론한다.</p>
+  <div class="flow">
+    <div><span class="n">1 · ROOTS</span><h3>파일 찾기</h3><p><code>roots.ts</code>: Claude/Codex 경로, WSL 배포판까지</p></div>
+    <div><span class="n">2 · SCAN</span><h3>tail 읽기</h3><p><code>scanner.ts</code>: 10초 주기 발견, mtime TTL 30분</p></div>
+    <div><span class="n">3 · PARSE</span><h3>줄 해석</h3><p><code>claudeParser</code>/<code>codexParser</code>: 도구 호출, 결과, 프롬프트</p></div>
+    <div><span class="n">4 · STATE</span><h3>세션 상태</h3><p><code>session.ts</code>: 방 배정, 서버실 구역, 실패·diff·todo</p></div>
+    <div><span class="n">5 · LIVENESS</span><h3>생존 확인</h3><p><code>liveness.ts</code>: <code>sessions/&lt;pid&gt;.json</code> + pid 네임스페이스</p></div>
+    <div><span class="n">6 · VIEW</span><h3>AgentView</h3><p>내 화면엔 원본, 남에게는 <code>redactView</code>/<code>quietView</code>로 가림</p></div>
+  </div>
+  <div class="grid">
+    <div class="panel"><h3>방 배정 규칙</h3><ul>
+      <li>파일 편집, TodoWrite, 파일을 쓰는 셸 명령 → <b>코딩실</b></li>
+      <li>그 외 셸 명령 → <b>서버실</b> (test / build / git / run 구역)</li>
+      <li>읽기·검색·웹·MCP·생각 중 → <b>자료실</b></li>
+      <li>위임·질문·턴 종료 → <b>대기실</b></li>
+    </ul></div>
+    <div class="panel"><h3>로컬 전용 기능</h3><ul>
+      <li><code>transcript.ts</code>: 내 에이전트의 전체 대화를 페이지 단위로 열람</li>
+      <li><code>usage.ts</code>: 모든 트랜스크립트 토큰 사용량을 일·프로젝트·모델별 집계 → <code>usage.json</code></li>
+      <li><code>notify.ts</code>: 입장/퇴장, 승인 대기, 완료, 채팅 OS 알림</li>
+      <li>이 데이터는 절대 네트워크로 나가지 않음</li>
+    </ul></div>
+    <div class="panel"><h3>운영 기능</h3><ul>
+      <li><code>updater.ts</code> + <code>appBundle.ts</code>: GitHub Releases 확인, <code>dist/</code> tgz를 검증·해제 후 관리자 권한 없이 무음 업데이트, 실패 2회면 롤백</li>
+      <li><code>tray.ts</code>: 트레이 아이콘·메뉴·알림</li>
+      <li><code>autostart.ts</code>: 로그인 시 자동 시작 (Win .lnk / Mac LaunchAgent)</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag">05</span>프로토콜: 스펙이 먼저</h2>
+  <p>브라우저 ⇄ 서버 메시지는 <b>AsyncAPI 3.0</b> 문서 <code>core/asyncapi.yaml</code>이 유일한 원본이다. <code>npm run asyncapi:generate</code>(@asyncapi/modelina)가 <code>core/src/messages.ts</code>를 생성하고, CI가 생성물과 스펙이 어긋나면 실패시킨다. 모든 메시지는 <code>additionalProperties: false</code>.</p>
+  <pre>webviewReady ─▶ officeAccess {readOnly, version}
+              ◀─ 에셋(캐릭터·펫·바닥·벽·카펫·가구)
+              ◀─ settingsLoaded → profileLoaded → officesState
+              ◀─ layoutLoaded → officeSnapshot → peopleDirectory
+              ◀─ autostartState → relayState → updateAvailable
+이후 1초마다  ◀─ officeSnapshot {agents, people, selfPeerId} + peopleDirectory</pre>
+</section>
+
+<section>
+  <h2><span class="tag">06</span>릴레이 (Cloudflare)</h2>
+  <div class="grid">
+    <div class="panel"><h3>구성</h3><ul>
+      <li>Worker 1개 + Durable Object <code>hub</code> 정확히 1개 (SQLite 기반, 무료 플랜)</li>
+      <li>WebSocket Hibernation: ping/pong은 <code>setWebSocketAutoResponse</code>로 DO를 깨우지 않음</li>
+      <li><code>hub.ts</code>는 순수 결정 함수, <code>index.ts</code>는 얇은 껍데기 → 테스트가 쉬움</li>
+    </ul></div>
+    <div class="panel"><h3>무엇을 나르나</h3><ul>
+      <li>1.0.64부터 "누가 접속 중인지"만 (<code>me</code> → <code>roster/person/join/leave</code>)</li>
+      <li>에이전트·채팅·아바타·레이아웃은 LAN(UDP)에만</li>
+      <li>아케이드: 시드 티켓 HMAC 발급 → 입력 기록을 릴레이가 직접 재생해 점수 검증</li>
+    </ul></div>
+    <div class="panel"><h3>비용 방어</h3><ul>
+      <li>DO는 수신 메시지만 과금 → 하루 예산 1,900,000 (무료 2M의 95%)</li>
+      <li>소켓당 분당 120 프레임 넘으면 60분 차단</li>
+      <li>IP는 저장하지 않고 HMAC으로 "망 태그"만</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag">07</span>보안 모델</h2>
+  <div class="tbl"><table>
+    <tr><th>경계</th><th>장치</th></tr>
+    <tr><td>브라우저 → 서버</td><td>기본 바인드 <code>127.0.0.1</code>. 모든 요청에 <code>isLoopback</code>: 원격 주소, <code>Host</code>, <code>Origin</code> 셋 다 루프백이어야 함. 아니면 403 / WS 4003</td></tr>
+    <tr><td>메시지 권한</td><td><code>handleClientMessage</code> 맨 앞 게이트 하나. 새 메시지 타입은 기본 privileged</td></tr>
+    <tr><td>PC ⇄ PC</td><td>X25519 + AES-256-GCM, TOFU 키 고정, 재전송 방지. 피어 데이터로 실행·쓰기 금지 (예외: 검증된 공유 레이아웃만)</td></tr>
+    <tr><td>정보 노출</td><td>공개 오피스엔 <code>quietView</code>(작업 대상·이유 제거), 팀엔 <code>redactView</code>. 트랜스크립트·사용량·경로는 로컬 전용</td></tr>
+    <tr><td>업데이트</td><td>github.com URL만, 크기 상한, SHA-256 필수, tar 경로 탐색·링크 거부</td></tr>
+    <tr><td>백신 오탐 대응</td><td>PowerShell·VBS 금지. 트레이·런처는 C# 실행 파일 (레지스트리·자식 프로세스·네트워크 없음)</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2><span class="tag">08</span>배포와 개발 도구</h2>
+  <div class="grid">
+    <div class="panel"><h3>설치 파일</h3><ul>
+      <li><b>Windows</b>: Inno Setup (<code>windows.iss</code>). 런처 <code>PixelOffice.exe</code>, 트레이 <code>PixelOfficeTray.exe</code>는 Windows 내장 <code>csc.exe</code>로 컴파일한 C# WinForms</li>
+      <li><b>macOS</b>: <code>pkgbuild</code> .pkg, arm64+x64 Node를 <code>lipo</code>로 유니버설 병합, LaunchAgent</li>
+      <li><code>pixeloffice://</code> URL 스킴으로 꺼진 서버 시작</li>
+    </ul></div>
+    <div class="panel"><h3>CI (GitHub Actions)</h3><ul>
+      <li><code>ci.yml</code>: lint → AsyncAPI 검증·생성 드리프트 → 타입 체크 → 빌드 → server/webview/relay 테스트</li>
+      <li><code>package.yml</code>: 양 OS 설치→실행→재설치→제거까지 실제로 검증, 태그 시 릴리스</li>
+    </ul></div>
+    <div class="panel"><h3>코드 품질</h3><ul>
+      <li>ESLint 10 + typescript-eslint + 커스텀 규칙(<code>eslint-rules/pixel-agents-rules.mjs</code>: 인라인 색 금지, UI 폰트)</li>
+      <li>Prettier, knip(미사용 코드), husky + lint-staged + gitleaks</li>
+      <li>Playwright: e2e가 아니라 README 스크린샷 촬영용</li>
+      <li>규약: <code>enum</code> 금지(<code>as const</code>), 매직 넘버는 <code>constants.ts</code>로</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag">09</span>설치 파일이 만들어지기까지</h2>
+  <p>esbuild는 이 과정의 한 단계만 맡는다. JS 파일 하나(<code>dist/cli.js</code>)를 만들 뿐, 실행 파일(exe)로 만들지는 않는다. Node를 exe 하나로 합치는 도구(pkg, Node SEA)도 쓰지 않는다. 대신 <b>공식 <code>node.exe</code>를 설치 폴더에 그대로 넣고</b>, 작은 C# 런처가 그 Node로 <code>cli.js</code>를 실행한다.</p>
+  <div class="flow">
+    <div><span class="n">1 · ESBUILD</span><h3>서버 번들</h3><p><code>esbuild.js</code>: <code>server/src/cli.ts</code>와 Fastify까지 묶어 <code>dist/cli.js</code> 한 파일로. <code>node_modules</code> 없이 실행됨</p></div>
+    <div><span class="n">2 · VITE</span><h3>화면 빌드</h3><p>SPA를 <code>dist/webview/</code>로, 스프라이트는 <code>dist/assets/</code>로</p></div>
+    <div><span class="n">3 · NODE</span><h3>런타임 확보</h3><p><code>fetch-node.mjs</code>: <code>node-version.txt</code>(v22.23.3)에 적힌 공식 바이너리를 받아 SHA-256 검증</p></div>
+    <div><span class="n">4 · CSC</span><h3>런처 · 트레이</h3><p>Windows 내장 <code>csc.exe</code>로 C# 컴파일: <code>PixelOffice.exe</code>, <code>PixelOfficeTray.exe</code></p></div>
+    <div><span class="n">5 · INNO</span><h3>설치 파일</h3><p><code>ISCC.exe windows.iss</code> → <code>PixelOffice-&lt;ver&gt;-Windows.exe</code></p></div>
+    <div><span class="n">6 · RELEASE</span><h3>GitHub Release</h3><p>태그 <code>v&lt;ver&gt;</code> push → .exe, .pkg, 무음 업데이트용 <code>app.tgz</code> 업로드</p></div>
+  </div>
+  <p>1~2단계는 <code>npm run package</code>가 한다. 3~6단계는 <code>.github/workflows/package.yml</code>이 Windows와 macOS 러너에서 돌린다.</p>
+
+  <div class="grid">
+    <div class="panel"><h3>설치 후 폴더 (Windows)</h3>
+<pre>{app}\
+  node.exe              공식 Node 22, 그대로
+  app\cli.js            esbuild 번들 = 서버 전체
+  app\webview\  assets\ Vite 결과
+  PixelOffice.exe       C# 런처
+  PixelOfficeTray.exe   C# 트레이
+  icon.ico</pre></div>
+    <div class="panel"><h3>Inno Setup이 하는 일</h3><ul>
+      <li>위 폴더 복사</li>
+      <li>바로가기 생성, 시작 시 자동 실행 등록</li>
+      <li>방화벽 규칙 추가 (UDP 47800)</li>
+      <li><code>pixeloffice://</code> URL 스킴 등록 (꺼진 서버를 웹 페이지에서 켬)</li>
+      <li>제거 시 앱 종료, 폴더·바로가기 정리 (사용자 데이터는 묻고 삭제)</li>
+    </ul></div>
+    <div class="panel"><h3>macOS (.pkg)</h3><ul>
+      <li><code>macos.sh</code>: arm64용과 x64용 Node를 <code>lipo -create</code>로 하나로 합쳐 <code>Pixel Office.app</code>에 넣음</li>
+      <li>런처는 셸 스크립트, 트레이는 <code>osascript</code> JXA</li>
+      <li><code>pkgbuild</code>로 .pkg, 로그인 시 시작은 LaunchAgent <code>com.pixeloffice.agent</code></li>
+    </ul></div>
+  </div>
+
+  <h3>실행 흐름</h3>
+  <pre>PixelOffice.exe  ─▶  node.exe app\cli.js --open
+                      └▶ Fastify가 127.0.0.1:47801 에서 대기
+                      └▶ PixelOfficeTray.exe 띄움 (트레이 아이콘)
+                      └▶ 설치된 PWA 창 또는 브라우저가 열려 /ws 로 접속</pre>
+
+  <div class="grid">
+    <div class="panel"><h3>왜 이 구조인가</h3><ul>
+      <li><b>관리자 권한 없는 무음 업데이트</b>: 앱 본체가 <code>dist/</code> 뿐이라 <code>dist/</code>만 tgz로 받아 <code>~/.pixel-office/app/&lt;ver&gt;/</code>에 풀면 업데이트 끝. 바뀌지 않는 <code>node.exe</code>와 C# exe가 바뀔 때만 설치 파일 릴리스가 필요</li>
+      <li><b>백신 오탐 회피</b>: 예전 v1.0.0의 PowerShell 헬퍼는 Kaspersky가 악성으로 잡았다. 그래서 런처·트레이는 레지스트리·네트워크·자식 프로세스 없는 단순한 C# exe로 만듦</li>
+    </ul></div>
+    <div class="panel"><h3>CI가 실제로 검증하는 것</h3><ul>
+      <li>Windows: 무음 설치 → URL 스킴 키 확인 → 서버 기동 → <code>/VERYSILENT</code> 제거 → 폴더·프로세스·키·바로가기 정리 확인 (데이터는 남음)</li>
+      <li>macOS: <code>sudo installer</code> → 에이전트·서버 기동 → 재설치 → 제거 → 앱·plist·프로세스 정리 확인</li>
+      <li><code>lipo -archs</code>, <code>codesign --verify</code>, 트레이 smoke 테스트</li>
+    </ul></div>
+  </div>
+
+  <h3>설치 파일 없이 로컬에서 실행</h3>
+  <pre>npm install
+npm run build                   # asyncapi 생성 → 타입 체크 → lint → esbuild → vite
+node dist/cli.js --port 47801   # 그다음 http://localhost:47801</pre>
+</section>
+
+<section>
+  <h2><span class="tag">10</span>설계 원칙 정리</h2>
+  <div class="note"><ul>
+    <li><b>의존성 최소화</b>: 서버 런타임 의존성은 Fastify 계열 4개뿐, 웹뷰는 React 2개. UDP·파일 감시·암호·차트·구문 강조·i18n은 표준 라이브러리나 직접 구현.</li>
+    <li><b>스펙 주도 프로토콜</b>: AsyncAPI → 코드 생성 → CI 드리프트 검사.</li>
+    <li><b>로컬 우선</b>: 클라우드 백엔드 없음. 각 PC가 자기 서버. 릴레이는 선택적이고 최소한만 나른다.</li>
+    <li><b>React는 크롬만</b>: 게임 루프는 명령형 상태 + Canvas, 필요할 때만 렌더.</li>
+    <li><b>순수 함수 분리</b>: 판단 로직(<code>hub.ts</code>, <code>editorActions.ts</code>, <code>*Model.ts</code>, 게임 로직)은 순수 함수로 빼서 Vitest로 검증.</li>
+  </ul></div>
+</section>
+
+<footer>pixel-office 저장소 main 브랜치(1.0.74) 기준. 줄 수는 생성 파일 <code>messages.ts</code>를 뺀 .ts/.tsx 합계.</footer>
+</main>
+<footer class="foot"><div class="wrap"><p>MIT · 원작 <a href="https://github.com/pixel-agents-hq/pixel-agents">pixel-agents</a> · 캐릭터 <a href="https://jik-a-4.itch.io/metrocity-free-topdown-character-pack">JIK-A-4, Metro City</a></p></div></footer>
+</body>
+</html>

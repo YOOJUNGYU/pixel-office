@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pixel Office</title>
+<meta name="description" content="Pixel Office turns your Claude Code and Codex sessions into characters in a pixel-art office. Alone, with your team, or with everyone. User guide.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=Silkscreen&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="brand" href="en.html">PIXEL OFFICE</a>
+  <nav aria-label="Site">
+    <a href="en.html" aria-current="page">Guide</a>
+    <a href="architecture.html" lang="ko">Architecture (Korean)</a>
+    <a href="https://github.com/YOOJUNGYU/pixel-office/blob/main/docs/INSTALL.en.md">Install guide</a>
+    <a href="https://github.com/YOOJUNGYU/pixel-office">GitHub</a>
+    <a href="./" lang="ko">한국어</a>
+  </nav>
+  <a class="dl" href="https://github.com/YOOJUNGYU/pixel-office/releases/latest">Download</a>
+</div></header>
+<main class="wrap">
+
+<header class="hero">
+  <h1>Pixel Office</h1>
+  <p class="lead">Your AI coding agents as characters in a <b>pixel-art office</b>.<br>Alone, with your team, or with everyone.</p>
+  <p>Pixel Office turns the Claude Code and Codex sessions on your PC into characters in a pixel-art office. Each agent walks to the room that fits what it's doing: the coding room when it edits files, the library when it reads or searches, the server room (split into test, build, git and run zones) when it runs commands, and the lounge when it's done or waiting for you. A bubble over its head says what it's working on. You can run the office alone, share it with your team over the LAN, or join the public office where everyone with the app on your network shows up (people on other networks appear in the people panel). There's also a token usage panel with a searchable list of past sessions, people avatars you can dress up in a wardrobe, status messages, a small lounge arcade with a shared hall of fame, a window with each session's full conversation, desktop notifications, a layout editor, and Windows/Mac installers that update themselves. It started as a fork of <a href="https://github.com/pixel-agents-hq/pixel-agents">pixel-agents</a>; the differences are <a href="#differs">below</a>.</p>
+  <nav class="toc" aria-label="On this page">
+    <a href="#differs">How it differs</a>
+    <a href="#install">Install</a>
+    <a href="#usage">Using it</a>
+    <a href="#security">Security and privacy</a>
+    <a href="#how">How it works</a>
+    <a href="#limits">Known limits</a>
+    <a href="#dev">Development</a>
+    <a href="#credits">Credits</a>
+    <a href="#license">License</a>
+  </nav>
+  <figure>
+    <img src="images/office-en.png" alt="The public office with ten people">
+    <figcaption>Made-up data: ten people in the public office on one network. The blue name tags are my agents. Everyone else's agents show their session title, model and tokens too, and what kind of work they're doing ("Editing a file", "Running a command"), but never which file or command; only mine show that. People hang out in the lounge with status messages over their heads. The people panel on the right also lists people on other networks (<code>Net 2</code>) and someone in personal mode.</figcaption>
+  </figure>
+  <p>There are three offices, and you can switch between them any time with the buttons at the top:</p>
+  <ul>
+    <li>🌐 <b>Public office</b>: everyone who has the app on your network. People elsewhere only show up in the people panel, through an internet relay that says who's online.</li>
+    <li>🔒 <b>Team office</b>: people who have your invite code, on the same network only.</li>
+    <li>🏠 <b>Personal</b>: just your PC. Your agents and status message stay on it.</li>
+  </ul>
+</header>
+
+<section id="differs">
+  <h2>How it differs from the original</h2>
+  <p><a href="https://github.com/pixel-agents-hq/pixel-agents">pixel-agents</a> (MIT) is a VS Code extension that launches Claude Code agents and shows the ones on your own PC as characters. Pixel Office keeps its office engine, layout editor and furniture, and builds a different app around them.</p>
+  <p>The token usage feature is modeled on <a href="https://github.com/nateherkai/token-dashboard">token-dashboard</a>. The idea of reading the transcripts into per-day, per-project and per-model totals with a list of the most expensive sessions comes from there, and so does counting a response once even when the transcript logs it several times. No code was copied: it was written from scratch and lives as a panel inside the office instead of a separate dashboard. Codex support, the character size and flames, and opening finished sessions are additions.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>pixel-agents</th><th>Pixel Office</th></tr></thead>
+    <tbody>
+      <tr><td>Form</td><td>VS Code extension</td><td>Standalone app with installers, tray and auto-update</td></tr>
+      <tr><td>Agents</td><td>Claude Code, launched from the extension</td><td>Claude Code and Codex, whatever you already run</td></tr>
+      <tr><td>Who you see</td><td>Your own PC</td><td>Your network, your team, or just you</td></tr>
+      <tr><td>Office</td><td>Free-form layout</td><td>Rooms mean activities; layouts are shared</td></tr>
+      <tr><td>People</td><td>None</td><td>Avatars you dress up and walk around, status messages, a people panel</td></tr>
+      <tr><td>Status</td><td>Character animation</td><td>Bubbles, icons, progress, PC screens and effects</td></tr>
+      <tr><td>Tokens</td><td>None</td><td>Usage panel, Codex limits, cache countdown; characters grow and glow with use</td></tr>
+      <tr><td>Extras</td><td>None</td><td>Session windows, past-session search, notifications, light theme, ko/en</td></tr>
+      <tr><td>Removed</td><td>None</td><td>Launching agents, the terminal, VS Code integration</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="install">
+  <h2>Install</h2>
+  <ol>
+    <li>Grab the installer from <a href="https://github.com/YOOJUNGYU/pixel-office/releases/latest">Releases</a>: <code>PixelOffice-&lt;version&gt;-Windows.exe</code> for Windows, <code>PixelOffice-&lt;version&gt;-Mac.pkg</code> for Mac (Apple silicon and Intel). Node comes bundled, so there's nothing else to install.</li>
+    <li>The installers aren't code-signed, so your OS will complain.
+      <ul>
+        <li><b>Windows</b>: on "Windows protected your PC", click More info, then Run anyway, then Yes on the UAC prompt.</li>
+        <li><b>Mac</b>: on "Not Opened", click Done (not Move to Trash). Then go to System Settings → Privacy &amp; Security → Open Anyway and open the pkg again. Or run <code>sudo installer -pkg &lt;the pkg&gt; -target /</code> in Terminal. If your firewall is on, allow incoming connections.</li>
+      </ul>
+    </li>
+    <li>The office opens in your browser. Pick a character and a colour (a nickname is optional), and a short tour walks you through the rest.</li>
+  </ol>
+  <p>It starts at login by default; you can turn that off in Settings. To quit, use the tray icon's Quit Pixel Office or the same button in Settings. To get back to it, use the tray, the desktop or Start menu shortcut, the Mac Applications folder, or just open <code>http://localhost:47801</code>. Updates are automatic (see <a href="#more">More</a>).</p>
+  <p>If PCs don't find each other or you want to uninstall, see the <a href="https://github.com/YOOJUNGYU/pixel-office/blob/main/docs/INSTALL.en.md">install guide</a>. If company security software blocks the app, ask IT for an exception.</p>
+</section>
+
+<section id="usage">
+  <h2>Using it</h2>
+
+  <h3 id="rooms">Rooms</h3>
+  <p>An agent moves once a new activity has lasted about 3 seconds, then takes a free seat. Hover a room's name plate to see what sends agents there and who's inside. The <code>Agents N</code> chip counts everyone in the room, subagents and shells included.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Room</th><th>What sends an agent there</th></tr></thead>
+    <tbody>
+      <tr><td>🖥️ Coding Room</td><td>Editing files (Claude <code>Edit</code>/<code>Write</code>, Codex <code>apply_patch</code>, shell commands that write files such as <code>sed -i</code> or <code>&gt; file</code>)</td></tr>
+      <tr><td>📚 Library</td><td>Reading files, searching code or the web, read-only commands like <code>rg</code> or <code>cat</code></td></tr>
+      <tr><td>🗄️ Server Room</td><td>Running commands (<code>Bash</code>, the Codex shell) and background shells</td></tr>
+      <tr><td>🛋️ Lounge</td><td>Waiting for you or finished. The agent merges into its owner's person character</td></tr>
+    </tbody>
+  </table></div>
+  <p>The server room has four zones marked with tape on the floor. An agent sits in the zone that matches its command, or anywhere in the room if that zone is full:</p>
+  <ul>
+    <li><b>Test</b> (top left): vitest, pytest, npm test, e2e and verify scripts, curl, browser checks</li>
+    <li><b>Build</b> (top right): tsc, build, lint, installs, codegen, docker, moving files around</li>
+    <li><b>Git</b> (bottom left): git, gh, worktrees</li>
+    <li><b>Run</b> (bottom right): everything else</li>
+  </ul>
+  <p>Each zone has its own plate with a count. Hover it to see what belongs there.</p>
+
+  <h3 id="characters">Characters</h3>
+  <ul>
+    <li><b>Name tags</b> start with MAIN, SUB or SHELL, then the agent's number and its owner's nickname (or PC account). Your own person character always shows its tag, in the colours you picked, with a yellow frame.</li>
+    <li><b>Bubbles</b>: every working agent has one with a Claude or Codex badge (or the model, for agents on your network), the session title and what it's doing. Hover a character for the full text. A red <b>!</b> means it's waiting for you. Click one of your agents, or its bubble, to open its session. The 💬 button at the top left hides other people's agent bubbles (yours stay; hovering still shows them).</li>
+    <li>The bubble also has an icon for the kind of work, task progress like <code>3/7</code>, and how long the current step has been running (it turns orange when that gets long). Zoom out far enough and only the icon is left.</li>
+    <li>Name tags end with how full the context is, like <code>29%</code>. While one of your main agents waits for you, its tag also counts down the Claude prompt cache, like <code>❄ 4:23</code>: answer before it runs out and the cache is reused.</li>
+    <li>Characters dressed in the wardrobe blink now and then.</li>
+    <li>The office reacts to what's really happening in each session. PC screens show code, a terminal or a page. Working PCs glow. Edits float up as <code>+12 −3</code>. A failed tool makes the PC flash red and puff smoke. Finishing a task list or a turn sets off confetti. Server LEDs blink while a command runs.</li>
+    <li><b>Subagents and shells</b> sit as close to their parent as they can, or hold its hand if the room is full. In another room they do their own thing. When the parent hands off work or the subagent reports back, the two meet and talk for a moment.</li>
+    <li><b>Map</b>: drag to pan, scroll to zoom, or use + and − at the top left. The four-corners button fits the whole office to the window. Hover any top-left button to see what it does right away.</li>
+  </ul>
+
+  <h3 id="signals">Token signals on your agents</h3>
+  <p>Agents also show how many tokens they're using. Size, flames, the token count, model badge and context are shared with people on your network; 📦 and the cache countdown are yours alone. All screenshots below use made-up data.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Screen</th><th>State</th><th>What you see</th></tr></thead>
+    <tbody>
+      <tr><td><img src="images/sig-red-en.png" width="300" alt="A double-size character with a red flame aura and a tag chip reading 1.4M · Σ1.9M"></td><td>Heavy and fast</td><td>Over 1M tokens, so it's twice the size, and over 75k a minute, so it has a red flame aura. The tag chip <code>1.4M · Σ1.9M</code> is this session, then with subagents</td></tr>
+      <tr><td><img src="images/sig-gold-en.png" width="300" alt="A 1.5x size subagent with a low gold flame and a blue Sonnet badge"></td><td>Medium (a subagent)</td><td>Over 300k tokens (1.5×) and 40k a minute (gold flame). Sonnet's badge is blue. The <code>SUB</code> tag carries its parent's number</td></tr>
+      <tr><td><img src="images/sig-blue-en.png" width="300" alt="A character with a thin blue outline whose PC screen shows a terminal"></td><td>Slow and steady</td><td>Over 15k a minute gets a blue outline. This one is running tests, so its screen shows a terminal</td></tr>
+      <tr><td><img src="images/sig-plain-en.png" width="300" alt="A normal-size character with no outline and a green Haiku badge"></td><td>Light work</td><td>Under 300k tokens and 15k a minute: normal size, no outline. Haiku's badge is green</td></tr>
+      <tr><td><img src="images/sig-codex-en.png" width="300" alt="A Codex agent with its green Codex badge"></td><td>Codex</td><td>Codex keeps its green badge. Model badges are only for Claude</td></tr>
+      <tr><td><img src="images/sig-wait-en.png" width="200" alt="A person character in the lounge with a red exclamation mark over it"></td><td>Waiting for you</td><td>The agent has merged into your character in the lounge, and the red ! says it needs approval</td></tr>
+      <tr><td><img src="images/fx-diff-en.png" width="300" alt="Changed lines floating up from a PC as +24 −6"></td><td>Edited files</td><td>The changed lines float up as <code>+24 −6</code></td></tr>
+      <tr><td><img src="images/fx-fail-en.png" width="300" alt="A PC flashing red with smoke puffs and a 📦 +82k float"></td><td>Big result, failure</td><td>A tool result of 50k tokens or more floats up as 📦 +82k. A failed tool flashes the PC red, puffs smoke and leaves a drop by the head</td></tr>
+      <tr><td><img src="images/fx-done-en.png" width="300" alt="Confetti over a character after a finished task list"></td><td>Task list done</td><td>Confetti when the task list hits <code>7/7</code> or a main agent finishes</td></tr>
+      <tr><td><img src="images/hover-en.png" width="300" alt="The hover bubble showing activity, room, reason, elapsed time, tasks, changed lines, context, tokens, model and burn rate"></td><td>On hover</td><td>The full picture: activity, room, reason, elapsed time, tasks, changed lines, context, tokens, model and burn rate</td></tr>
+    </tbody>
+  </table></div>
+  <p>How the numbers work:</p>
+  <ul>
+    <li><b>Size</b> goes by the session's total tokens: normal under 300k, 1.5× from 300k, 2× from 1M. Just three steps, so the pixels stay crisp.</li>
+    <li><b>Outline</b> goes by tokens per minute over the last 2 minutes: blue ring from 15k, low gold flame from 40k, red flame aura from 75k. The red flame looks nothing like a failure (that's a red drop and a blinking PC).</li>
+    <li><b>Tokens</b> means input + output + cache writes. Cache reads are left out and shown separately in the usage panel.</li>
+    <li>Agents on your network show their size, flames, tokens, model, context, session title, task progress, elapsed time and changed lines, and sit in the same seat on every PC. In the public office their bubble says only the kind of work ("Editing a file"), never the file or command; a team office also shows program and file names. PCs on 1.0.64 or older only get size and flames. A flame stays lit for 30 seconds after the rate drops, so it doesn't flicker at a threshold.</li>
+  </ul>
+
+  <h3 id="tokens">Token usage (📊)</h3>
+  <p>This one borrows its idea from <a href="https://github.com/nateherkai/token-dashboard">token-dashboard</a>. The 📊 button at the top left opens the usage panel right under the buttons. Drag its right edge, bottom edge or corner to resize it; it remembers the size. Click 📊 again or × to close it.</p>
+  <figure>
+    <img src="images/usage-office-en.png" alt="The office with the usage panel open">
+  </figure>
+  <div class="grid2">
+    <figure>
+      <img src="images/usage-30d-en.png" alt="The usage panel for the last 30 days, with daily bars">
+      <figcaption>Last 30 days. Hover a bar to see that day's input, output, cache writes and cache reads</figcaption>
+    </figure>
+    <figure>
+      <img src="images/usage-all-en.png" alt="The usage panel for all history">
+      <figcaption>All history</figcaption>
+    </figure>
+  </div>
+  <ul>
+    <li><b>Now</b> shows today's tokens and, for each agent working right now, its model, session tokens and tokens per minute. Subagents are indented under their parent. Click a row to open that session.</li>
+    <li><b>Codex limits</b> (when you use Codex): how much of the 5-hour and weekly windows is used, whether you're ahead of the clock, and when you'll hit the limit at this pace. Claude doesn't write its limits to transcripts, so there's nothing to show for it.</li>
+    <li><b>History</b> covers 7 days, 30 days or everything. You get totals, cache reads and hit rate, daily bars, top projects, the split between models and between Claude and Codex, and the 10 most expensive sessions. Those open even if the session is long over; if its transcript is gone, the row is dimmed.</li>
+    <li>The first start reads your whole Claude Code and Codex history once (WSL included) and shows "Scanning history…" while it does. After that it only reads what's new. Only totals are kept, in <code>~/.pixel-office/usage.json</code>, with no prompt text, so your numbers survive even when Claude Code deletes old transcripts. Nothing here is sent anywhere.</li>
+    <li>A response written to the transcript several times is counted once, the way it's billed. There's no conversion to money.</li>
+    <li>The <b>Sessions</b> tab lists past sessions, newest first, each with its active time (gaps over 5 minutes left out), tool calls and file edits. Type to filter by title or folder; tick <b>Conversations too</b> to search prompts and replies instead and see the matching line (newest sessions first, up to 30 hits; transcripts over 32 MB are skipped). A hit opens the session at the match, outlined, with ↑ / ↓ to step between matches.</li>
+  </ul>
+
+  <h3 id="offices">Offices</h3>
+  <p>The tabs at the top switch offices: 🏠 Personal, 🌐 Public office, then your 🔒 team. A new install starts in Personal; after that the app reopens the office you used last.</p>
+  <p>The people panel on the right is split into Public office, Team and Personal, so you can see who's around even in the offices you're not looking at. The Team area only appears once you've joined a team.</p>
+  <p><b>🌐 Public office.</b> Everyone with the app on your network shares it, with nothing to set up. Agents, avatars, status messages and the layout stay on the network (UDP).</p>
+  <ul>
+    <li>People on other networks (home, another office, a café) don't appear in the office, only in the people panel: a Cloudflare relay, over one outbound <code>wss</code> connection on port 443, tells everyone who's online. The panel groups people by network with yours on top; with two or more networks, rows get a <code>Net 1</code> (yours) / <code>Net 2</code> badge. Only the first 10 rows are drawn; scroll for more.</li>
+    <li>People on your network see your account name, nickname, character, status message, your agents' room and seat, session title, model, tokens, context, task progress, elapsed time and changed lines. Never what they actually work on: no file names, commands or reply text.</li>
+    <li>The relay takes 1,000 people at a time. When it's full, paused for the day, has removed you, or can't be reached, a chip next to the panel's "Public office" title says so (nothing shows while it's fine). Your network keeps working and the relay reconnects on its own.</li>
+  </ul>
+  <p><b>🔒 Team office.</b> Only people with the invite code (<code>PO2-…</code>) on the same network. It never goes over the internet and doesn't connect to the relay. Create a team, join one or leave in Settings → Offices; creating a team gives you the code to send around. You can be in one team at a time, and joining another replaces it after asking. <b>While you're in a team office you're not in the public office at all.</b> You can still see who's there in the people panel, but they can't see you.</p>
+  <p><b>🏠 Personal.</b> A small office that's just yours. Agents, status message and your avatar's spot stay on your PC. Other people only see a name card for you (account, nickname, character) under Personal in their people panel (through the relay for other networks). Your team membership is kept, so you can switch back without the code.</p>
+
+  <h3 id="profile-status">Your character and status message</h3>
+  <ul>
+    <li>Everyone has one person character besides their agents. Walk it anywhere with the arrow keys and sit on lounge chairs. It remembers where you left it.</li>
+    <li><b>Settings → My profile → Dress up (wardrobe)</b> lets you pick a body, eyes, hair, top, jacket, trousers, shoes, a full outfit, a hat and accessories like beards and glasses, each with its own colours (the wardrobe comes from <a href="https://github.com/pixel-agents-hq/pixel-agents">pixel-agents</a>). The look is used for your person and your agents, and everyone sees it. PCs on 1.0.63 or older show your plain character instead.</li>
+    <li>Type what you're up to ("🍜 At lunch") in the bar at the bottom and press Enter: it shows as one line over your head, clipped with … when long; hover it to read it all. The bar holds your current status, so just edit it; clear it and press Enter, or click ×, to remove it. No history, no notifications. Up to 100 characters, one change every 2 seconds.</li>
+    <li>Space+Enter (with nothing focused) jumps to the bar. Esc gives the arrow keys back.</li>
+  </ul>
+
+  <h3 id="arcade">Arcade</h3>
+  <p>Six cabinets stand against the lounge's top wall, three on each side of the middle door. Sit on the chair in front of one and its game starts at once, with how to play on the left and the hall of fame on the right. Esc stops; the arrow keys then stand you up.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Game</th><th>How it plays</th></tr></thead>
+    <tbody>
+      <tr><td>Firewall Breaker</td><td>Bounce the ball off your paddle to break bricks; tough and steel bricks, power-up capsules</td></tr>
+      <tr><td>Cable Run</td><td>Steer the cable to eat packets and grow; gold bursts, firewalls</td></tr>
+      <tr><td>Bug Squash</td><td>Squash bugs popping up on 9 monitors; leave the green patches alone; 45 s</td></tr>
+      <tr><td>Drone Delivery</td><td>Space flaps; fly through the gaps between server racks</td></tr>
+      <tr><td>Merge</td><td>Arrow keys slide the tiles; equal numbers merge</td></tr>
+      <tr><td>Rack Stack</td><td>Space drops the sliding server unit; what hangs over is cut off</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>One player per cabinet. If someone is sitting there you get a "… is playing" notice and can sit once the seat is free.</li>
+    <li>The hall of fame keeps each person's best per game, top 50, including people who are offline. People online now get a ●.</li>
+    <li>Scores can't be faked: your PC sends the run's inputs, not a score, and the relay replays the game itself to score it.</li>
+    <li>Without internet you can still play, but nothing is recorded. M or the 🔊 button mutes the sound.</li>
+  </ul>
+
+  <h3 id="session">Session details</h3>
+  <p>Click one of your own agents, or its bubble, to open its whole session in a new window: prompts, replies, tool calls and results. For an agent resting in the lounge, click your own character and pick it from the list. A shell shows its command's output instead. This only works for your agents, and none of it leaves your PC.</p>
+  <p>Each agent gets one window; clicking again brings it to the front. Under the status line there's a strip of the last 30 minutes, one cell per minute, coloured by what happened (edit, command, read, thinking, failure). The status line also shows how full the context is, like <code>294k / 1M · 29%</code>, turning orange at 80%. A minimap on the right edge marks where the prompts, replies, edits and failures are in the whole conversation; click or drag it to scroll. <b>My prompts</b> keeps only what you typed, and Alt+↑ / Alt+↓ jumps between your prompts. The slider in the header zooms the text. Close with × or Esc.</p>
+
+  <h3 id="people">People panel and notifications</h3>
+  <p>The panel on the right lists everyone in the current office, with or without agents (in the public office, people on other networks too, grouped by network). Click someone on your network to jump to their agents. If someone runs a different version, it shows after their name, like <code> · v1.0.41</code>.</p>
+  <p>Pixel Office can also send desktop notifications on Windows and Mac. They work with the window closed as long as the tray icon is running, and you can turn each kind off in Settings:</p>
+  <ul>
+    <li><b>Join and leave</b>: someone enters or leaves the public office.</li>
+    <li><b>Your agents</b>: a Claude or Codex session is waiting for you or has finished. "Finished" only fires when the main agent ends its own turn and all its subagents and shells are done. A subagent finishing on its own never triggers it. The notification includes the session title and project folder.</li>
+  </ul>
+
+  <h3 id="more">More</h3>
+  <ul>
+    <li><b>Profile</b>: pick a character (six people, the pets Claudio and Gitcat, or a wardrobe look), a colour, a nickname, your name tag colours and your status message colours (background, text, border). Your PC account name always comes first and can't be changed. Nicknames are unique; whoever took one second gets a short suffix like <code>· a1b2</code>.</li>
+    <li><b>Language and theme</b>: Korean or English, dark, light or system, set per browser. The sun/moon button at the top left flips the theme.</li>
+    <li><b>Layout editor</b>: the Layout button at the top left. You can paint floors (a click fills a whole room, or one zone in the server room), recolour walls, place furniture and fill the background. The four rooms and the office size are fixed, and so are desks, chairs, PCs and arcade cabinets (they keep the office working): you can recolour them but not move or remove them. When a new version changes the default layout, those pieces update in your saved layout by themselves.
+      <ul>
+        <li>Nothing is saved until you press <b>Save</b>. Reset brings back the default layout, Undo and Redo are Ctrl+Z and Ctrl+Y, and Cancel or Esc drops your changes.</li>
+        <li>In the public office or a team office, anyone can edit and everyone there gets the saved layout. If two people save, the last one wins. A layout saved per PC by older versions (<code>layout.json</code>) isn't used anymore.</li>
+        <li>In 🏠 Personal the layout stays on your PC.</li>
+      </ul>
+    </li>
+    <li><b>Install as an app</b>: Edge and Chrome offer it in a popup at the top right. You get a window without tabs. If you open it while the server is off, it shows a Start button.</li>
+    <li><b>Automatic updates</b>: Pixel Office checks at start and every 6 hours, downloads quietly, restarts into the new version and reloads open windows. You can't turn this off. If a new version fails to start, it rolls back. The rare release that changes the bundled Node needs the installer, and an Update button shows up at the top right for that.</li>
+    <li><b>Manual</b>: the <b>?</b> button at the top left opens a manual of every feature under it. Pick one on the left to see an animation and an explanation on the right, or search at the top (Korean or English words both work). Resize it like the usage panel, by its right or bottom edge or its corner. <b>Start the tour</b> replays the first-run tour.</li>
+  </ul>
+</section>
+
+<section id="security">
+  <h2>Security and privacy</h2>
+  <ul>
+    <li>PCs only share status. Nobody can reach your terminal, your agents or your settings, and the UI only opens in your own PC's browser.</li>
+    <li>Everything between PCs is encrypted. In the public office each pair of PCs agrees on its own key (X25519, then AES-256-GCM). A team office uses AES-256-GCM with a key derived from the invite code. Codes never go over the network, and a known PC whose key suddenly changes is ignored.</li>
+    <li>The relay only says who is online. Public-office and personal PCs send it their peer id, public key, display name (account and nickname), character look, app version and whether they're in personal mode. That is protected by TLS only and readable by the relay. Agents, status messages and layouts never go to the relay. It doesn't store IP addresses; it only keeps a hashed tag for the network badge. Cloudflare, which hosts it, does see your IP. Team PCs don't connect to it. The arcade, from any office, sends your peer id and display name to keep your scores.</li>
+    <li>File paths, user names, IPs and host names, URL paths, anything that looks like a token, and AI reply text never leave your PC. Commands go out as just the program name. Session titles go to your network only when they're a real name (Claude's own title, one you set, a Codex thread name), never when the first prompt stands in for one, and the same redaction applies to them. Your PC account name is your name tag, so that one is always visible.</li>
+    <li>The public office (your network) gets your agents' room and seat, kind and kind of work, the waiting !, session title, model, tokens, context, task counts, elapsed time and changed lines. A team office also gets program and file names, within the rules above.</li>
+    <li>Pixel Office never touches your Claude Code or Codex settings. It only reads their transcript files.</li>
+  </ul>
+</section>
+
+<section id="how">
+  <h2>How it works</h2>
+  <pre><code> [My PC]                                         [Colleague's PC]
+ Claude / Codex transcripts ─▶ reporter ─┐    ┌─ reporter ◀─ transcripts
+  (~/.claude, ~/.codex, WSL)             │ enc │
+                                         ├◀───▶┤   UDP status every second (same network)
+                                         └◀ wss ▶ Cloudflare relay: who is online (other networks)
+ browser ◀── WebSocket ── local server ◀─┘    └▶ local server ── WebSocket ──▶ browser
+ (app window) http://localhost:47801                 http://localhost:47801 (app window)</code></pre>
+  <ul>
+    <li>The reporter watches sessions under <code>~/.claude/projects</code> and <code>~/.codex/sessions</code> that changed in the last 30 minutes. On Windows it also checks running WSL distros. A closed Claude session disappears within seconds, or after 30 minutes if its process can't be checked. A finished Codex session leaves after 10 minutes.</li>
+    <li>On the same network, a PC that goes quiet for 5 seconds disappears. Someone on another network stays in the people panel until the relay says they left, which happens after 90 seconds of silence.</li>
+    <li>Your personal layout never leaves your PC. Shared layouts only go to people in that office.</li>
+    <li>All data lives in <code>~/.pixel-office/</code>. Files with keys and codes are readable only by you (0600).</li>
+  </ul>
+  <div class="tbl"><table>
+    <thead><tr><th>Port</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>UDP 47800</td><td>Status between PCs (broadcast + IPs you add)</td></tr>
+      <tr><td>TCP 47801</td><td>Browser UI (<code>127.0.0.1</code> only)</td></tr>
+      <tr><td>TCP 443</td><td><b>Outbound</b> <code>wss</code> to the relay: who's online, arcade scores (nothing inbound)</td></tr>
+    </tbody>
+  </table></div>
+  <p>The stack and the overall structure are written up on the <a href="architecture.html" lang="ko">architecture page</a> (Korean).</p>
+</section>
+
+<section id="limits">
+  <h2>Known limits</h2>
+  <ul>
+    <li>Broadcasts don't cross subnets. If a PC on another floor or VLAN doesn't show up, add its IP in Settings → My profile → Advanced.</li>
+    <li>Anyone who installs the app can join the public office. If you want to choose who's in, use a team office. The admin can remove someone, but bans are per peer id, so deleting <code>profile.json</code> gets around them.</li>
+    <li>If a corporate proxy or firewall blocks outbound <code>wss</code> on 443, people on other networks don't show up and the chip says there's no connection. PCs on your network still show up. Ask IT for an exception instead of working around it.</li>
+    <li>The relay runs on Cloudflare's free tier: 1,000 people at once, and it pauses for the day at 95% of the daily limit. It resets at 00:00 UTC (09:00 KST). Your local network isn't affected.</li>
+    <li>Names on the relay aren't verified: someone who copies another PC's peer id and key can show up under that name in the panel or push that PC off the relay. The office itself is on your network and stays encrypted.</li>
+    <li>Seats match only between PCs with the same layout. When two PCs pick the same seat, one gives way, so you may briefly see an agent move.</li>
+    <li>Codex doesn't log approval requests, so the ! only shows up for Codex when it asks you a question.</li>
+    <li>Redaction can miss a password typed straight into a command or search.</li>
+    <li>Older versions miss some things: 0.4.x doesn't show PCs with lots of agents or pets, 1.0.0 and older don't show people or status messages, 1.0.13 and older don't get shared layouts, 1.0.63 and older don't show wardrobe looks, and 1.0.64 and older don't share session titles, tokens or seats. 1.0.24 and older may not list personal-mode PCs, and 1.0.63 and older can't join the relay (their network still works; their chip says removed). Get everyone on the latest version.</li>
+    <li>On Mac, notifications may show up as coming from "Script Editor". Linux and WSL have no tray icon or notifications.</li>
+  </ul>
+</section>
+
+<section id="dev">
+  <h2>Development</h2>
+  <pre><code>npm install
+npm run build              # dist/ — cli.js bundles its dependencies (runs without node_modules)
+node dist/cli.js --open    # http://localhost:47801
+npm test                   # server + webview (Vitest)
+npm run check-types &amp;&amp; npm run lint</code></pre>
+  <ul>
+    <li>Code structure and conventions are in <a href="https://github.com/YOOJUNGYU/pixel-office/blob/main/CLAUDE.md">CLAUDE.md</a>. Design docs and plans are in <a href="https://github.com/YOOJUNGYU/pixel-office/tree/main/docs/superpowers/">docs/superpowers/</a>.</li>
+    <li>To release, bump <code>version</code> in <code>package.json</code> and push a <code>v&lt;version&gt;</code> tag. GitHub Actions builds the Windows and Mac installers plus the auto-update bundle and publishes a Release. A tag containing <code>-</code> is a prerelease. A full release deletes the older ones.</li>
+  </ul>
+</section>
+
+<section id="credits">
+  <h2>Credits</h2>
+  <ul>
+    <li>Original project: <a href="https://github.com/pixel-agents-hq/pixel-agents">pixel-agents</a> (MIT), where the office engine, layout editor, furniture and the wardrobe (character renderer, clothes, blinking) come from.</li>
+    <li>Characters: <a href="https://jik-a-4.itch.io/metrocity-free-topdown-character-pack">JIK-A-4, Metro City</a></li>
+    <li>Token usage: idea and counting rules from <a href="https://github.com/nateherkai/token-dashboard">token-dashboard</a> (MIT).</li>
+    <li>Font: <a href="https://github.com/orioncactus/pretendard">Pretendard</a> (SIL OFL 1.1)</li>
+  </ul>
+  <p><img class="chars" src="images/characters.png" alt="Characters" width="320" height="72"></p>
+</section>
+
+<section id="license">
+  <h2>License</h2>
+  <p><a href="https://github.com/YOOJUNGYU/pixel-office/blob/main/LICENSE">MIT</a>. The original pixel-agents copyright notice is kept.</p>
+</section>
+
+</main>
+<footer class="foot"><div class="wrap"><p>MIT · based on <a href="https://github.com/pixel-agents-hq/pixel-agents">pixel-agents</a> · characters by <a href="https://jik-a-4.itch.io/metrocity-free-topdown-character-pack">JIK-A-4, Metro City</a></p></div></footer>
+</body>
+</html>
