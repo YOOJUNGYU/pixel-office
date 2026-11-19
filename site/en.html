@@ -44,7 +44,7 @@
   <p>There are three offices, and you can switch between them any time with the buttons at the top:</p>
   <ul>
     <li>🌐 <b>Public office</b>: everyone who has the app on your network. People elsewhere only show up in the people panel, through an internet relay that says who's online.</li>
-    <li>🔒 <b>Team office</b>: people who have your invite code, on the same network only.</li>
+    <li>🔒 <b>Team office</b>: a room someone on your network created; join it from the room list (with its access code if it has one).</li>
     <li>🏠 <b>Personal</b>: just your PC. Your agents and status message stay on it.</li>
   </ul>
 </header>
@@ -96,7 +96,7 @@
       <tr><td>🖥️ Coding Room</td><td>Editing files (Claude <code>Edit</code>/<code>Write</code>, Codex <code>apply_patch</code>, shell commands that write files such as <code>sed -i</code> or <code>&gt; file</code>)</td></tr>
       <tr><td>📚 Library</td><td>Reading files, searching code or the web, read-only commands like <code>rg</code> or <code>cat</code></td></tr>
       <tr><td>🗄️ Server Room</td><td>Running commands (<code>Bash</code>, the Codex shell) and background shells</td></tr>
-      <tr><td>🛋️ Lounge</td><td>Waiting for you or finished. The agent merges into its owner's person character</td></tr>
+      <tr><td>🛋️ Lounge</td><td>Asking you a question, handing work to a subagent, or finished. The agent merges into its owner's person character (an approval prompt waits in the room it works in)</td></tr>
     </tbody>
   </table></div>
   <p>The server room has four zones marked with tape on the floor. An agent sits in the zone that matches its command, or anywhere in the room if that zone is full:</p>
@@ -130,7 +130,7 @@
       <tr><td><img src="images/sig-blue-en.png" width="300" alt="A character with a thin blue outline whose PC screen shows a terminal"></td><td>Slow and steady</td><td>Over 15k a minute gets a blue outline. This one is running tests, so its screen shows a terminal</td></tr>
       <tr><td><img src="images/sig-plain-en.png" width="300" alt="A normal-size character with no outline and a green Haiku badge"></td><td>Light work</td><td>Under 300k tokens and 15k a minute: normal size, no outline. Haiku's badge is green</td></tr>
       <tr><td><img src="images/sig-codex-en.png" width="300" alt="A Codex agent with its green Codex badge"></td><td>Codex</td><td>Codex keeps its green badge. Model badges are only for Claude</td></tr>
-      <tr><td><img src="images/sig-wait-en.png" width="200" alt="A person character in the lounge with a red exclamation mark over it"></td><td>Waiting for you</td><td>The agent has merged into your character in the lounge, and the red ! says it needs approval</td></tr>
+      <tr><td><img src="images/sig-wait-en.png" width="200" alt="A person character in the lounge with a red exclamation mark over it"></td><td>Waiting for you</td><td>The agent asked you a question, so it merged into your character in the lounge and the red ! shows over you. An approval prompt shows the ! over the agent in the room it works in</td></tr>
       <tr><td><img src="images/fx-diff-en.png" width="300" alt="Changed lines floating up from a PC as +24 −6"></td><td>Edited files</td><td>The changed lines float up as <code>+24 −6</code></td></tr>
       <tr><td><img src="images/fx-fail-en.png" width="300" alt="A PC flashing red with smoke puffs and a 📦 +82k float"></td><td>Big result, failure</td><td>A tool result of 50k tokens or more floats up as 📦 +82k. A failed tool flashes the PC red, puffs smoke and leaves a drop by the head</td></tr>
       <tr><td><img src="images/fx-done-en.png" width="300" alt="Confetti over a character after a finished task list"></td><td>Task list done</td><td>Confetti when the task list hits <code>7/7</code> or a main agent finishes</td></tr>
@@ -178,7 +178,7 @@
     <li>People on your network see your account name, nickname, character, status message, your agents' room and seat, session title, model, tokens, context, task progress, elapsed time and changed lines. Never what they actually work on: no file names, commands or reply text.</li>
     <li>The relay takes 1,000 people at a time. When it's full, paused for the day, has removed you, or can't be reached, a chip next to the panel's "Public office" title says so (nothing shows while it's fine). Your network keeps working and the relay reconnects on its own.</li>
   </ul>
-  <p><b>🔒 Team office.</b> Only people with the invite code (<code>PO2-…</code>) on the same network. It never goes over the internet and doesn't connect to the relay. Create a team, join one or leave in Settings → Offices; creating a team gives you the code to send around. You can be in one team at a time, and joining another replaces it after asking. <b>While you're in a team office you're not in the public office at all.</b> You can still see who's there in the people panel, but they can't see you.</p>
+  <p><b>🔒 Team office.</b> Only people who joined the room, on the same network. It never goes over the internet and doesn't connect to the relay. In Settings → Offices → Create a room, give it a title and an optional access code: you become its host and the room shows up under Rooms on your network on every PC there. Others press Join (🔒 rooms ask for the code); a room without a code is open to anyone on your network. Newcomers get in only while the host's PC is on and showing the room; up to 20 people per room. You can be in one room at a time, and creating or joining another replaces it after asking. Leave it under Your room. Teams made with an invite code (1.0.74 or older) keep working but aren't listed. <b>While you're in a team office you're not in the public office at all.</b> You can still see who's there in the people panel, but they can't see you.</p>
   <p><b>🏠 Personal.</b> A small office that's just yours. Agents, status message and your avatar's spot stay on your PC. Other people only see a name card for you (account, nickname, character) under Personal in their people panel (through the relay for other networks). Your team membership is kept, so you can switch back without the code.</p>
 
   <h3 id="profile-status">Your character and status message</h3>
@@ -214,7 +214,7 @@
   <p>Each agent gets one window; clicking again brings it to the front. Under the status line there's a strip of the last 30 minutes, one cell per minute, coloured by what happened (edit, command, read, thinking, failure). The status line also shows how full the context is, like <code>294k / 1M · 29%</code>, turning orange at 80%. A minimap on the right edge marks where the prompts, replies, edits and failures are in the whole conversation; click or drag it to scroll. <b>My prompts</b> keeps only what you typed, and Alt+↑ / Alt+↓ jumps between your prompts. The slider in the header zooms the text. Close with × or Esc.</p>
 
   <h3 id="people">People panel and notifications</h3>
-  <p>The panel on the right lists everyone in the current office, with or without agents (in the public office, people on other networks too, grouped by network). Click someone on your network to jump to their agents. If someone runs a different version, it shows after their name, like <code> · v1.0.41</code>.</p>
+  <p>The panel on the right lists everyone in the current office, with or without agents (in the public office, people on other networks too, grouped by network). Click someone on your network to jump to their agents. The line under each name shows that person's app version (<code>v1.0.41</code>, or "old" for very old ones), in the warning colour when it differs from yours.</p>
   <p>Pixel Office can also send desktop notifications on Windows and Mac. They work with the window closed as long as the tray icon is running, and you can turn each kind off in Settings:</p>
   <ul>
     <li><b>Join and leave</b>: someone enters or leaves the public office.</li>
@@ -242,7 +242,7 @@
   <h2>Security and privacy</h2>
   <ul>
     <li>PCs only share status. Nobody can reach your terminal, your agents or your settings, and the UI only opens in your own PC's browser.</li>
-    <li>Everything between PCs is encrypted. In the public office each pair of PCs agrees on its own key (X25519, then AES-256-GCM). A team office uses AES-256-GCM with a key derived from the invite code. Codes never go over the network, and a known PC whose key suddenly changes is ignored.</li>
+    <li>Everything between PCs is encrypted. In the public office each pair of PCs agrees on its own key (X25519, then AES-256-GCM). A team office uses AES-256-GCM with a key derived from a random secret the host makes; the host hands it, sealed under the pair key, only to the people it lets in, and the access code you type travels sealed the same way to the host's PC only. The room list (title, host name, locked or not, head count) is announced on your network unencrypted. A known PC whose key suddenly changes is ignored.</li>
     <li>The relay only says who is online. Public-office and personal PCs send it their peer id, public key, display name (account and nickname), character look, app version and whether they're in personal mode. That is protected by TLS only and readable by the relay. Agents, status messages and layouts never go to the relay. It doesn't store IP addresses; it only keeps a hashed tag for the network badge. Cloudflare, which hosts it, does see your IP. Team PCs don't connect to it. The arcade, from any office, sends your peer id and display name to keep your scores.</li>
     <li>File paths, user names, IPs and host names, URL paths, anything that looks like a token, and AI reply text never leave your PC. Commands go out as just the program name. Session titles go to your network only when they're a real name (Claude's own title, one you set, a Codex thread name), never when the first prompt stands in for one, and the same redaction applies to them. Your PC account name is your name tag, so that one is always visible.</li>
     <li>The public office (your network) gets your agents' room and seat, kind and kind of work, the waiting !, session title, model, tokens, context, task counts, elapsed time and changed lines. A team office also gets program and file names, within the rules above.</li>

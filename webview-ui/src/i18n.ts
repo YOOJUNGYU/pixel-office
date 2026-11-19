@@ -559,7 +559,7 @@ const ko = {
     '명령을 실행할 때는 서버실로 갑니다. 서버실은 테스트, 빌드, Git, 실행 네 구역으로 나뉘어 있어서 명령 종류에 맞는 구역에 앉아요.\n구역 이름표에 마우스를 올리면 어떤 명령이 오는지 보입니다.',
   'tour.roomLounge.title': '대기실',
   'tour.roomLounge.body':
-    '대기실은 사람들 자리예요. 답이나 승인을 기다리는 에이전트는 대기실로 돌아와 주인 캐릭터에 합쳐지고, 승인이 필요하면 머리 위에 빨간 !가 뜹니다.\n일이 3초쯤 이어져야 방을 옮기니까, 잠깐씩 바뀌는 일로 왔다 갔다 하지는 않아요.',
+    '대기실은 사람들 자리예요. 일을 마쳤거나 질문에 답을 기다리는 에이전트는 대기실로 돌아와 주인 캐릭터에 합쳐져요. 내 답이나 승인이 필요하면 머리 위에 빨간 !가 뜹니다(승인은 일하던 방에서 그대로).\n일이 3초쯤 이어져야 방을 옮기니까, 잠깐씩 바뀌는 일로 왔다 갔다 하지는 않아요.',
   'tour.tag.title': '이름표',
   'tour.tag.body':
     '이름표 맨 앞의 MAIN은 메인 에이전트, SUB와 SHELL은 서브에이전트와 셸이에요. 그 뒤에 번호와 주인 이름이 붙습니다.\n머리 위 말풍선에는 Claude(주황)인지 Codex(초록)인지와 지금 하는 일이 나와요.',
@@ -582,7 +582,7 @@ const ko = {
     '🏠 개인용은 나 혼자 쓰는 사무실로, 처음에는 여기서 시작해요. 🌐 공개 오피스는 같은 망에서 앱을 쓰는 사람 모두가 함께 쓰고, 다른 망 사람은 접속자 목록에만 나와요. 🔒 방(팀 오피스)은 같은 망에서 누군가 만든 방에 들어가 그 사람들끼리만 씁니다.\n마지막에 고른 오피스로 다시 열리고, 팀 오피스에 들어가면 공개 오피스에서는 빠집니다.',
   'tour.people.title': '접속 중인 사람',
   'tour.people.body':
-    '지금 이 오피스에 있는 사람이 모두 나와요. 에이전트가 없는 사람, 다른 망에서 접속한 사람까지요. 같은 망끼리 묶이고 내 망이 맨 위예요.\n❗는 승인을 기다리는 에이전트가 있다는 뜻이고, 같은 망 사람 이름을 누르면 그 사람 에이전트 쪽으로 화면이 따라갑니다.',
+    '지금 이 오피스에 있는 사람이 모두 나와요. 에이전트가 없는 사람, 다른 망에서 접속한 사람까지요. 같은 망끼리 묶이고 내 망이 맨 위예요.\n같은 망 사람 이름을 누르면 그 사람 에이전트 쪽으로 화면이 따라갑니다.',
   'tour.chat.title': '내 캐릭터와 상태 메시지',
   'tour.chat.body':
     '에이전트와 따로 사람마다 캐릭터가 하나 있어요. 방향키로 어디든 걸어 다니고, 대기실 의자에 앉을 수 있어요. 대기실 윗벽 게임기 앞 의자에 앉으면 그 게임이 바로 시작되고, 점수는 명예의 전당에 남아요(한 게임기에 한 명씩).\n아래 입력창에 상태를 쓰고 Enter를 누르면 머리 위에 상태 메시지가 걸려요. Space+Enter로 입력창에 가고, Esc로 빠져나와요.',
@@ -653,7 +653,7 @@ const ko = {
     '이 PC와 같은 망 PC에서 돌고 있는 Claude Code와 Codex 에이전트가 캐릭터가 되어 사무실에서 일해요.\n에이전트가 지금 하는 일에 따라 알맞은 방으로 걸어가 자리에 앉고, 머리 위 말풍선에 하는 일이 보입니다.\n따로 설정할 건 없어요. 에이전트를 실행하면 알아서 나타나고, 끝나면 사라집니다.',
   'manual.rooms.title': '방 네 개',
   'manual.rooms.body':
-    '코딩실: 파일을 고칠 때 (Edit/Write, apply_patch, sed -i 같은 명령).\n자료실: 파일을 읽거나 코드·웹을 검색할 때, 그리고 생각 중일 때.\n서버실: 명령을 실행할 때와 백그라운드 셸.\n대기실: 입력이나 승인을 기다릴 때, 일을 마쳤을 때.\n같은 종류의 일을 3초쯤 계속해야 방을 옮겨서 왔다 갔다 하지 않아요.',
+    '코딩실: 파일을 고칠 때 (Edit/Write, apply_patch, sed -i 같은 명령).\n자료실: 파일을 읽거나 코드·웹을 검색할 때, 그리고 생각 중일 때.\n서버실: 명령을 실행할 때와 백그라운드 셸.\n대기실: 질문에 답을 기다리거나 일을 맡겼을 때, 일을 마쳤을 때(명령 승인은 일하던 방에서 기다려요).\n같은 종류의 일을 3초쯤 계속해야 방을 옮겨서 왔다 갔다 하지 않아요.',
   'manual.serverZones.title': '서버실 작업 구역',
   'manual.serverZones.body':
     '서버실은 바닥의 노란 테이프로 네 구역이 나뉘어 있어요.\n왼쪽 위 테스트(vitest, pytest, curl…), 오른쪽 위 빌드(tsc, lint, 설치, docker…), 왼쪽 아래 Git, 오른쪽 아래 나머지 실행.\n에이전트는 명령 종류에 맞는 구역에 앉고, 꽉 차면 서버실의 다른 빈자리로 갑니다. 구역 이름표에 마우스를 올리면 어떤 명령이 오는지 보여요.',
@@ -680,7 +680,7 @@ const ko = {
     '서브에이전트와 셸은 부모와 같은 모습이고, 같은 방이면 부모 옆 빈자리에 앉아요.\n부모가 일을 맡기거나 서브에이전트가 결과를 보고할 때는 둘이 마주 보고 잠깐 이야기를 나눕니다.',
   'manual.waiting.title': '승인 대기 !',
   'manual.waiting.body':
-    '머리 위에 빨간 !가 뜨면 내 승인이나 답을 기다리는 중이에요.\n대기실로 돌아온 에이전트는 사람 캐릭터에 합쳐지는데, 그때는 사람 머리 위에 !가 뜹니다.',
+    '머리 위에 빨간 !가 뜨면 내 승인이나 답을 기다리는 중이에요. 명령 승인은 일하던 방에서 기다려요.\n질문에 답을 기다리는 에이전트는 대기실에서 사람 캐릭터에 합쳐지고, 그때는 사람 머리 위에 !가 뜹니다.',
   'manual.effects.title': '효과',
   'manual.effects.body':
     '파일을 고치면 +12 −3처럼 바꾼 줄 수가 떠올라요.\n도구가 실패하면 PC가 빨갛게 깜빡이고 연기가 나며, 머리 옆에 물방울이 맺혀요.\n할 일을 다 끝내거나 메인 에이전트가 일을 마치면 폭죽이 터지고, 도구 결과가 아주 크면 📦 +82k가 떠요.',
@@ -731,7 +731,7 @@ const ko = {
     '대기실 윗벽 게임기 여섯 대: 방화벽 깨기, 케이블, 버그 잡기, 드론 배송, 머지, 랙 쌓기.\n게임기 앞 의자에 앉으면 바로 시작돼요. 왼쪽에 하는 법, 오른쪽에 명예의 전당.\n게임기 하나에 한 명씩. 점수는 중계 서버가 입력을 다시 돌려 매겨요. M이나 🔊로 소리를 끄고, Esc로 그만둡니다.',
   'manual.switcher.title': '오피스 바꾸기',
   'manual.switcher.body':
-    '화면 맨 위 버튼으로 🏠 개인용, 🌐 공개 오피스, 🔒 팀을 언제든 오가요.\n오피스마다 배치, 내 캐릭터 위치, 상태 메시지가 따로예요. 마지막에 고른 오피스로 다시 열립니다.',
+    '화면 맨 위 버튼으로 🏠 개인용, 🌐 공개 오피스, 🔒 팀을 언제든 오가요.\n배치는 오피스마다 따로고, 캐릭터 위치는 개인용과 공개·팀이 따로 기억돼요. 상태 메시지는 쓴 오피스에서만 보여요. 마지막에 고른 오피스로 다시 열립니다.',
   'manual.personal.title': '개인용',
   'manual.personal.body':
     '나 혼자 쓰는 작은 사무실이에요. 에이전트, 상태 메시지, 캐릭터 위치가 다른 PC로 나가지 않아요.\n다른 사람 목록의 "개인용"에 이름만 보여요. 팀에서 나간 게 아니라 코드 없이 팀으로 돌아갈 수 있어요.',
@@ -740,7 +740,7 @@ const ko = {
     '같은 망에서 앱을 쓰는 사람은 설정 없이 함께 들어와요. 에이전트, 캐릭터, 상태 메시지, 배치는 같은 망 안에서만 오가요.\n다른 망 사람은 중계를 거쳐 오른쪽 목록에만 나와요(누가 접속했는지만).\n작업 내용(파일, 명령, 답변)은 보이지 않고 일의 종류, 세션 제목, 토큰 같은 것만 보여요.',
   'manual.team.title': '방 (팀 오피스)',
   'manual.team.body':
-    '설정 → 오피스에서 제목과 접속코드(선택)로 방을 만들면 내가 방장이 돼요. 같은 망 사람은 방 목록에서 골라 들어오고, 접속코드가 있으면 맞혀야 해요.\n방장 PC 가 켜져 있어야 새로 들어올 수 있어요. 한 방에 최대 20명, 내용은 암호화돼 같은 망에서만 오가고 프로그램·파일 이름까지 보여요.\n방은 한 번에 하나만. 방에 있는 동안 공개 오피스에서는 내가 안 보여요.',
+    '설정 → 오피스에서 제목과 접속코드(선택)로 방을 만들면 내가 방장이 돼요. 같은 망 사람은 방 목록에서 골라 들어오고, 접속코드가 있으면 맞혀야 해요.\n방장 PC 가 켜져 있고 그 방을 보고 있어야 새로 들어올 수 있어요. 한 방에 최대 20명, 내용은 암호화돼 같은 망에서만 오가고 프로그램·파일 이름까지 보여요.\n방은 한 번에 하나만. 방에 있는 동안 공개 오피스에서는 내가 안 보여요.',
   'manual.editFloor.title': '바닥 · 벽 칠하기',
   'manual.editFloor.body':
     '왼쪽 위 레이아웃 버튼으로 편집을 열어요. 바닥 무늬와 색을 고르고 방을 누르면 방 전체가 칠해져요. 서버실은 구역 하나씩.\n벽은 위치는 고정이고 색만 바꿔요. [복사]로 칠해진 바닥을 집어 올 수 있어요.',
@@ -1371,7 +1371,7 @@ const en: Record<Key, string> = {
     'Commands run in the server room. It has four zones, Test, Build, Git and Run, and an agent sits in the one that fits its command.\nHover a zone plate to see what goes where.',
   'tour.roomLounge.title': 'Lounge',
   'tour.roomLounge.body':
-    "The lounge belongs to people. When an agent is idle or waiting for you, it walks back here and merges into its owner's character. A red ! over someone means an agent needs them.\nAgents only move once a new activity lasts about 3 seconds, so quick tasks don't make them bounce around.",
+    "The lounge belongs to people. When an agent is done or waiting for your answer to a question, it walks back here and merges into its owner's character. A red ! means an agent needs you (an approval prompt waits where the agent works).\nAgents only move once a new activity lasts about 3 seconds, so quick tasks don't make them bounce around.",
   'tour.tag.title': 'Name tags',
   'tour.tag.body':
     "The tag says what the character is: MAIN for a main agent, SUB or SHELL for its helpers, then its number and the owner's name.\nThe bubble above shows Claude (orange) or Codex (green) and what it's doing right now.",
@@ -1394,7 +1394,7 @@ const en: Record<Key, string> = {
     "🏠 Personal is just you, and where you start. 🌐 The public office is shared by everyone with the app on your network; people on other networks show up in the people panel only. 🔒 A room (team office) is one someone on your network opened, shared only by the people who joined it; while you're in it, you're not in the public office.\nThe app reopens the office you used last.",
   'tour.people.title': "Who's online",
   'tour.people.body':
-    'Everyone in this office is listed here, agents or not, people on other networks too, grouped by network with yours on top. A ❗ means one of their agents is waiting for them.\nClick someone on your network and the view follows their agents.',
+    'Everyone in this office is listed here, agents or not, people on other networks too, grouped by network with yours on top.\nClick someone on your network and the view follows their agents.',
   'tour.chat.title': 'Your character and status',
   'tour.chat.body':
     'You have a character too. Walk it around with the arrow keys and sit down on a lounge chair. Sit in front of an arcade cabinet on the lounge top wall and its game starts at once; scores go to the hall of fame (one player per cabinet).\nType a status in the bar at the bottom and press Enter to show it over your head. Space+Enter jumps to the bar, Esc leaves it.',
@@ -1466,7 +1466,7 @@ const en: Record<Key, string> = {
     'Claude Code and Codex agents running on this PC and on PCs of the same network become characters working in an office.\nEach walks to the room that fits what it is doing and sits down; the bubble over its head says what it does.\nNothing to set up: start an agent and it shows up, finish it and it leaves.',
   'manual.rooms.title': 'Four rooms',
   'manual.rooms.body':
-    'Coding Room: editing files (Edit/Write, apply_patch, commands like sed -i).\nLibrary: reading files, searching code or the web, and thinking.\nServer Room: running commands and background shells.\nLounge: waiting for input or approval, and when done.\nAn agent changes room only after about 3 s of the same kind of work, so it does not run back and forth.',
+    'Coding Room: editing files (Edit/Write, apply_patch, commands like sed -i).\nLibrary: reading files, searching code or the web, and thinking.\nServer Room: running commands and background shells.\nLounge: asking you a question, handing work to a subagent, and when done (an approval prompt waits in the room it works in).\nAn agent changes room only after about 3 s of the same kind of work, so it does not run back and forth.',
   'manual.serverZones.title': 'Server Room work zones',
   'manual.serverZones.body':
     'Yellow floor tape splits the Server Room into four zones.\nTop left tests (vitest, pytest, curl…), top right builds (tsc, lint, installs, docker…), bottom left Git, bottom right everything else.\nAgents sit in the zone of their command; when it is full, anywhere free in the room. Hover a zone plate to see which commands go there.',
@@ -1493,7 +1493,7 @@ const en: Record<Key, string> = {
     'Subagents and shells look like their parent and sit at the free seat closest to it in the same room.\nWhen the parent hands over a task, or a subagent reports back, the two face each other and talk for a moment.',
   'manual.waiting.title': 'Waiting !',
   'manual.waiting.body':
-    "A red ! over a head means the agent waits for your approval or answer.\nAgents back in the lounge fold into their owner's character; then the ! shows over that person.",
+    "A red ! over a head means the agent waits for your approval or answer. An approval prompt waits in the room the agent works in.\nAn agent asking a question goes back to the lounge and folds into its owner's character; then the ! shows over that person.",
   'manual.effects.title': 'Effects',
   'manual.effects.body':
     'Editing a file floats the lines changed, like +12 −3.\nA failed tool makes the PC flash red with smoke, and a drop forms by the head.\nFinishing a task list, or a main agent finishing its turn, fires confetti; a huge tool result shows 📦 +82k.',
@@ -1544,7 +1544,7 @@ const en: Record<Key, string> = {
     'Six cabinets on the lounge top wall: Firewall Breaker, Cable Run, Bug Squash, Drone Delivery, Merge, Rack Stack.\nSit on the chair in front of one and its game starts at once: how to play on the left, the hall of fame on the right.\nOne player per cabinet. The relay replays your inputs to score them. M or 🔊 mutes, Esc quits.',
   'manual.switcher.title': 'Switching offices',
   'manual.switcher.body':
-    'The buttons at the top switch between 🏠 Personal, 🌐 Public office and 🔒 your team at any time.\nEach office has its own layout, character spot and status message; the app reopens in the one you used last.',
+    'The buttons at the top switch between 🏠 Personal, 🌐 Public office and 🔒 your team at any time.\nEach office has its own layout; your character spot is kept apart for Personal and for public/team, and a status message shows only in the office you wrote it in. The app reopens in the one you used last.',
   'manual.personal.title': 'Personal',
   'manual.personal.body':
     "A small office just for you: agents, status message and your character's spot never leave this PC.\nOthers only see your name under Personal in their list. You stay in your team, so you can go back without a code.",
@@ -1553,7 +1553,7 @@ const en: Record<Key, string> = {
     'Everyone using the app on your network is in it, with nothing to set up. Agents, characters, status messages and layout stay on that network.\nPeople on other networks come through the relay into the list on the right only (just who is online).\nNo work details (files, commands, replies) are shown there: only the kind of work, session titles, tokens and such.',
   'manual.team.title': 'Room (team office)',
   'manual.team.body':
-    'Settings → Offices: create a room with a title and an optional access code, and you are its host. People on your network pick it from the room list; with a code they must type it.\nNewcomers get in only while the host’s PC is on. Up to 20 per room; traffic is encrypted, stays on your network and shows program and file names too.\nOne room at a time; while in it, you are not seen in the public office.',
+    'Settings → Offices: create a room with a title and an optional access code, and you are its host. People on your network pick it from the room list; with a code they must type it.\nNewcomers get in only while the host’s PC is on and showing the room. Up to 20 per room; traffic is encrypted, stays on your network and shows program and file names too.\nOne room at a time; while in it, you are not seen in the public office.',
   'manual.editFloor.title': 'Floors · walls',
   'manual.editFloor.body':
     'The layout button top left opens the editor. Pick a floor pattern and colour, then click a room to paint all of it (the Server Room one zone at a time).\nWalls are fixed in place; only their colour changes. Copy picks up a painted floor.',

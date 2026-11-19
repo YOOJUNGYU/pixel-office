@@ -109,7 +109,7 @@
     <rect class="box" x="690" y="230" width="250" height="110" style="stroke:var(--be)"/>
     <text x="706" y="256" class="t">같은 LAN의 다른 PC</text>
     <text x="706" y="278" class="sm">같은 Node 서버가 돌고 있음</text>
-    <text x="706" y="300" class="mono">에이전트·채팅·아바타</text>
+    <text x="706" y="300" class="mono">에이전트·상태 메시지·아바타</text>
     <text x="706" y="318" class="mono">공유 레이아웃</text>
     <path class="ln" d="M630 300 H690" marker-end="url(#ar)" marker-start="url(#ar)"/>
     <text x="636" y="290" class="lbl">UDP 47800</text>
@@ -206,8 +206,8 @@
     <tr><td>런타임</td><td>Node.js 22.23.3</td><td>공식 바이너리를 설치 파일에 동봉 (SHA-256 검증). 사용자가 Node를 깔 필요 없음</td></tr>
     <tr><td>웹 서버</td><td>Fastify 5 + @fastify/websocket, @fastify/static, @fastify/cors</td><td>유일한 런타임 의존성 4개. <code>/ws</code>, <code>/ws/transcript</code>, <code>/api/health|ping|quit</code>, SPA 정적 파일</td></tr>
     <tr><td>번들</td><td>esbuild 0.28</td><td>Fastify까지 전부 <code>dist/cli.js</code> 하나로. 실행에 <code>node_modules</code> 불필요. 버전은 빌드 시 <code>__APP_VERSION__</code>로 주입</td></tr>
-    <tr><td>P2P 네트워크</td><td><code>dgram</code> (UDP 47800)</td><td>평문 hello + 쌍별 암호 presence / 팀 브로드캐스트. 데이터그램 ≤ 1200B, 넘치면 deflate 후 최대 48조각 분할</td></tr>
-    <tr><td>암호</td><td><code>node:crypto</code></td><td>X25519 신원키, HKDF로 쌍·팀 키 유도, AES-256-GCM 봉인, TOFU 키 고정, 채널별 재전송 방지 seq</td></tr>
+    <tr><td>P2P 네트워크</td><td><code>dgram</code> (UDP 47800)</td><td>평문 hello/watch + 쌍별 암호 presence / 팀 브로드캐스트, 방 광고(<code>room</code>)와 입장 요청·허가(<code>ask</code>/<code>admit</code>, 쌍 키로 봉인). 데이터그램 ≤ 1200B, 넘치면 deflate 후 최대 48조각 분할</td></tr>
+    <tr><td>암호</td><td><code>node:crypto</code></td><td>X25519 신원키, HKDF로 쌍 키·팀 키(방장이 만든 무작위 방 비밀에서) 유도, 접속코드는 상수 시간 비교, AES-256-GCM 봉인, TOFU 키 고정, 채널별 재전송 방지 seq</td></tr>
     <tr><td>압축</td><td><code>zlib</code></td><td>큰 presence, 공유 레이아웃, 업데이트 tgz 해제</td></tr>
     <tr><td>릴레이 클라이언트</td><td>Node 22 전역 <code>WebSocket</code></td><td>새 의존성 없이 WSS. 백오프, 하프오픈 감지, OS 인증서 저장소를 신뢰 CA에 추가(사내 TLS 검사 대응)</td></tr>
     <tr><td>프로세스</td><td><code>child_process</code></td><td>트레이 헬퍼, WSL 프로세스 확인(<code>wsl.exe</code>), 업데이트 재시작, PWA 창 열기</td></tr>
@@ -234,7 +234,7 @@
     <div class="panel"><h3>로컬 전용 기능</h3><ul>
       <li><code>transcript.ts</code>: 내 에이전트의 전체 대화를 페이지 단위로 열람</li>
       <li><code>usage.ts</code>: 모든 트랜스크립트 토큰 사용량을 일·프로젝트·모델별 집계 → <code>usage.json</code></li>
-      <li><code>notify.ts</code>: 입장/퇴장, 승인 대기, 완료, 채팅 OS 알림</li>
+      <li><code>notify.ts</code>: 입장/퇴장, 승인 대기, 완료 OS 알림</li>
       <li>이 데이터는 절대 네트워크로 나가지 않음</li>
     </ul></div>
     <div class="panel"><h3>운영 기능</h3><ul>
@@ -266,7 +266,7 @@
     </ul></div>
     <div class="panel"><h3>무엇을 나르나</h3><ul>
       <li>1.0.64부터 "누가 접속 중인지"만 (<code>me</code> → <code>roster/person/join/leave</code>)</li>
-      <li>에이전트·채팅·아바타·레이아웃은 LAN(UDP)에만</li>
+      <li>에이전트·상태 메시지·아바타·레이아웃은 LAN(UDP)에만</li>
       <li>아케이드: 시드 티켓 HMAC 발급 → 입력 기록을 릴레이가 직접 재생해 점수 검증</li>
     </ul></div>
     <div class="panel"><h3>비용 방어</h3><ul>
