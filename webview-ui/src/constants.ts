@@ -817,6 +817,10 @@ export const PEOPLE_ROW_PX = 42;
 export const PEOPLE_OVERSCAN = 4;
 /** Settings → 관리자 토큰: longest token the server accepts (asyncapi setRelayAdminToken maxLength). */
 export const RELAY_ADMIN_TOKEN_MAX = 256;
+/** Settings: Ctrl+clicks on the title that reveal the hidden admin token field, and the most
+ *  time between two of them (a slower click starts the count over). */
+export const ADMIN_REVEAL_CLICKS = 5;
+export const ADMIN_REVEAL_GAP_MS = 1500;
 /** Same-network badges in the public area (망 1, 망 2, …), cycled by number. */
 export const NET_BADGE_COLORS: ReadonlyArray<{ bg: string; fg: string }> = [
   { bg: '#3794ff', fg: '#ffffff' },

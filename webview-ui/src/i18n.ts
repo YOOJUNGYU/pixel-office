@@ -726,9 +726,6 @@ const ko = {
   'manual.team.title': '팀 오피스',
   'manual.team.body':
     '설정 → 오피스에서 팀 이름을 정해 만들면 초대 코드(PO2-…)가 나와요. 팀원은 그 코드로 들어옵니다.\n내용은 암호화돼 팀원끼리 같은 망에서만 오가고, 프로그램·파일 이름까지 보여요.\n팀은 한 번에 하나만. 팀에 있는 동안 공개 오피스에서는 내가 안 보여요.',
-  'manual.adminKick.title': '관리자 강퇴',
-  'manual.adminKick.body':
-    '중계 관리자는 설정 → 관리자 토큰을 넣으면 공개 오피스 목록 줄에 [강퇴] 버튼이 생겨요.\n강퇴된 PC는 중계에서만 빠지고(기본 24시간) 같은 망 공개 오피스는 그대로 씁니다.',
   'manual.editFloor.title': '바닥 · 벽 칠하기',
   'manual.editFloor.body':
     '왼쪽 위 레이아웃 버튼으로 편집을 열어요. 바닥 무늬와 색을 고르고 방을 누르면 방 전체가 칠해져요. 서버실은 구역 하나씩.\n벽은 위치는 고정이고 색만 바꿔요. [복사]로 칠해진 바닥을 집어 올 수 있어요.',
@@ -1530,9 +1527,6 @@ const en: Record<Key, string> = {
   'manual.team.title': 'Team office',
   'manual.team.body':
     'Settings → Offices: name a team to create it and get an invite code (PO2-…); teammates join with that code.\nIts traffic is encrypted, stays on your network between teammates, and shows program and file names too.\nOne team at a time; while in it, you are not seen in the public office.',
-  'manual.adminKick.title': 'Admin kick',
-  'manual.adminKick.body':
-    'A relay admin who enters Settings → Admin token gets a Kick button on public-office rows.\nA kicked PC only leaves the relay (24 h by default); its public office on its own network keeps working.',
   'manual.editFloor.title': 'Floors · walls',
   'manual.editFloor.body':
     'The layout button top left opens the editor. Pick a floor pattern and colour, then click a room to paint all of it (the Server Room one zone at a time).\nWalls are fixed in place; only their colour changes. Copy picks up a painted floor.',

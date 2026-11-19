@@ -36,7 +36,7 @@ export const MANUAL: readonly ManualEntry[] = [
   ),
   ...e('sessions', 'transcript', 'shellOutput', 'usage', 'sessionFinder', 'codexLimits'),
   ...e('people', 'avatar', 'chat', 'peoplePanel', 'selectPc', 'lounge', 'profile', 'arcade'),
-  ...e('offices', 'switcher', 'personal', 'public', 'team', 'adminKick'),
+  ...e('offices', 'switcher', 'personal', 'public', 'team'),
   ...e('layout', 'editFloor', 'editFurniture', 'editBackground', 'editSave', 'importExport'),
   ...e('system', 'notifications', 'tray', 'autostart', 'updates', 'installApp', 'quit', 'tour'),
 ];
