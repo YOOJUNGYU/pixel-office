@@ -33,6 +33,7 @@ export type ServerMessage =
   | ArcadeBoard
   | OfficesState
   | RoomsState
+  | OfficeNotice
   | OfficeError
   | ProfileError
   | TranscriptLoaded
@@ -501,6 +502,13 @@ export interface RoomSummary {
   count: number;
   max: number;
 }
+
+export interface OfficeNotice {
+  type: 'officeNotice';
+  reason: OfficeNoticeReason;
+}
+
+export type OfficeNoticeReason = 'publicFull';
 
 export interface OfficeError {
   type: 'officeError';

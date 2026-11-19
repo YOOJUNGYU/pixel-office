@@ -5,6 +5,7 @@ import { isLayoutGrid } from '../../../core/src/lan.js';
 import type {
   AutostartState,
   OfficeError,
+  OfficeNotice,
   OfficePersonMessage,
   OfficeSnapshot,
   OfficesState,
@@ -110,6 +111,8 @@ interface ExtensionMessageState {
   offices: Omit<OfficesState, 'type'> | null;
   /** Rooms heard on this PC's LAN (this PC's browser only). */
   rooms: RoomSummary[];
+  /** Latest officeNotice (each a new object: the toast shows on change). */
+  officeNotice: OfficeNotice | null;
   notify: NotifySettings | null;
   setNotify: (v: NotifySettings) => void;
   /** Latest reply to an office request from this browser (each a new object). */
@@ -158,6 +161,7 @@ export function useExtensionMessages(
   const [autostart, setAutostart] = useState<AutostartState | null>(null);
   const [offices, setOffices] = useState<Omit<OfficesState, 'type'> | null>(null);
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
+  const [officeNotice, setOfficeNotice] = useState<OfficeNotice | null>(null);
   const [notify, setNotify] = useState<NotifySettings | null>(null);
   const [officeReply, setOfficeReply] = useState<OfficeReply | null>(null);
   const clearOfficeReply = useCallback(() => setOfficeReply(null), []);
@@ -258,6 +262,8 @@ export function useExtensionMessages(
         setOffices({ offices, activeView });
       } else if (msg.type === 'roomsState') {
         setRooms((msg as RoomsState).rooms);
+      } else if (msg.type === 'officeNotice') {
+        setOfficeNotice(msg as OfficeNotice);
       } else if (msg.type === 'officeError') {
         setOfficeReply(msg as OfficeReply);
       } else if (msg.type === 'characterSpritesLoaded') {
@@ -376,6 +382,7 @@ export function useExtensionMessages(
     autostart,
     offices,
     rooms,
+    officeNotice,
     officeReply,
     clearOfficeReply,
     savedLayoutRef,

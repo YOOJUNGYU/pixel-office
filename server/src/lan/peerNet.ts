@@ -37,6 +37,7 @@ import {
   PRESENCE_MAX_COMPRESSED,
   PRESENCE_MAX_JSON,
   PRESENCE_PART_BYTES,
+  PUBLIC_FULL_GRACE_MS,
   RELAY_MIN_SEND_MS,
   ROOM_ASK_GAP_MS,
   ROOM_ASKS_PER_SEC,
@@ -404,6 +405,10 @@ export class PeerNet {
   >();
   /** `pub|${peer}` or a team tag → when this PC last pushed its layout there. */
   private readonly layoutPushed = new Map<string, number>();
+  /** Public PCs whose hello was turned away because the office was full (id → when). */
+  private readonly refused = new Map<string, number>();
+  /** When this PC last entered the public office (-Infinity = not in it). */
+  private publicSince = -Infinity;
   /** Room adverts heard on the LAN: tag → advert, its host's address, when. */
   private readonly rooms = new Map<
     string,
@@ -504,6 +509,8 @@ export class PeerNet {
     if (!this.timer) return; // not started (or stopped)
     this.opts.relay?.want(this.onRelay());
     this.prune();
+    if (!this.inPublic()) this.publicSince = -Infinity;
+    else if (this.publicSince === -Infinity) this.publicSince = this.now();
     const { identity } = this.opts;
     const offices = this.opts.offices();
     const broadcast = this.opts.targets?.() ?? [
@@ -605,6 +612,20 @@ export class PeerNet {
       ...sealed,
     };
     this.send(ask, j.target);
+  }
+
+  /**
+   * The public office is full for this PC: in it for PUBLIC_FULL_GRACE_MS, holding the most
+   * peers it may, more public PCs turned away, and not one held peer sends us its presence
+   * (they are all full and turned our hello away). The members of a full office do get each
+   * other's presence, so only the newcomers see this.
+   */
+  publicFull(): boolean {
+    const t = this.now();
+    if (!this.inPublic() || t - this.publicSince < PUBLIC_FULL_GRACE_MS) return false;
+    if (this.hellos.size < OFFICE_MAX_PEOPLE - 1) return false;
+    if (![...this.refused.values()].some((at) => this.live(at, t))) return false;
+    return ![...this.hellos.values()].some((h) => this.confirmed(h, t));
   }
 
   /** Rooms heard on the LAN (live adverts), newest title per tag. */
@@ -1127,6 +1148,8 @@ export class PeerNet {
     // never in it, so only the safety cap applies to them.
     const cap = map === this.hellos ? OFFICE_MAX_PEOPLE - 1 : MAX_HELLO_PEERS;
     if (!prev && map.size >= cap) {
+      if (map === this.hellos && (this.refused.has(id) || this.refused.size < MAX_HELLO_PEERS))
+        this.refused.set(id, this.now());
       const kind = map === this.watchers ? 'watch' : 'hello';
       this.warnOnce(
         `full:${kind}`,
@@ -1276,6 +1299,7 @@ export class PeerNet {
     }
     for (const tag of this.names.keys()) if (!live.has(tag)) this.names.delete(tag);
     for (const [tag, r] of this.rooms) if (!this.live(r.at, t)) this.rooms.delete(tag);
+    for (const [id, at] of this.refused) if (!this.live(at, t)) this.refused.delete(id);
     for (const [id, at] of this.asked) if (t - at > ROOM_ASK_GAP_MS) this.asked.delete(id);
     for (const [ch, a] of this.layoutAssemblies)
       if (t - a.at > LAYOUT_ASSEMBLY_MS || !live.has(ch)) this.layoutAssemblies.delete(ch);

@@ -105,6 +105,7 @@ components:
         # Offices (loopback browser only)
         - $ref: '#/components/schemas/OfficesState'
         - $ref: '#/components/schemas/RoomsState'
+        - $ref: '#/components/schemas/OfficeNotice'
         - $ref: '#/components/schemas/OfficeError'
         - $ref: '#/components/schemas/ProfileError'
         # Transcript of this PC's agent (loopback browser, requesting socket only)
@@ -590,6 +591,25 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RoomSummary'
+
+    OfficeNotice:
+      description: >-
+        Something the server did to the office view on its own, to every
+        loopback page: `publicFull` = the public office already holds its 20
+        people on this network and none of them took this PC in, so it moved
+        to personal mode.
+      type: object
+      additionalProperties: false
+      required: [type, reason]
+      properties:
+        type:
+          const: officeNotice
+        reason:
+          $ref: '#/components/schemas/OfficeNoticeReason'
+
+    OfficeNoticeReason:
+      type: string
+      enum: [publicFull]
 
     RoomSummary:
       description: >-

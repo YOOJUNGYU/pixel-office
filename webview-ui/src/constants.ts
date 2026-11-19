@@ -780,6 +780,8 @@ export const FIRST_OPEN_FIT_FILL = 0.95;
 export const FIT_TOP_MARGIN_PX = 56;
 /** How long a toast stays (layout not saved, relay kick result). */
 export const TOAST_MS = 4_000;
+/** A toast about something the server did on its own (officeNotice). */
+export const TOAST_LONG_MS = 8_000;
 
 // ── App version ─────────────────────────────────────────────
 /** An unbuilt (dev/test) server's version: never triggers a reload. */

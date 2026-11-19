@@ -234,6 +234,9 @@ export const MAX_HELLO_PEERS = 256;
 export const OFFICE_MAX_PEOPLE = 20;
 /** A room's access code, code points. */
 export const MAX_ROOM_PASSWORD = 32;
+/** The public office counts as full for this PC once, this long after it entered it, the
+ *  LAN has more public PCs than it holds and none of them takes this PC's presence. */
+export const PUBLIC_FULL_GRACE_MS = 10_000;
 /** A join waits this long for the host's answer (asks re-sent every send tick). */
 export const ROOM_JOIN_TIMEOUT_MS = 6_000;
 /** The host answers one ask per requester at most this often, ROOM_ASKS_PER_SEC in all. */

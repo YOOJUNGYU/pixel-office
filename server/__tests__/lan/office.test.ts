@@ -542,6 +542,17 @@ describe('LanService', () => {
       ]);
     });
 
+    it('leaveFullPublic: only from a full public office, into personal mode', () => {
+      const { lan } = mk();
+      let full = false;
+      lan.net.publicFull = () => full;
+      expect(lan.leaveFullPublic()).toBe(false);
+      full = true;
+      expect(lan.leaveFullPublic()).toBe(true);
+      expect(lan.profile.activeView).toBe(PERSONAL_VIEW);
+      expect(lan.leaveFullPublic()).toBe(false); // not in the public office any more
+    });
+
     it('rejects bad names', () => {
       const { lan } = mk();
       expect(lan.createOffice('')).toBe('nameInvalid');

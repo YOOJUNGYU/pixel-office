@@ -101,6 +101,8 @@ export class LanService {
     viaOf?(id: string): 'lan' | 'relay' | undefined;
     /** Rooms heard on the LAN. */
     roomList?(): RoomInfo[];
+    /** The public office has no room for this PC (PeerNet.publicFull). */
+    publicFull?(): boolean;
     /** Ask a room's host to let this PC in. */
     joinRoom?(tag: string, pw: string, done: (r: JoinResult) => void): void;
   } = {
@@ -475,6 +477,14 @@ export class LanService {
       }
       done(null);
     });
+  }
+
+  /** The public office is on screen and full for this PC: move to personal mode (the caller
+   *  tells the page). true = moved. */
+  leaveFullPublic(): boolean {
+    if (this.profile.activeView !== PUBLIC_VIEW || this.net.publicFull?.() !== true) return false;
+    console.log('[Pixel Office] 공개 오피스가 가득 차 개인용으로 옮깁니다.');
+    return this.setActiveView(PERSONAL_VIEW);
   }
 
   /** The room this PC hosts while it is on screen (advertised and admitting), else null. */

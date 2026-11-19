@@ -242,6 +242,15 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
       const offices = JSON.stringify(officesMessage(lan));
       const officesChanged = offices !== lastOffices;
       lastOffices = offices;
+      // Full public office: personal mode, and the page says why.
+      try {
+        if (lan.leaveFullPublic()) {
+          for (const c of clients) safeSend(c, { type: 'officeNotice', reason: 'publicFull' });
+          onOfficesChanged(true);
+        }
+      } catch (err) {
+        console.error('[Pixel Office] Failed to leave the full public office:', err);
+      }
       const rooms = JSON.stringify(roomsMessage(lan));
       const roomsChanged = rooms !== lastRooms;
       lastRooms = rooms;

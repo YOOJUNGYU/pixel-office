@@ -20,6 +20,7 @@ import {
   MAX_WARN_KEYS,
   OFFICE_MAX_PEOPLE,
   PRESENCE_MAX_COMPRESSED,
+  PUBLIC_FULL_GRACE_MS,
   ROOM_JOIN_TIMEOUT_MS,
 } from '../../src/constants.js';
 import type { Identity } from '../../src/lan/crypto.js';
@@ -1317,5 +1318,53 @@ describe('PeerNet public office cap', () => {
     for (let i = 0; i < 30; i++)
       net.receive(JSON.stringify({ v: 2, t: 'hello', id: `H${i}`, pk: x.publicKey }), rinfo);
     expect(net.hellos.size).toBe(OFFICE_MAX_PEOPLE - 1);
+  });
+
+  it('full for a newcomer: more public PCs than it holds and none takes it in → publicFull', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const [b] = await mkNodes(['B']);
+    const x = createIdentity('X');
+    const rinfo = { address: '127.0.0.1', port: 9 };
+    const net = b.net as unknown as { receive(t: string, r: typeof rinfo): void };
+    const hear = () => {
+      for (let i = 0; i < OFFICE_MAX_PEOPLE; i++)
+        net.receive(JSON.stringify({ v: 2, t: 'hello', id: `H${i}`, pk: x.publicKey }), rinfo);
+    };
+    hear();
+    b.net.sendNow();
+    expect(b.net.publicFull()).toBe(false); // grace: just arrived
+    for (let s = 0; s < PUBLIC_FULL_GRACE_MS; s += 1_000) {
+      b.t += 1_000;
+      hear();
+      b.net.sendNow();
+    }
+    expect(b.net.publicFull()).toBe(true);
+    // One held PC takes us in (its presence reaches us): not full.
+    const key = pairKey(x.privateKeyPem, b.id.publicKey, 'H0', 'B')!;
+    const inner = JSON.stringify({ seq: 1, packet: pkt('H0') });
+    net.receive(
+      JSON.stringify({
+        v: 2,
+        t: 'pub',
+        from: 'H0',
+        to: 'B',
+        ...seal(key, pubAad('H0', 'B'), inner),
+      }),
+      rinfo,
+    );
+    expect(b.net.publicFull()).toBe(false);
+  });
+
+  it('a full office of exactly the cap is not full for its members', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const [b] = await mkNodes(['B']);
+    const x = createIdentity('X');
+    const rinfo = { address: '127.0.0.1', port: 9 };
+    const net = b.net as unknown as { receive(t: string, r: typeof rinfo): void };
+    b.net.sendNow();
+    b.t += PUBLIC_FULL_GRACE_MS;
+    for (let i = 0; i < OFFICE_MAX_PEOPLE - 1; i++)
+      net.receive(JSON.stringify({ v: 2, t: 'hello', id: `H${i}`, pk: x.publicKey }), rinfo);
+    expect(b.net.publicFull()).toBe(false); // nobody turned away
   });
 });

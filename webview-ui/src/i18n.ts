@@ -315,6 +315,8 @@ const ko = {
   'office.leave': '나가기',
   'office.leaveConfirm': '"{name}" 방에서 나갈까요? 다시 들어오려면 방 목록에서 입장해야 합니다.',
   'office.leftPublic': '공개 오피스에서 나왔습니다 — 이제 방에서만 보입니다',
+  'office.notice.publicFull':
+    '공개 오피스가 가득 찼습니다 (같은 망 최대 20명). 개인용으로 옮겼어요. 자리가 나면 🌐 공개 오피스를 다시 눌러 주세요.',
   'office.error.alreadyJoined': '이미 참여 중인 방이라 그 방으로 전환했습니다.',
   'office.error.nameInvalid': '방 제목은 1–20자여야 합니다.',
   'office.error.passwordInvalid': '접속코드는 32자까지입니다.',
@@ -1125,6 +1127,8 @@ const en: Record<Key, string> = {
   'office.leave': 'Leave',
   'office.leaveConfirm': 'Leave the "{name}" room? To come back, join it again from the room list.',
   'office.leftPublic': "You left the public office — you're now only visible in your room",
+  'office.notice.publicFull':
+    'The public office is full (20 per network). You were moved to Personal; press 🌐 Public office again once someone leaves.',
   'office.error.alreadyJoined': 'You are already in this room — switched to it.',
   'office.error.nameInvalid': 'Room title must be 1–20 characters.',
   'office.error.passwordInvalid': 'Access codes are up to 32 characters.',

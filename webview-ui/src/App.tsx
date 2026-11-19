@@ -15,6 +15,7 @@ import {
   OFFICE_CANVAS_TEST_ID,
   OTHERS_BUBBLES_KEY,
   PERSONAL_LAYOUT_ASSET,
+  TOAST_LONG_MS,
   TOAST_MS,
   TOP_RIGHT_BOTTOM_RESERVE_PX,
   TOP_RIGHT_Z_INDEX,
@@ -126,6 +127,7 @@ function App() {
     autostart,
     offices,
     rooms,
+    officeNotice,
     officeReply,
     clearOfficeReply,
     savedLayoutRef,
@@ -315,7 +317,10 @@ function App() {
 
   // A short toast: the server refused a layout save, [Save] got no answer (the editor
   // keeps the layout), or a relayKick answer. A new object per event restarts the timer.
-  const [toast, setToast] = useState<{ key: Key; ok?: true } | null>(null);
+  const [toast, setToast] = useState<{ key: Key; ok?: true; long?: true } | null>(null);
+  useEffect(() => {
+    if (officeNotice) setToast({ key: `office.notice.${officeNotice.reason}`, long: true });
+  }, [officeNotice]);
   useEffect(() => {
     if (layoutSaveRejections > 0) setToast({ key: 'app.layoutSaveRejected' });
   }, [layoutSaveRejections]);
@@ -329,7 +334,7 @@ function App() {
   }, [kickResult]);
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(null), TOAST_MS);
+    const timer = setTimeout(() => setToast(null), toast.long ? TOAST_LONG_MS : TOAST_MS);
     return () => clearTimeout(timer);
   }, [toast]);
 
@@ -749,7 +754,7 @@ function App() {
         {toast && (
           <div
             role="alert"
-            className={`absolute left-1/2 -translate-x-1/2 bottom-80 z-20 ${toast.ok ? 'bg-accent' : 'bg-danger'} text-white text-sm py-3 px-8 rounded-none border-2 border-border shadow-pixel pointer-events-none whitespace-nowrap`}
+            className={`absolute left-1/2 -translate-x-1/2 bottom-80 z-20 ${toast.ok ? 'bg-accent' : 'bg-danger'} text-white text-sm py-3 px-8 rounded-none border-2 border-border shadow-pixel pointer-events-none ${toast.long ? 'w-max max-w-[90vw] text-center' : 'whitespace-nowrap'}`}
           >
             {t(toast.key)}
           </div>
