@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { Outfit, PetId } from '../../../core/src/lan.js';
 import { isValidManualPeer, nicknameKey, PET_IDS } from '../../../core/src/lan.js';
-import type { ProfileErrorReason, ProfileMessage, TagColors } from '../../../core/src/messages.js';
+import type {
+  ProfileErrorReason,
+  ProfileMessage,
+  StatusColors,
+  TagColors,
+} from '../../../core/src/messages.js';
 import { DEFAULT_OUTFIT, onWardrobe, outfitFrames, outfitKey } from '../characters/outfit.js';
 import { Button } from '../components/ui/Button.js';
 import { Modal } from '../components/ui/Modal.js';
@@ -12,6 +17,9 @@ import {
   CHARACTER_SKIN_COLORS,
   MAX_HUE_DEG,
   PALETTE_COUNT,
+  STATUS_TAG_DEFAULT_BG,
+  STATUS_TAG_DEFAULT_BORDER,
+  STATUS_TAG_DEFAULT_FG,
 } from '../constants.js';
 import { t, useLang } from '../i18n.js';
 import { adjustSprite } from '../office/colorize.js';
@@ -116,6 +124,7 @@ export function ProfileModal({
   const [hueShift, setHueShift] = useState(profile.hueShift);
   const [pet, setPet] = useState<PetId | undefined>(profile.pet);
   const [tagColors, setTagColors] = useState<TagColors | undefined>(profile.tagColors);
+  const [statusColors, setStatusColors] = useState<StatusColors | undefined>(profile.statusColors);
   const [outfit, setOutfit] = useState<Outfit | undefined>(profile.outfit);
   const [peersText, setPeersText] = useState(profile.manualPeers.join('\n'));
   // Advanced (manual peers) starts collapsed unless some are already set.
@@ -153,6 +162,7 @@ export function ProfileModal({
       hueShift,
       ...(pet && { pet }),
       ...(tagColors && { tagColors }),
+      ...(statusColors && { statusColors }),
       ...(outfit && !pet && { outfit }),
       manualPeers,
     });
@@ -340,6 +350,52 @@ export function ProfileModal({
           ))}
           {tagColors && (
             <Button size="sm" onClick={() => setTagColors(undefined)}>
+              {t('profile.tagDefault')}
+            </Button>
+          )}
+        </div>
+
+        {/* My status message tag: colours picked here, else the theme's default tag. */}
+        <div>{t('profile.statusColors')}</div>
+        <div className="flex items-center gap-8 flex-wrap">
+          <span
+            data-testid="profile-status-preview"
+            className="whitespace-nowrap text-sm px-8 py-2 border-2 border-solid"
+            style={{
+              background: statusColors?.bg ?? 'var(--chat-bubble-bg)',
+              color: statusColors?.fg ?? 'var(--chat-bubble-fg)',
+              borderColor: statusColors?.border ?? 'var(--chat-bubble-border)',
+            }}
+          >
+            {t('profile.statusPreview')}
+          </span>
+          {(
+            [
+              ['bg', 'profile.tagBg', STATUS_TAG_DEFAULT_BG],
+              ['fg', 'profile.tagFg', STATUS_TAG_DEFAULT_FG],
+              ['border', 'profile.statusBorder', STATUS_TAG_DEFAULT_BORDER],
+            ] as const
+          ).map(([k, label, fallback]) => (
+            <label key={k} className="flex items-center gap-4">
+              {t(label)}
+              <input
+                type="color"
+                data-testid={`profile-status-${k}`}
+                value={(statusColors?.[k] ?? fallback).toLowerCase()}
+                onChange={(e) =>
+                  setStatusColors({
+                    bg: statusColors?.bg ?? STATUS_TAG_DEFAULT_BG,
+                    fg: statusColors?.fg ?? STATUS_TAG_DEFAULT_FG,
+                    border: statusColors?.border ?? STATUS_TAG_DEFAULT_BORDER,
+                    [k]: e.target.value.toUpperCase(),
+                  })
+                }
+                className="w-28 h-20 p-0 bg-bg border-2 border-border rounded-none cursor-pointer"
+              />
+            </label>
+          ))}
+          {statusColors && (
+            <Button size="sm" onClick={() => setStatusColors(undefined)}>
               {t('profile.tagDefault')}
             </Button>
           )}

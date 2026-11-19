@@ -193,7 +193,7 @@ export function ChatLayer({
             top: bottoms[i],
             width: CHAT_BORDER_PX * k,
             height: Math.max(0, at.y - bottoms[i]),
-            background: 'var(--chat-bubble-border)',
+            background: b.colors?.border ?? 'var(--chat-bubble-border)',
             zIndex: CHAT_Z_INDEX,
           }}
         />
@@ -218,6 +218,11 @@ export function ChatLayer({
             padding: `${CHAT_PAD_Y_PX}px ${CHAT_PAD_X_PX}px`,
             gap: CHAT_DELETE_GAP_PX,
             zIndex: open ? CHAT_Z_INDEX + 1 : CHAT_Z_INDEX,
+            ...(b.colors && {
+              background: b.colors.bg,
+              color: b.colors.fg,
+              borderColor: b.colors.border,
+            }),
           }}
         >
           <span

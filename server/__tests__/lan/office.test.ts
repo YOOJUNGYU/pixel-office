@@ -282,6 +282,26 @@ describe('LanService', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
+  it('statusColors: announced in self(), people() and the packet; a save without them drops them', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-lan-'));
+    const lan = new LanService({ ...profile }, { views: () => [] }, dir);
+    lan.net = {
+      peers: () => [],
+      sendNow: () => {},
+      teamName: () => undefined,
+      directory: () => ({ public: [], teams: {}, personal: [] }),
+    };
+    const { peerId: _, ...rest } = profile;
+    const statusColors = { bg: '#112233', fg: '#FFEEDD', border: '#ABCDEF' };
+    lan.saveProfile({ ...rest, statusColors });
+    expect(lan.self().statusColors).toEqual(statusColors);
+    expect(lan.people('public')[0].statusColors).toEqual(statusColors);
+    expect(lan.packet().peer.statusColors).toEqual(statusColors);
+    lan.saveProfile({ ...rest });
+    expect(lan.self()).not.toHaveProperty('statusColors');
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   describe('nickname uniqueness', () => {
     const pkt = (id: string, nickname: string): PeerPacket => ({
       v: 1,

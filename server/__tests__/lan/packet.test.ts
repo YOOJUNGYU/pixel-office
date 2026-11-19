@@ -187,6 +187,22 @@ describe('parsePeerPacket', () => {
     }
   });
 
+  it('statusColors: optional bg/fg/border hex colours; anything else is dropped', () => {
+    const peer = packet().peer;
+    expect(parse(packet())?.peer).not.toHaveProperty('statusColors');
+    const ok = { bg: '#abcdef', fg: '#000000', border: '#123456' };
+    expect(parse(packet({ peer: { ...peer, statusColors: ok } }))?.peer.statusColors).toEqual({
+      bg: '#ABCDEF',
+      fg: '#000000',
+      border: '#123456',
+    });
+    for (const bad of [{ ...ok, border: 'red' }, { bg: '#abcdef', fg: '#000000' }, 'x', 1]) {
+      expect(
+        parse(packet({ peer: { ...peer, statusColors: bad as never } }))?.peer,
+      ).not.toHaveProperty('statusColors');
+    }
+  });
+
   it('round-trips a valid packet', () => {
     const p = packet();
     expect(parse(p)).toEqual(p);

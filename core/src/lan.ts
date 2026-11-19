@@ -414,6 +414,8 @@ export interface PeerInfo {
   pet?: PetId;
   /** Avatar name tag colours; absent = the default tag. */
   tagColors?: TagColors;
+  /** Status message tag colours; absent = the default tag. */
+  statusColors?: StatusColors;
   /** App version (`1.0.45`); absent = a peer ≤ 1.0.44 or a malformed value. */
   ver?: string;
   /** Wardrobe look (≥ 1.0.64); absent = the palette character. Older peers ignore it. */
@@ -486,6 +488,23 @@ export interface TagColors {
 }
 
 const HEX_COLOR = /^#[0-9A-F]{6}$/i;
+
+/** A person's status message tag colours (`#RRGGBB`, upper case), chosen in the profile. */
+export interface StatusColors {
+  bg: string;
+  fg: string;
+  border: string;
+}
+
+/** Untrusted status tag colours → all three valid hex colours (upper-cased), else undefined. */
+export function parseStatusColors(raw: unknown): StatusColors | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const { bg, fg, border } = raw as Record<string, unknown>;
+  const ok = (c: unknown): c is string => typeof c === 'string' && HEX_COLOR.test(c);
+  return ok(bg) && ok(fg) && ok(border)
+    ? { bg: bg.toUpperCase(), fg: fg.toUpperCase(), border: border.toUpperCase() }
+    : undefined;
+}
 
 /** Untrusted tag colours → both valid hex colours (upper-cased), else undefined. */
 export function parseTagColors(raw: unknown): TagColors | undefined {
@@ -806,6 +825,8 @@ export function parsePeerInfo(raw: unknown): PeerInfo | null {
   if (isPetId(raw.pet)) peer.pet = raw.pet;
   const tagColors = parseTagColors(raw.tagColors);
   if (tagColors) peer.tagColors = tagColors;
+  const statusColors = parseStatusColors(raw.statusColors);
+  if (statusColors) peer.statusColors = statusColors;
   const outfit = parseOutfit(raw.outfit);
   if (outfit) peer.outfit = outfit;
   const since = raw.nickSince;

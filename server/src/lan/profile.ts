@@ -3,7 +3,14 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import type { AvatarPos, Outfit, PeerChat, PetId, TagColors } from '../../../core/src/lan.js';
+import type {
+  AvatarPos,
+  Outfit,
+  PeerChat,
+  PetId,
+  StatusColors,
+  TagColors,
+} from '../../../core/src/lan.js';
 import {
   cleanAccount,
   isPetId,
@@ -12,6 +19,7 @@ import {
   parseAvatar,
   parseChat,
   parseOutfit,
+  parseStatusColors,
   parseTagColors,
   PERSONAL_VIEW,
   PUBLIC_VIEW,
@@ -45,6 +53,8 @@ export interface Profile {
   pet?: PetId;
   /** Avatar name tag colours; absent = the default tag. */
   tagColors?: TagColors;
+  /** Status message tag colours; absent = the default tag. */
+  statusColors?: StatusColors;
   /** Wardrobe look (≥ 1.0.64); absent = the palette character. */
   outfit?: Outfit;
   manualPeers: string[];
@@ -81,7 +91,14 @@ function parseSavedAvatars(raw: unknown): SavedAvatars | undefined {
 /** What saveProfile may change; identity/offices/views change only via their own messages. */
 export type EditableProfile = Pick<
   Profile,
-  'nickname' | 'palette' | 'hueShift' | 'pet' | 'tagColors' | 'outfit' | 'manualPeers'
+  | 'nickname'
+  | 'palette'
+  | 'hueShift'
+  | 'pet'
+  | 'tagColors'
+  | 'statusColors'
+  | 'outfit'
+  | 'manualPeers'
 >;
 
 const PROFILE_FILE_NAME = 'profile.json';
@@ -162,7 +179,7 @@ function parseSavedChat(raw: unknown, offices: TeamOffice[]): SavedChat | undefi
 }
 
 /** Validates a client-supplied update. Returns a fresh object, or null if anything is off.
- *  `pet` and `tagColors` are optional: an unknown id or bad colours are ignored (defaults), not an error. */
+ *  `pet`, `tagColors` and `statusColors` are optional: an unknown id or bad colours are ignored (defaults), not an error. */
 export function validateProfileUpdate(x: unknown): EditableProfile | null {
   if (!isObj(x)) return null;
   const o = x;
@@ -172,6 +189,7 @@ export function validateProfileUpdate(x: unknown): EditableProfile | null {
   if (!isInt(o.palette, 0, 5) || !isInt(o.hueShift, 0, 360)) return null;
   if (!Array.isArray(o.manualPeers) || o.manualPeers.length > MAX_MANUAL_PEERS) return null;
   const tagColors = parseTagColors(o.tagColors);
+  const statusColors = parseStatusColors(o.statusColors);
   const outfit = parseOutfit(o.outfit);
   const manualPeers: string[] = [];
   for (const p of o.manualPeers) {
@@ -187,6 +205,7 @@ export function validateProfileUpdate(x: unknown): EditableProfile | null {
     hueShift: o.hueShift,
     ...(isPetId(o.pet) && { pet: o.pet }),
     ...(tagColors && { tagColors }),
+    ...(statusColors && { statusColors }),
     ...(outfit && { outfit }),
     manualPeers,
   };

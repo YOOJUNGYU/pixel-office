@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { OfficeAgent } from '../../core/src/lan.js';
-import {
-  fillMissingRooms,
-  isLayoutGrid,
-  PUBLIC_VIEW,
-  ROOM_LABELS,
-  ROOM_ORDER,
-} from '../../core/src/lan.js';
+import { isLayoutGrid, PUBLIC_VIEW } from '../../core/src/lan.js';
 import type { ProfileMessage } from '../../core/src/messages.js';
 import { ConnectionIndicator } from './components/ConnectionIndicator.js';
 import { EditActionBar } from './components/EditActionBar.js';
@@ -58,7 +52,6 @@ import { EditorState } from './office/editor/editorState.js';
 import { EditorToolbar } from './office/editor/EditorToolbar.js';
 import { requestRender } from './office/engine/gameLoop.js';
 import { OfficeState } from './office/engine/officeState.js';
-import { exportLayoutToFile } from './office/layout/exportLayout.js';
 import { isRotatable } from './office/layout/furnitureCatalog.js';
 import { migrateLayoutColors } from './office/layout/layoutSerializer.js';
 import { overlayProjection } from './office/projection.js';
@@ -80,11 +73,6 @@ const editorState = new EditorState();
 // Installed only under the e2e harness so they never patch prototypes or grow
 // unbounded logs in a real user's session.
 if (isE2E) installTestHooks(officeStateRef);
-
-/** Room labels with no tile in the layout. */
-function emptyRoomLabels(layout: OfficeLayout): string[] {
-  return ROOM_ORDER.map((r) => ROOM_LABELS[r]).filter((l) => !layout.areaTiles?.includes(l));
-}
 
 function getOfficeState(): OfficeState {
   if (!officeStateRef.current) {
@@ -509,57 +497,11 @@ function App() {
   const manualOpen = touring ? scene?.manual === true : isManualOpen;
   const profileOpen = touring ? scene?.profile === true : isProfileOpen;
 
-  const handleExportLayout = useCallback(() => {
-    exportLayoutToFile(getOfficeState().getLayout());
-  }, []);
-
   const fetchDefaultLayout = async (): Promise<unknown> => {
     const asset = isPersonal(offices) ? PERSONAL_LAYOUT_ASSET : DEFAULT_LAYOUT_ASSET;
     const res = await fetch(`${import.meta.env.BASE_URL}${asset}`);
     if (!res.ok) throw new Error(`default layout ${res.status.toString()}`);
     return (await res.json()) as unknown;
-  };
-
-  /** Validate, apply and save a layout from outside (file import, reset to the default). */
-  const applyLayout = async (imported: unknown) => {
-    // The server's grid check (isLayoutGrid), before anything is built: a
-    // v1 grid within 128×128 whose tiles match it, with a furniture array.
-    if (!isLayoutGrid(imported)) {
-      window.alert(t('app.importInvalid'));
-      return;
-    }
-    let migrated = migrateLayoutColors(imported as unknown as OfficeLayout);
-    // Rooms come from the bundled default: a room without tiles takes the
-    // default's when the grid is the default size (the server does the same).
-    if (emptyRoomLabels(migrated).length > 0) {
-      migrated = fillMissingRooms(migrated, await fetchDefaultLayout());
-    }
-    getOfficeState().rebuildFromLayout(migrated);
-    transport.send({
-      type: 'saveLayout',
-      layout: migrated as unknown as Record<string, unknown>,
-    });
-    savedLayoutRef.current = migrated;
-    editor.markClean();
-  };
-
-  const handleImportLayout = (file: File) => {
-    // Browser-native import: read + validate + apply directly,
-    // bypassing the layoutLoaded message whose dirty guard would skip it.
-    if (isEditDirty() && !window.confirm(t('app.importConfirm'))) {
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        applyLayout(JSON.parse(String(reader.result)) as unknown).catch(() =>
-          window.alert(t('app.importFailed')),
-        );
-      } catch {
-        window.alert(t('app.importFailed'));
-      }
-    };
-    reader.readAsText(file);
   };
 
   /** The editor's [Reset]: the bundled default as one more (undoable) edit; [Save] keeps it. */
@@ -892,8 +834,6 @@ function App() {
           onClose={() => setIsSettingsOpen(false)}
           readOnly={officeReadOnly}
           onOpenProfile={profile?.canEdit ? () => setIsProfileOpen(true) : null}
-          onExportLayout={handleExportLayout}
-          onImportLayout={handleImportLayout}
           autostart={autostart}
           notify={notify}
           onNotifyChange={setNotify}

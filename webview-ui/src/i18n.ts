@@ -243,13 +243,11 @@ const ko = {
   'app.loading': '불러오는 중…',
   'app.readOnly': '보기 전용',
   'app.rotateHint': '회전 (R)',
-  'app.importConfirm': '현재 레이아웃을 바꿀까요? 저장하지 않은 편집은 사라집니다.',
   'app.resetEditorConfirm':
     '기본 레이아웃으로 초기화할까요? [저장]을 눌러야 적용되고, [실행 취소]나 [취소]로 되돌릴 수 있습니다.',
-  'app.importInvalid': '올바른 레이아웃 파일이 아닙니다.',
   'app.layoutSaveRejected': '레이아웃을 저장하지 못했습니다 (올바르지 않은 레이아웃).',
   'app.layoutSaveTimeout': '레이아웃 저장 응답이 없습니다. 서버 연결을 확인해 주세요.',
-  'app.importFailed': '레이아웃 파일을 읽지 못했습니다.',
+  'app.importFailed': '기본 배치를 불러오지 못했습니다.',
 
   'conn.connecting': '연결 중…',
   'conn.reconnecting': '다시 연결 중…',
@@ -264,8 +262,6 @@ const ko = {
   'toolbar.settings': '설정',
 
   'settings.profile': '내 프로필',
-  'settings.export': '레이아웃 내보내기',
-  'settings.import': '레이아웃 가져오기',
   'settings.autostart': '로그인할 때 자동 실행',
   'settings.notifyPresence': '접속·퇴장 알림 (PC 알림)',
   'settings.notifyAgents': '내 에이전트 알림 (응답 대기·작업 완료)',
@@ -456,6 +452,9 @@ const ko = {
   'profile.tagBg': '배경',
   'profile.tagFg': '글자',
   'profile.tagDefault': '기본값',
+  'profile.statusColors': '내 상태 메시지 색',
+  'profile.statusBorder': '테두리',
+  'profile.statusPreview': '상태 메시지',
   'profile.manualPeers': '직접 연결할 PC IP',
   'profile.advanced': '고급: 자동으로 안 보일 때',
   'profile.manualPeersHint':
@@ -709,7 +708,7 @@ const ko = {
     '대기실로 돌아온 에이전트는 따로 보이지 않고 주인의 사람 캐릭터에 합쳐져요. 다시 일하러 나가면 사람에게서 걸어 나와요.\n내 사람 캐릭터를 누르면 합쳐진 내 에이전트 목록이 나오고, 카드를 누르면 그 대화 창이 열려요.',
   'manual.profile.title': '프로필 · 옷장',
   'manual.profile.body':
-    '설정 → 내 프로필에서 캐릭터(사람 6종, 펫 Claudio·Gitcat), 색, 닉네임, 이름표 색을 골라요.\n옷장에서는 몸, 눈, 머리, 옷, 신발, 모자, 장신구를 하나씩 고르고 색을 바꿔요.\n이름 앞에는 항상 PC 계정 이름이 붙어요. 닉네임이 겹치면 나중에 정한 쪽에 · a1b2 같은 표시가 붙습니다.',
+    '설정 → 내 프로필에서 캐릭터(사람 6종, 펫 Claudio·Gitcat), 색, 닉네임, 이름표 색, 상태 메시지 색(배경·글자·테두리)을 골라요.\n옷장에서는 몸, 눈, 머리, 옷, 신발, 모자, 장신구를 하나씩 고르고 색을 바꿔요.\n이름 앞에는 항상 PC 계정 이름이 붙어요. 닉네임이 겹치면 나중에 정한 쪽에 · a1b2 같은 표시가 붙습니다.',
   'manual.arcade.title': '오락실',
   'manual.arcade.body':
     '대기실 윗벽 게임기 여섯 대: 방화벽 깨기, 케이블, 버그 잡기, 드론 배송, 머지, 랙 쌓기.\n게임기 앞 의자에 앉으면 바로 시작돼요. 왼쪽에 하는 법, 오른쪽에 명예의 전당.\n게임기 하나에 한 명씩. 점수는 중계 서버가 입력을 다시 돌려 매겨요. M이나 🔊로 소리를 끄고, Esc로 그만둡니다.',
@@ -736,9 +735,6 @@ const ko = {
   'manual.editSave.title': '저장 · 함께 쓰는 배치',
   'manual.editSave.body':
     '고친 내용은 [저장]을 눌러야 반영돼요. [취소]나 Esc는 다 버리고, [초기화]는 처음 배치로 돌려요.\n공개·팀 오피스는 저장하는 순간 같은 오피스 사람 모두에게 보여요. 여럿이 고치면 마지막 저장이 남아요.\n개인용 배치는 내 PC에만 저장됩니다.',
-  'manual.importExport.title': '배치 내보내기 · 가져오기',
-  'manual.importExport.body':
-    '설정 → 레이아웃 내보내기로 지금 배치를 JSON 파일로 저장하고, 레이아웃 가져오기로 파일에서 불러와 바로 저장해요.',
   'manual.notifications.title': 'PC 알림',
   'manual.notifications.body':
     '앱 창을 닫아도 트레이가 떠 있으면 OS 알림이 와요.\n공개 오피스에 누가 들어오거나 나갈 때, 내 메인 에이전트가 답을 기다리거나 일을 다 마쳤을 때.\n설정에서 종류별로 끌 수 있어요.',
@@ -1043,13 +1039,11 @@ const en: Record<Key, string> = {
   'app.loading': 'Loading…',
   'app.readOnly': 'View only',
   'app.rotateHint': 'Rotate (R)',
-  'app.importConfirm': 'Replace the current layout? Unsaved edits will be lost.',
   'app.resetEditorConfirm':
     'Reset to the default layout? It is applied only on [Save]; [Undo] or [Cancel] bring yours back.',
-  'app.importInvalid': 'This is not a valid layout file.',
   'app.layoutSaveRejected': 'The layout was not saved (not a valid layout).',
   'app.layoutSaveTimeout': 'No answer to the layout save. Check the server connection.',
-  'app.importFailed': 'Could not read the layout file.',
+  'app.importFailed': 'Could not load the default layout.',
 
   'conn.connecting': 'Connecting…',
   'conn.reconnecting': 'Reconnecting…',
@@ -1064,8 +1058,6 @@ const en: Record<Key, string> = {
   'toolbar.settings': 'Settings',
 
   'settings.profile': 'My profile',
-  'settings.export': 'Export layout',
-  'settings.import': 'Import layout',
   'settings.autostart': 'Start at login',
   'settings.notifyPresence': 'Join/leave notifications (PC)',
   'settings.notifyAgents': 'My agents: waiting for me / finished (PC)',
@@ -1254,6 +1246,9 @@ const en: Record<Key, string> = {
   'profile.tagBg': 'Background',
   'profile.tagFg': 'Text',
   'profile.tagDefault': 'Default',
+  'profile.statusColors': 'My status message',
+  'profile.statusBorder': 'Border',
+  'profile.statusPreview': 'Status message',
   'profile.manualPeers': 'PC IPs to connect directly',
   'profile.advanced': "Advanced: when a PC isn't found automatically",
   'profile.manualPeersHint':
@@ -1409,7 +1404,7 @@ const en: Record<Key, string> = {
     '[Erase] removes furniture and carpets but leaves floors, walls and fixed furniture alone. Ctrl+Z and Ctrl+Y undo and redo.\nEditing never moves the characters.',
   'tour.save.title': 'Save',
   'tour.save.body':
-    'Nothing is saved until you press [Save]. In the public or a team office, everyone there gets your layout, and the last save wins. [Cancel] or Esc throws your changes away, [Reset] brings back the default.\nTo keep a copy, use Settings → [Export layout].',
+    'Nothing is saved until you press [Save]. In the public or a team office, everyone there gets your layout, and the last save wins. [Cancel] or Esc throws your changes away, [Reset] brings back the default.',
   'tour.install.title': 'Install as an app',
   'tour.install.body':
     'In Edge or Chrome you can install Pixel Office as an app, so it opens in its own window instead of a tab.\nClosed the prompt? Use the install icon in the address bar.',
@@ -1509,7 +1504,7 @@ const en: Record<Key, string> = {
     "Agents back in the lounge fold into their owner's character, and step out of it when they go back to work.\nClick your own character for a list of your folded agents; a card opens its session window.",
   'manual.profile.title': 'Profile · wardrobe',
   'manual.profile.body':
-    'Settings → My profile: character (6 people, pets Claudio and Gitcat), colour, nickname and name tag colours.\nThe wardrobe picks body, eyes, hair, clothes, shoes, hats and accessories one by one, each with its colours.\nYour PC account always comes before the name. On a nickname clash, whoever set it later gets a mark like · a1b2.',
+    'Settings → My profile: character (6 people, pets Claudio and Gitcat), colour, nickname, name tag colours and status message colours (background, text, border).\nThe wardrobe picks body, eyes, hair, clothes, shoes, hats and accessories one by one, each with its colours.\nYour PC account always comes before the name. On a nickname clash, whoever set it later gets a mark like · a1b2.',
   'manual.arcade.title': 'Arcade',
   'manual.arcade.body':
     'Six cabinets on the lounge top wall: Firewall Breaker, Cable Run, Bug Squash, Drone Delivery, Merge, Rack Stack.\nSit on the chair in front of one and its game starts at once: how to play on the left, the hall of fame on the right.\nOne player per cabinet. The relay replays your inputs to score them. M or 🔊 mutes, Esc quits.',
@@ -1537,9 +1532,6 @@ const en: Record<Key, string> = {
   'manual.editSave.title': 'Saving · shared layouts',
   'manual.editSave.body':
     'Edits apply only on Save. Cancel or Esc drops them, Reset puts the original layout back.\nIn the public and team offices a save shows at once for everyone there; when several edit, the last save wins.\nThe personal layout is saved on this PC only.',
-  'manual.importExport.title': 'Export · import layout',
-  'manual.importExport.body':
-    'Settings → Export layout saves the current layout as a JSON file; Import layout loads one and saves it at once.',
   'manual.notifications.title': 'PC notifications',
   'manual.notifications.body':
     'With the tray running, OS notifications arrive even when the window is closed:\nsomeone joining or leaving the public office, your main agent waiting for you or completely done.\nTurn each kind off in Settings.',

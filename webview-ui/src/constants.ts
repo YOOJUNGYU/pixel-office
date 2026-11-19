@@ -117,9 +117,7 @@ export const LAYOUT_SAVE_ACK_TIMEOUT_MS = 5_000;
 /** data-testid of the office canvas — e2e drives real editor gestures on it. */
 export const OFFICE_CANVAS_TEST_ID = 'office-canvas';
 
-// ── Layout Import/Export (browser-native, standalone) ────────
-/** Suggested filename when exporting the office layout from the standalone browser. */
-export const LAYOUT_EXPORT_FILENAME = 'pixel-agents-layout.json';
+// ── Per-viewer browser storage ────────
 /** localStorage key of this viewer's UI language ('ko' | 'en'). */
 export const LANG_STORAGE_KEY = 'pixel-office.lang';
 /** localStorage key: the update version this viewer closed the banner for. */
@@ -145,8 +143,6 @@ export const SERVER_PANEL_GRACE_MS = 3_000;
 export const SERVER_PANEL_POLL_MS = 1_000;
 /** After [시작]: no server within this long → the "start it from the Start menu" hint. */
 export const SERVER_START_TIMEOUT_MS = 20_000;
-/** MIME type for the exported layout Blob. */
-export const LAYOUT_EXPORT_MIME = 'application/json';
 export const DEFAULT_FLOOR_COLOR: ColorValue = { h: 35, s: 30, b: 15, c: 0 };
 export const DEFAULT_WALL_COLOR: ColorValue = { h: 240, s: 25, b: 0, c: 0 };
 export const DEFAULT_NEUTRAL_COLOR: ColorValue = { h: 0, s: 0, b: 0, c: 0 };
@@ -593,6 +589,11 @@ export const LAN_READING_TOOLS = ['Read'];
  *  `tagColors` shows the theme's `--avatar-tag-bg` / `--avatar-tag-fg`). */
 export const AVATAR_TAG_DEFAULT_BG = '#127068';
 export const AVATAR_TAG_DEFAULT_FG = '#FFFFFF';
+/** Status message tag colours the profile's pickers start from (a profile without
+ *  `statusColors` shows the theme's `--chat-bubble-*`). */
+export const STATUS_TAG_DEFAULT_BG = '#FFFFFF';
+export const STATUS_TAG_DEFAULT_FG = '#1E1E2E';
+export const STATUS_TAG_DEFAULT_BORDER = '#1E1E2E';
 export const MAX_HUE_DEG = 360;
 /** Skin colors of char_0..5.png (measured); exempt from a character's hue shift. */
 export const CHARACTER_SKIN_COLORS: ReadonlySet<string> = new Set([

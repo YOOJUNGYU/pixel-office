@@ -284,6 +284,7 @@ export interface PeerInfoMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
+  statusColors?: StatusColors;
   outfit?: Outfit;
   ver?: string;
 }
@@ -293,6 +294,12 @@ export type PetId = 'claudio' | 'gitcat';
 export interface TagColors {
   bg: string;
   fg: string;
+}
+
+export interface StatusColors {
+  bg: string;
+  fg: string;
+  border: string;
 }
 
 export interface Outfit {
@@ -311,6 +318,7 @@ export interface OfficePersonMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
+  statusColors?: StatusColors;
   outfit?: Outfit;
   ver?: string;
   net?: string;
@@ -351,6 +359,7 @@ export interface DirectoryPersonMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
+  statusColors?: StatusColors;
   outfit?: Outfit;
   ver?: string;
   net?: string;
@@ -378,6 +387,7 @@ export interface ProfileMessage {
   hueShift: number;
   pet?: PetId;
   tagColors?: TagColors;
+  statusColors?: StatusColors;
   outfit?: Outfit;
   manualPeers: string[];
 }

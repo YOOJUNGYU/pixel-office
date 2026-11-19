@@ -1,6 +1,6 @@
 // Chat bubbles above each person's avatar: one per person, from the office snapshot. Pure.
 import { CHAT_MIN_INTERVAL_MS, cleanChatText } from '../../../core/src/lan.js';
-import type { OfficePersonMessage } from '../../../core/src/messages.js';
+import type { OfficePersonMessage, StatusColors } from '../../../core/src/messages.js';
 import { ZOOM_DEFAULT_DPR_FACTOR } from '../constants.js';
 
 export interface Bubble {
@@ -10,6 +10,8 @@ export interface Bubble {
   text: string;
   /** My own bubble (gets the delete button). */
   self: boolean;
+  /** The person's status tag colours; absent = the theme's default tag. */
+  colors?: StatusColors;
 }
 
 /**
@@ -28,7 +30,13 @@ export class ChatBubbles {
       if (!c) continue;
       const text = cleanChatText(c.text);
       if (text === null || typeof c.id !== 'string') continue;
-      next.push({ peerId: p.peerId, id: c.id, text, self: p.self });
+      next.push({
+        peerId: p.peerId,
+        id: c.id,
+        text,
+        self: p.self,
+        ...(p.statusColors && { colors: p.statusColors }),
+      });
     }
     this.list = next;
   }

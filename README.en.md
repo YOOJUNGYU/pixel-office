@@ -194,13 +194,12 @@ Pixel Office can also send desktop notifications on Windows and Mac. They work w
 
 ### More
 
-- **Profile**: pick a character (six people, the pets Claudio and Gitcat, or a wardrobe look), a colour, a nickname and your name tag colours. Your PC account name always comes first and can't be changed. Nicknames are unique; whoever took one second gets a short suffix like `· a1b2`.
+- **Profile**: pick a character (six people, the pets Claudio and Gitcat, or a wardrobe look), a colour, a nickname, your name tag colours and your status message colours (background, text, border). Your PC account name always comes first and can't be changed. Nicknames are unique; whoever took one second gets a short suffix like `· a1b2`.
 - **Language and theme**: Korean or English, dark, light or system, set per browser. The sun/moon button at the top left flips the theme.
 - **Layout editor**: the Layout button at the top left. You can paint floors (a click fills a whole room, or one zone in the server room), recolour walls, place furniture and fill the background. The four rooms and the office size are fixed, and so are desks, chairs, PCs and arcade cabinets (they keep the office working): you can recolour them but not move or remove them. When a new version changes the default layout, those pieces update in your saved layout by themselves.
   - Nothing is saved until you press **Save**. Reset brings back the default layout, Undo and Redo are Ctrl+Z and Ctrl+Y, and Cancel or Esc drops your changes.
-  - In the public office or a team office, anyone can edit and everyone there gets the saved layout. If two people save, the last one wins. A layout saved per PC by older versions (`layout.json`) isn't used anymore; import it if you want to share it.
+  - In the public office or a team office, anyone can edit and everyone there gets the saved layout. If two people save, the last one wins. A layout saved per PC by older versions (`layout.json`) isn't used anymore.
   - In 🏠 Personal the layout stays on your PC.
-  - Settings has Export and Import if you want a layout as a file.
 - **Install as an app**: Edge and Chrome offer it in a popup at the top right. You get a window without tabs. If you open it while the server is off, it shows a Start button.
 - **Automatic updates**: Pixel Office checks at start and every 6 hours, downloads quietly, restarts into the new version and reloads open windows. You can't turn this off. If a new version fails to start, it rolls back. The rare release that changes the bundled Node needs the installer, and an Update button shows up at the top right for that.
 - **Manual**: the **?** button at the top left opens a manual of every feature under it. Pick one on the left to see an animation and an explanation on the right, or search at the top (Korean or English words both work). Resize it like the usage panel, by its right or bottom edge or its corner. **Start the tour** replays the first-run tour.

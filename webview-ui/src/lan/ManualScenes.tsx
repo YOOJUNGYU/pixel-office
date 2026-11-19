@@ -2861,51 +2861,6 @@ const scenes: Record<string, Scene> = {
     },
   },
 
-  importExport: {
-    period: 7000,
-    draw: (t, me) => {
-      const out = seg(t, 400, 2200);
-      const inn = seg(t, 3600, 5400);
-      const file = (x: number, y: number) => (
-        <Box
-          x={x}
-          y={y}
-          w={16}
-          h={20}
-          style={{
-            background: C.doc,
-            border: `1px solid ${C.docLine}`,
-            fontSize: 4.5,
-            color: C.ink,
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-          }}
-        >
-          JSON
-        </Box>
-      );
-      return (
-        <>
-          <Box x={0} y={0} w={W} h={H} style={{ background: C.void }} />
-          <Box x={6} y={20} w={96} h={72} style={{ border: `2px solid ${C.wall}` }}>
-            <Floor x={0} y={0} w={92} h={68} />
-            <Char look={me} x={46} y={60} pose="stand" dir={Direction.DOWN} t={t} />
-            {t > 5400 && <Furn type="LARGE_PLANT" x={4} y={6} />}
-          </Box>
-          <Txt x={150} y={30} size={16}>
-            📁
-          </Txt>
-          {out > 0 && out < 1 && file(lerp(50, 150, out), lerp(50, 50, out))}
-          {inn > 0 && inn < 1 && file(lerp(150, 50, inn), 60)}
-          <Txt x={110} y={90} bg={C.panel} size={6}>
-            {t < 3000 ? tr('settings.export') : tr('settings.import')}
-          </Txt>
-        </>
-      );
-    },
-  },
-
   notifications: {
     period: 6000,
     draw: (t) => {

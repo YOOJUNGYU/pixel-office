@@ -46,8 +46,6 @@ interface EditorActions extends Omit<FurnitureColorActions, 'pickColorAt'> {
   isDirty: boolean;
   zoom: number;
   panRef: React.MutableRefObject<{ x: number; y: number }>;
-  /** Clear the dirty flag (used after a browser import applies a new saved baseline). */
-  markClean: () => void;
   /** [Cancel]: drop every edit (back to `saved`, the last saved layout), clear undo/redo, leave edit mode. */
   handleCancel: (saved: OfficeLayout | null) => void;
   /** [Reset]: the bundled default as one more edit (undoable; saved only by [Save]). */
@@ -111,9 +109,8 @@ export function useEditorActions(
   );
   const panRef = useRef({ x: 0, y: 0 });
 
-  // Clear the dirty flag after a browser layout import: the imported layout is the
-  // new saved baseline (already persisted via saveLayout). setIsDirty also forces a
-  // re-render so dirty-gated UI (EditActionBar, areasAvailable) reflects the import.
+  // Clear the dirty flag: setIsDirty also forces a re-render so dirty-gated UI
+  // (EditActionBar, areasAvailable) reflects it.
   const markClean = useCallback(() => {
     editorState.isDirty = false;
     setIsDirty(false);
@@ -598,7 +595,6 @@ export function useEditorActions(
     isDirty,
     zoom,
     panRef,
-    markClean,
     handleToggleEditMode,
     handleToolChange,
     handleTileTypeChange,

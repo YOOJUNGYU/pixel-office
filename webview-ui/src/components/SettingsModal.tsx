@@ -21,10 +21,6 @@ interface SettingsModalProps {
   readOnly: boolean;
   /** Opens the profile modal; null when this browser cannot edit the profile. */
   onOpenProfile: (() => void) | null;
-  /** Browser-native layout export. */
-  onExportLayout: () => void;
-  /** Browser-native layout import from a chosen file. */
-  onImportLayout: (file: File) => void;
   /** Start at login on this PC; hidden when null or unsupported (dev run, Linux). */
   autostart: AutostartState | null;
   /** OS notifications (kept by the server); hidden until settingsLoaded. */
@@ -43,8 +39,6 @@ export function SettingsModal({
   onClose,
   readOnly,
   onOpenProfile,
-  onExportLayout,
-  onImportLayout,
   autostart,
   notify,
   onNotifyChange,
@@ -53,7 +47,6 @@ export function SettingsModal({
   officeReply,
   onOfficeReplyHandled,
 }: SettingsModalProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const lang = useLang();
   const themePref = useThemePref();
   const [token, setToken] = useState('');
@@ -143,31 +136,6 @@ export function SettingsModal({
           {t('settings.profile')}
         </MenuItem>
       )}
-      <MenuItem
-        onClick={() => {
-          onExportLayout();
-          onClose();
-        }}
-      >
-        {t('settings.export')}
-      </MenuItem>
-      {/* Open the native file picker; the import is applied in onChange below. */}
-      <MenuItem onClick={() => fileInputRef.current?.click()}>{t('settings.import')}</MenuItem>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="application/json"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          // Reset the value so re-selecting the same file fires change again.
-          e.target.value = '';
-          if (file) {
-            onImportLayout(file);
-            onClose();
-          }
-        }}
-      />
       {autostart?.supported && (
         // Not optimistic: the server answers with the real state (autostartState).
         <div data-tour="settings-autostart">
