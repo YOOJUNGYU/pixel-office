@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'crypto';
 import * as dgram from 'dgram';
 import * as os from 'os';
 import * as zlib from 'zlib';
@@ -29,16 +30,35 @@ import {
   MAX_OFFICE_NAME,
   MAX_PRESENCE_ASSEMBLIES,
   MAX_PRESENCE_PARTS,
+  MAX_ROOM_PASSWORD,
   MAX_WARN_KEYS,
+  OFFICE_MAX_PEOPLE,
   PRESENCE_ASSEMBLY_MS,
   PRESENCE_MAX_COMPRESSED,
   PRESENCE_MAX_JSON,
   PRESENCE_PART_BYTES,
   RELAY_MIN_SEND_MS,
+  ROOM_ASK_GAP_MS,
+  ROOM_ASKS_PER_SEC,
+  ROOM_JOIN_TIMEOUT_MS,
   SEQ_MEMORY_MS,
 } from '../constants.js';
-import type { Identity, Wire } from './crypto.js';
-import { cardAad, isWireId, open, pairKey, parseWire, pubAad, seal, teamAad } from './crypto.js';
+import type { Identity, RoomWire, Wire } from './crypto.js';
+import {
+  admitAad,
+  askAad,
+  cardAad,
+  isWireId,
+  open,
+  pairKey,
+  parseRoomSecret,
+  parseWire,
+  pubAad,
+  seal,
+  teamAad,
+  teamKey,
+  teamTag,
+} from './crypto.js';
 import { layoutHash } from './sharedLayout.js';
 
 export const PEER_TTL_MS = 5_000;
@@ -53,6 +73,46 @@ export interface TeamChannel {
   key: Buffer;
   name: string;
 }
+
+/** The room this PC hosts and has on screen (LanService), advertised on the LAN. */
+export interface HostedRoom {
+  tag: string;
+  title: string;
+  /** Host label (peerLabel). */
+  by: string;
+  /** '' = anyone may join. */
+  password: string;
+  secret: Buffer;
+}
+
+/** A room heard on the LAN (its host's advert). */
+export interface RoomInfo {
+  tag: string;
+  title: string;
+  host: string;
+  hostId: string;
+  locked: boolean;
+  count: number;
+}
+
+export type JoinResult =
+  | { ok: true; secret: Buffer; title: string }
+  | { ok: false; reason: 'wrongPassword' | 'roomFull' | 'roomGone' | 'timeout' };
+
+interface PendingJoin {
+  tag: string;
+  pw: string;
+  title: string;
+  hostId: string;
+  key: Buffer;
+  target: string;
+  until: number;
+  done: (r: JoinResult) => void;
+}
+
+/** Same access code, compared in constant time. */
+const samePassword = (a: string, b: string): boolean =>
+  timingSafeEqual(createHash('sha256').update(a).digest(), createHash('sha256').update(b).digest());
 
 /** Who this PC can list per area (people panel). Never fed into the office or snapshot. */
 export interface NetDirectory {
@@ -253,6 +313,40 @@ export function parseCard(text: string | null): { seq: number; peer: PeerInfo } 
   }
 }
 
+/** Decrypted ask → `{seq, tag, pw}`, else null. */
+function parseAsk(text: string | null): { seq: number; tag: string; pw: string } | null {
+  if (text === null) return null;
+  try {
+    const o = JSON.parse(text) as Record<string, unknown> | null;
+    if (!o || !Number.isSafeInteger(o.seq) || typeof o.tag !== 'string') return null;
+    if (typeof o.pw !== 'string' || o.pw.length > 4 * MAX_ROOM_PASSWORD) return null;
+    return { seq: o.seq as number, tag: o.tag, pw: o.pw };
+  } catch {
+    return null;
+  }
+}
+
+/** Decrypted admit → `{seq, tag, ok, secret?, reason?}`, else null. */
+function parseAdmit(
+  text: string | null,
+): { seq: number; tag: string; ok: boolean; secret: Buffer | null; reason: unknown } | null {
+  if (text === null) return null;
+  try {
+    const o = JSON.parse(text) as Record<string, unknown> | null;
+    if (!o || !Number.isSafeInteger(o.seq) || typeof o.tag !== 'string') return null;
+    if (typeof o.ok !== 'boolean') return null;
+    return {
+      seq: o.seq as number,
+      tag: o.tag,
+      ok: o.ok,
+      secret: parseRoomSecret(o.secret),
+      reason: o.reason,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Decrypted text → validated inner payload, else null. */
 function parseInner(text: string | null): Inner | null {
   if (text === null) return null;
@@ -310,6 +404,16 @@ export class PeerNet {
   >();
   /** `pub|${peer}` or a team tag → when this PC last pushed its layout there. */
   private readonly layoutPushed = new Map<string, number>();
+  /** Room adverts heard on the LAN: tag → advert, its host's address, when. */
+  private readonly rooms = new Map<
+    string,
+    { w: RoomWire; address: string; port: number; at: number }
+  >();
+  /** This PC's join in progress (one at a time). */
+  private joining: PendingJoin | null = null;
+  /** As a host: when each requester's ask was last answered, and asks answered this second. */
+  private readonly asked = new Map<string, number>();
+  private askWindow = { at: -Infinity, n: 0 };
   /** Team names as members announce them (shown when joined without a name). */
   private readonly names = new Map<string, string>();
   private readonly warned = new Set<string>();
@@ -335,6 +439,8 @@ export class PeerNet {
       getPacket: (channel: string) => PeerPacket;
       manualPeers: () => string[];
       offices: () => TeamChannel[];
+      /** The room this PC hosts while it is on screen, else null. */
+      hostedRoom?: () => HostedRoom | null;
       /** Personal mode: send nothing, answer nothing, see no one; only counts who is heard. */
       offline?: () => boolean;
       /** TOFU: first public key seen per peer id. */
@@ -404,6 +510,7 @@ export class PeerNet {
       ...broadcastAddresses(),
       ...this.opts.manualPeers(),
     ];
+    this.sendRoom(broadcast);
     if (!this.inPublic()) {
       const watch = this.discovery();
       for (const t of broadcast) this.send(watch, t);
@@ -460,6 +567,147 @@ export class PeerNet {
       if (this.udpLive(h, t)) pubTo(id, h, [...plains, ...this.layoutFor(id)]);
     for (const [id, h] of watchers) pubTo(id, h, watcherPlains);
     this.sendRelay(t);
+  }
+
+  /** Rooms: our advert while hosting one on screen, and the pending join's ask (re-sent
+   *  every tick until answered or timed out). */
+  private sendRoom(broadcast: string[]): void {
+    const { identity } = this.opts;
+    const room = this.isOffline() ? null : (this.opts.hostedRoom?.() ?? null);
+    if (room && this.isJoined(room.tag)) {
+      const advert: RoomWire = {
+        v: 2,
+        t: 'room',
+        id: identity.id,
+        pk: identity.publicKey,
+        tag: room.tag,
+        title: room.title,
+        by: room.by,
+        locked: room.password !== '',
+        n: Math.min(OFFICE_MAX_PEOPLE, this.peers(room.tag).length + 1),
+      };
+      for (const t of broadcast) this.send(advert, t);
+    }
+    const j = this.joining;
+    if (!j) return;
+    if (this.now() > j.until) {
+      this.finishJoin({ ok: false, reason: 'timeout' });
+      return;
+    }
+    const plain = JSON.stringify({ seq: ++this.seq, tag: j.tag, pw: j.pw });
+    const sealed = seal(j.key, askAad(identity.id, j.hostId), plain);
+    const ask: Wire = {
+      v: 2,
+      t: 'ask',
+      from: identity.id,
+      to: j.hostId,
+      pk: identity.publicKey,
+      ...sealed,
+    };
+    this.send(ask, j.target);
+  }
+
+  /** Rooms heard on the LAN (live adverts), newest title per tag. */
+  roomList(): RoomInfo[] {
+    const t = this.now();
+    return [...this.rooms.values()]
+      .filter((r) => this.live(r.at, t))
+      .map(({ w }) => ({
+        tag: w.tag,
+        title: w.title,
+        host: w.by,
+        hostId: w.id,
+        locked: w.locked,
+        count: w.n,
+      }));
+  }
+
+  /** Ask a listed room's host to let this PC in (any earlier join is given up). `done` gets
+   *  the room's secret, or why not; the room must be live now. */
+  joinRoom(tag: string, pw: string, done: (r: JoinResult) => void): void {
+    const r = this.rooms.get(tag);
+    const key =
+      r && this.live(r.at, this.now())
+        ? pairKey(this.opts.identity.privateKeyPem, r.w.pk, this.opts.identity.id, r.w.id)
+        : null;
+    if (!r || !key) {
+      done({ ok: false, reason: 'roomGone' });
+      return;
+    }
+    this.finishJoin({ ok: false, reason: 'timeout' });
+    this.joining = {
+      tag,
+      pw,
+      title: r.w.title,
+      hostId: r.w.id,
+      key,
+      target: `${r.address}:${r.port.toString()}`,
+      until: this.now() + ROOM_JOIN_TIMEOUT_MS,
+      done,
+    };
+    this.sendRoom([]);
+  }
+
+  private finishJoin(r: JoinResult): void {
+    const j = this.joining;
+    this.joining = null;
+    j?.done(r);
+  }
+
+  /** As the host: one ask (rate limited), answered with the secret or why not. */
+  private receiveAsk(
+    w: Extract<Wire, { t: 'ask' }>,
+    rinfo: { address: string; port: number },
+  ): void {
+    const { identity } = this.opts;
+    const room = this.isOffline() ? null : (this.opts.hostedRoom?.() ?? null);
+    if (w.to !== identity.id || !room) return;
+    const t = this.now();
+    if (t - (this.asked.get(w.from) ?? -Infinity) < ROOM_ASK_GAP_MS) return;
+    if (t - this.askWindow.at >= 1000) this.askWindow = { at: t, n: 0 };
+    // ponytail: online guessing is capped at ROOM_ASKS_PER_SEC for all ids together, so a
+    // flood of fresh ids also slows honest joiners down; per-address limits if that bites.
+    if (this.askWindow.n >= ROOM_ASKS_PER_SEC) return;
+    const pinned = this.opts.pins.get(w.from);
+    if (pinned !== undefined && pinned !== w.pk) return;
+    const key = pairKey(identity.privateKeyPem, w.pk, identity.id, w.from);
+    if (!key) return;
+    const ask = parseAsk(open(key, askAad(w.from, w.to), w.n, w.c));
+    if (!ask || ask.tag !== room.tag || !this.fresh(`ask|${w.from}`, ask.seq)) return;
+    this.askWindow.n++;
+    this.asked.set(w.from, t);
+    if (pinned === undefined) this.opts.pins.set(w.from, w.pk);
+    const member = this.seen.get(room.tag)?.get(w.from);
+    const inside = member !== undefined && this.live(member.at, t);
+    const reply = !samePassword(ask.pw, room.password)
+      ? { ok: false, reason: 'password' }
+      : !inside && this.peers(room.tag).length + 1 >= OFFICE_MAX_PEOPLE
+        ? { ok: false, reason: 'full' }
+        : { ok: true, secret: room.secret.toString('base64') };
+    const plain = JSON.stringify({ seq: ++this.seq, tag: room.tag, ...reply });
+    const admit: Wire = {
+      v: 2,
+      t: 'admit',
+      from: identity.id,
+      to: w.from,
+      ...seal(key, admitAad(identity.id, w.from), plain),
+    };
+    this.send(admit, `${rinfo.address}:${rinfo.port.toString()}`);
+  }
+
+  /** As the joiner: the host's answer to the pending join. */
+  private receiveAdmit(w: Extract<Wire, { t: 'admit' }>): void {
+    const j = this.joining;
+    if (!j || w.to !== this.opts.identity.id || w.from !== j.hostId) return;
+    const a = parseAdmit(open(j.key, admitAad(w.from, w.to), w.n, w.c));
+    if (!a || a.tag !== j.tag || !this.fresh(`admit|${w.from}`, a.seq)) return;
+    if (!a.ok) {
+      this.finishJoin({ ok: false, reason: a.reason === 'full' ? 'roomFull' : 'wrongPassword' });
+      return;
+    }
+    // Only the secret of the room asked for (its tag is derived from it).
+    if (!a.secret || teamTag(teamKey(a.secret)) !== j.tag) return;
+    this.finishJoin({ ok: true, secret: a.secret, title: j.title });
   }
 
   /** `texts` sealed pairwise for `id` as pub wires (none without a pair key). */
@@ -795,6 +1043,21 @@ export class PeerNet {
       this.receivePub(w, true);
       return;
     }
+    if (w.t === 'room') {
+      const pinned = this.opts.pins.get(w.id);
+      if (w.id === me || (pinned !== undefined && pinned !== w.pk)) return;
+      if (!this.rooms.has(w.tag) && this.rooms.size >= MAX_HELLO_PEERS) return;
+      this.rooms.set(w.tag, { w, address: rinfo.address, port: rinfo.port, at: this.now() });
+      return;
+    }
+    if (w.t === 'ask') {
+      this.receiveAsk(w, rinfo);
+      return;
+    }
+    if (w.t === 'admit') {
+      this.receiveAdmit(w);
+      return;
+    }
     const office = this.opts.offices().find((o) => o.tag === w.tag);
     if (!office) return;
     const plain = open(office.key, teamAad(w.tag), w.n, w.c);
@@ -860,11 +1123,14 @@ export class PeerNet {
       return false;
     }
     const prev = map.get(id);
-    if (!prev && map.size >= MAX_HELLO_PEERS) {
+    // The public office holds OFFICE_MAX_PEOPLE per network (me included); watchers are
+    // never in it, so only the safety cap applies to them.
+    const cap = map === this.hellos ? OFFICE_MAX_PEOPLE - 1 : MAX_HELLO_PEERS;
+    if (!prev && map.size >= cap) {
       const kind = map === this.watchers ? 'watch' : 'hello';
       this.warnOnce(
         `full:${kind}`,
-        `[Pixel Office] PC ${kind} 목록이 가득 찼습니다 (${MAX_HELLO_PEERS.toString()}명): 새 PC 는 보이지 않습니다.`,
+        `[Pixel Office] PC ${kind} 목록이 가득 찼습니다 (${cap.toString()}명): 새 PC 는 보이지 않습니다.`,
       );
       return false;
     }
@@ -1009,6 +1275,8 @@ export class PeerNet {
       else for (const [id, e] of peers) if (!this.live(e.at, t)) peers.delete(id);
     }
     for (const tag of this.names.keys()) if (!live.has(tag)) this.names.delete(tag);
+    for (const [tag, r] of this.rooms) if (!this.live(r.at, t)) this.rooms.delete(tag);
+    for (const [id, at] of this.asked) if (t - at > ROOM_ASK_GAP_MS) this.asked.delete(id);
     for (const [ch, a] of this.layoutAssemblies)
       if (t - a.at > LAYOUT_ASSEMBLY_MS || !live.has(ch)) this.layoutAssemblies.delete(ch);
     for (const [k, at] of this.layoutPushed)

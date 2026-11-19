@@ -18,13 +18,15 @@ import {
   MAX_PRESENCE_ASSEMBLIES,
   MAX_PRESENCE_PARTS,
   MAX_WARN_KEYS,
+  OFFICE_MAX_PEOPLE,
   PRESENCE_MAX_COMPRESSED,
+  ROOM_JOIN_TIMEOUT_MS,
 } from '../../src/constants.js';
 import type { Identity } from '../../src/lan/crypto.js';
 import {
   cardAad,
   createIdentity,
-  newInviteCode,
+  newRoomSecret,
   open,
   pairKey,
   parseWire,
@@ -34,7 +36,7 @@ import {
   teamKey,
   teamTag,
 } from '../../src/lan/crypto.js';
-import type { Inner, TeamChannel } from '../../src/lan/peerNet.js';
+import type { HostedRoom, Inner, JoinResult, TeamChannel } from '../../src/lan/peerNet.js';
 import {
   aged,
   broadcastAddresses,
@@ -88,6 +90,8 @@ interface Node {
   port: number;
   /** Personal mode. */
   offline: boolean;
+  /** The room this node hosts on screen. */
+  hosted?: HostedRoom | null;
 }
 async function mkNodes(names: string[], extraTargets: string[] = []): Promise<Node[]> {
   const ports = await Promise.all(names.map(() => freePort()));
@@ -109,6 +113,7 @@ async function mkNodes(names: string[], extraTargets: string[] = []): Promise<No
       manualPeers: () => [],
       offices: () => node.offices,
       offline: () => node.offline,
+      hostedRoom: () => node.hosted ?? null,
       pins: new Map<string, string>(),
       targets: () => targets,
       now: () => node.t,
@@ -341,13 +346,13 @@ describe('PeerNet bounded state', () => {
         rinfo,
       );
     }
-    expect(net.seen.get(PUBLIC_VIEW)?.size).toBe(40);
+    expect(net.seen.get(PUBLIC_VIEW)?.size).toBe(OFFICE_MAX_PEOPLE - 1);
     a.t += PEER_TTL_MS + 1;
     a.net.sendNow();
     expect(net.seen.get(PUBLIC_VIEW)?.size ?? 0).toBe(0);
 
     // same for a joined team office nobody is looking at
-    const ch = channel(newInviteCode().secret);
+    const ch = channel(newRoomSecret());
     a.offices = [ch];
     for (let i = 0; i < 40; i++) {
       const inner = JSON.stringify({ seq: 1, packet: pkt(`M${i}`) });
@@ -379,7 +384,7 @@ describe('PeerNet bounded state', () => {
 describe('PeerNet team offices', () => {
   it('members see each other by code; outsiders see nothing; public is closed to members', async () => {
     const [a, b, c] = await mkNodes(['A', 'B', 'C']);
-    const secret = newInviteCode().secret;
+    const secret = newRoomSecret();
     a.offices = [channel(secret)];
     b.offices = [channel(Buffer.from(secret))];
     await pump(
@@ -397,7 +402,7 @@ describe('PeerNet team offices', () => {
 
   it('a chat goes only on the channel getPacket(channel) puts it on', async () => {
     const [a, b] = await mkNodes(['A', 'B']);
-    const [s1, s2] = [newInviteCode().secret, newInviteCode().secret];
+    const [s1, s2] = [newRoomSecret(), newRoomSecret()];
     a.offices = [channel(s1), channel(s2)];
     b.offices = [channel(Buffer.from(s1)), channel(Buffer.from(s2))];
     const [t1, t2] = a.offices.map((o) => o.tag);
@@ -439,7 +444,7 @@ describe('PeerNet team offices', () => {
     await pump([a, c], () => c.net.peers(PUBLIC_VIEW).length > 0);
     expect(ids(c.net.peers(PUBLIC_VIEW))).toEqual(['A']);
 
-    a.offices = [channel(newInviteCode().secret)];
+    a.offices = [channel(newRoomSecret())];
     // A hello sent before the switch (pump's last round or PeerNet's own 1 s tick) may still
     // be in flight. A → raw is FIFO, so A's first team datagram means it has landed.
     const isTeam = (g: string) => (JSON.parse(g) as { t: string }).t === 'team';
@@ -469,7 +474,7 @@ describe('PeerNet personal mode (offline)', () => {
   it('sends only watch, answers a hello with a watch, sees no one; back online sees again', async () => {
     const raw = await rawSocket();
     const [a, b] = await mkNodes(['A', 'B'], [`127.0.0.1:${raw.port}`]);
-    a.offices = [channel(newInviteCode().secret)]; // a kept team membership stays silent too
+    a.offices = [channel(newRoomSecret())]; // a kept team membership stays silent too
     b.offices = a.offices;
     await pump([a, b], () => b.net.peers(a.offices[0].tag).length > 0);
     expect(ids(b.net.peers(a.offices[0].tag))).toEqual(['A']);
@@ -530,7 +535,7 @@ describe('PeerNet directory: watchers', () => {
 
   it('a team PC watches: lists public PCs, which never count it', async () => {
     const [t, b] = await mkNodes(['T', 'B']);
-    t.offices = [channel(newInviteCode().secret)];
+    t.offices = [channel(newRoomSecret())];
     const { tag } = t.offices[0];
     await pump([t, b], () => t.net.directory().public.length > 0);
     expect(pids(t.net.directory().public)).toEqual(['B']);
@@ -547,7 +552,7 @@ describe('PeerNet directory: watchers', () => {
   it('a personal PC watches: lists public PCs and sends no hello, pub or team', async () => {
     const [a, b] = await mkNodes(['A', 'B']);
     a.offline = true;
-    a.offices = [channel(newInviteCode().secret)];
+    a.offices = [channel(newRoomSecret())];
     const sent = vi.spyOn((a.net as unknown as { sock: dgram.Socket }).sock, 'send');
     await pump([a, b], () => a.net.directory().public.length > 0);
     expect(pids(a.net.directory().public)).toEqual(['B']);
@@ -562,7 +567,7 @@ describe('PeerNet directory: watchers', () => {
 
   it('a watcher keeps only the person: no agents, chat, avatar or layout', async () => {
     const [t, b] = await mkNodes(['T', 'B']);
-    t.offices = [channel(newInviteCode().secret)];
+    t.offices = [channel(newRoomSecret())];
     const full = {
       ...pkt('B'),
       views: [
@@ -669,7 +674,7 @@ describe('PeerNet directory: watchers', () => {
 
   it('a busy public PC (split presence) still reaches a watcher', async () => {
     const [t, b] = await mkNodes(['T', 'B']);
-    t.offices = [channel(newInviteCode().secret)];
+    t.offices = [channel(newRoomSecret())];
     const big: PeerPacket = {
       ...pkt('B'),
       views: Array.from({ length: 40 }, (_, i) => ({
@@ -841,7 +846,7 @@ describe('PeerNet directory: cards', () => {
 
   it('a team PC lists a personal PC; the personal PC lists no one in that team unless it is a member', async () => {
     const [t, a] = await mkNodes(['T', 'A']);
-    const s1 = channel(newInviteCode().secret);
+    const s1 = channel(newRoomSecret());
     t.offices = [s1];
     a.offline = true;
     await pump([t, a], () => t.net.directory().personal.length > 0);
@@ -857,7 +862,7 @@ describe('PeerNet directory: cards', () => {
   it('a card carries the person only, never a team', async () => {
     const raw = await rawSocket();
     const [a] = await mkNodes(['A'], [`127.0.0.1:${raw.port}`]);
-    const secret = channel(newInviteCode().secret, '비밀팀');
+    const secret = channel(newRoomSecret(), '비밀팀');
     a.offline = true;
     a.offices = [secret];
     inner(a).opts.getPacket = () => full('A');
@@ -1008,7 +1013,7 @@ describe('PeerNet directory: cards', () => {
 
   it('a team member that switches to personal is listed once, where it was heard last', async () => {
     const [a, b] = await mkNodes(['A', 'B']);
-    const ch = channel(newInviteCode().secret);
+    const ch = channel(newRoomSecret());
     a.offices = [ch];
     b.offices = [ch];
     await pump([a, b], () => b.net.directory().teams[ch.tag].length > 0);
@@ -1108,7 +1113,7 @@ describe('PeerNet split presence', () => {
     const raw = await rawSocket();
     const sizes: number[] = [];
     const [a, b, c, d] = await mkNodes(['A', 'B', 'C', 'D'], [`127.0.0.1:${raw.port}`]);
-    const secret = newInviteCode().secret;
+    const secret = newRoomSecret();
     a.offices = [channel(secret)];
     b.offices = [channel(Buffer.from(secret))];
     const big = busy('A');
@@ -1132,7 +1137,7 @@ describe('PeerNet split presence', () => {
   });
 
   describe('assembly (team channel, crafted parts)', () => {
-    const secret = newInviteCode().secret;
+    const secret = newRoomSecret();
     const ch = channel(secret);
     const around = Buffer.byteLength(
       JSON.stringify({ v: 2, t: 'team', tag: ch.tag, n: 'x'.repeat(16), c: '' }),
@@ -1233,5 +1238,84 @@ describe('aged', () => {
     expect(aged(p, 60_500).views.map((x) => x.ageSec)).toEqual([180, undefined]);
     expect(aged(p, 999)).toBe(p); // under a second: untouched
     expect(aged({ ...p, views: [v(AGE_MAX_SEC)] }, 10_000).views[0].ageSec).toBe(AGE_MAX_SEC);
+  });
+});
+
+describe('PeerNet rooms', () => {
+  /** `a` hosts a room (code `pw`) and `b` has heard its advert. */
+  async function hosted(pw = '') {
+    const [a, b] = await mkNodes(['A', 'B']);
+    const secret = newRoomSecret();
+    a.offices = [channel(secret)];
+    const { tag } = a.offices[0];
+    a.hosted = { tag, title: '우리방', by: 'kim', password: pw, secret };
+    b.offline = true; // a personal PC can list and join too
+    await pump([a, b], () => b.net.roomList().length > 0);
+    return { a, b, tag, secret };
+  }
+  const join = async (n: Node, tag: string, pw: string, nodes: Node[]) => {
+    let r: JoinResult | null = null;
+    n.net.joinRoom(tag, pw, (x) => (r = x));
+    await pump(nodes, () => r !== null);
+    return r as JoinResult | null;
+  };
+
+  it('the host advertises its room on the LAN; the list carries no secret', async () => {
+    const { b, tag } = await hosted('1234');
+    expect(b.net.roomList()).toEqual([
+      { tag, title: '우리방', host: 'kim', hostId: 'A', locked: true, count: 1 },
+    ]);
+  });
+
+  it('an open room lets anyone in: the host hands its secret over sealed', async () => {
+    const { a, b, tag, secret } = await hosted();
+    const r = await join(b, tag, '', [a, b]);
+    expect(r).toMatchObject({ ok: true, title: '우리방' });
+    expect(r?.ok && r.secret.equals(secret)).toBe(true);
+  });
+
+  it('a locked room asks for its code: wrong → refused, right → in', async () => {
+    const { a, b, tag } = await hosted('1234');
+    expect(await join(b, tag, '12345', [a, b])).toEqual({ ok: false, reason: 'wrongPassword' });
+    a.t += 1_000; // past the host's per-requester gap
+    expect(await join(b, tag, '1234', [a, b])).toMatchObject({ ok: true });
+  });
+
+  it('a full room refuses newcomers', async () => {
+    const { a, b, tag } = await hosted();
+    const crowd = Array.from({ length: OFFICE_MAX_PEOPLE - 1 }, (_, i) => pkt(`M${i}`));
+    vi.spyOn(a.net, 'peers').mockReturnValue(crowd);
+    expect(await join(b, tag, '', [a, b])).toEqual({ ok: false, reason: 'roomFull' });
+  });
+
+  it('no answer → timeout; an unknown room → roomGone at once', async () => {
+    const { a, b, tag } = await hosted();
+    a.hosted = null; // the host stops admitting
+    let r: JoinResult | null = null;
+    b.net.joinRoom(tag, '', (x) => (r = x));
+    await pump([a, b], () => false, 3);
+    expect(r).toBeNull();
+    b.t += ROOM_JOIN_TIMEOUT_MS + 1;
+    b.net.sendNow();
+    expect(r).toEqual({ ok: false, reason: 'timeout' });
+    let gone: JoinResult | null = null;
+    b.net.joinRoom('AAAAAAAAAAA', '', (x) => (gone = x));
+    expect(gone).toEqual({ ok: false, reason: 'roomGone' });
+  });
+});
+
+describe('PeerNet public office cap', () => {
+  it('tracks at most OFFICE_MAX_PEOPLE − 1 other PCs (per LAN)', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const [b] = await mkNodes(['B']);
+    const x = createIdentity('X');
+    const rinfo = { address: '127.0.0.1', port: 9 };
+    const net = b.net as unknown as {
+      receive(t: string, r: typeof rinfo): void;
+      hellos: Map<string, unknown>;
+    };
+    for (let i = 0; i < 30; i++)
+      net.receive(JSON.stringify({ v: 2, t: 'hello', id: `H${i}`, pk: x.publicKey }), rinfo);
+    expect(net.hellos.size).toBe(OFFICE_MAX_PEOPLE - 1);
   });
 });

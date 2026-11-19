@@ -1,5 +1,5 @@
 /**
- * Office switcher model and invite-code input normalisation.
+ * Office switcher model.
  *
  * Run with: npm test
  */
@@ -8,18 +8,7 @@ import assert from 'node:assert/strict';
 
 import { test } from 'vitest';
 
-import {
-  isPersonal,
-  normalizeCodeInput,
-  switchConfirmName,
-  switcherItems,
-  wrapsActivity,
-} from '../src/lan/offices.js';
-
-test('code input: upper-case, spaces dropped, dashes kept', () => {
-  assert.equal(normalizeCodeInput(' po2-ab cd\tef\n'), 'PO2-ABCDEF');
-  assert.equal(normalizeCodeInput(''), '');
-});
+import { isPersonal, switchConfirmName, switcherItems, wrapsActivity } from '../src/lan/offices.js';
 
 test('no team: personal mode first, then the public office (active, enabled)', () => {
   assert.deepEqual(switcherItems({ offices: [], activeView: 'public' }), [

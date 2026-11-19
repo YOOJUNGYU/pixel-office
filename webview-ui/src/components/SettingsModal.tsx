@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 
 import type { Lang } from '../../../core/src/lan.js';
-import type { AutostartState, OfficesState } from '../../../core/src/messages.js';
+import type { AutostartState, OfficesState, RoomSummary } from '../../../core/src/messages.js';
 import { ADMIN_REVEAL_CLICKS, ADMIN_REVEAL_GAP_MS, RELAY_ADMIN_TOKEN_MAX } from '../constants.js';
 import type { NotifySettings, OfficeReply } from '../hooks/useExtensionMessages.js';
 import { LANG_NAMES, setLang, t, useLang } from '../i18n.js';
@@ -30,6 +30,8 @@ interface SettingsModalProps {
   relayAdmin: boolean;
   /** Team offices (this PC's browser only); the 오피스 section is hidden when null. */
   offices: Omit<OfficesState, 'type'> | null;
+  /** Rooms heard on this LAN (room list). */
+  rooms: RoomSummary[];
   officeReply: OfficeReply | null;
   onOfficeReplyHandled: () => void;
 }
@@ -44,6 +46,7 @@ export function SettingsModal({
   onNotifyChange,
   relayAdmin,
   offices,
+  rooms,
   officeReply,
   onOfficeReplyHandled,
 }: SettingsModalProps) {
@@ -211,7 +214,12 @@ export function SettingsModal({
         </div>
       )}
       {offices && (
-        <OfficeSettings state={offices} reply={officeReply} onReplyHandled={onOfficeReplyHandled} />
+        <OfficeSettings
+          state={offices}
+          rooms={rooms}
+          reply={officeReply}
+          onReplyHandled={onOfficeReplyHandled}
+        />
       )}
       {/* The server closes this page's socket with WS_CLOSE_APP_QUIT → the "종료됨" notice. */}
       <MenuItem

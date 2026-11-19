@@ -125,6 +125,7 @@ function App() {
     setUpdateStatus,
     autostart,
     offices,
+    rooms,
     officeReply,
     clearOfficeReply,
     savedLayoutRef,
@@ -839,6 +840,7 @@ function App() {
           onNotifyChange={setNotify}
           relayAdmin={relayAdmin}
           offices={offices}
+          rooms={rooms}
           officeReply={officeReply}
           onOfficeReplyHandled={clearOfficeReply}
         />

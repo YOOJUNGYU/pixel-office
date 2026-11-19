@@ -2620,7 +2620,7 @@ const scenes: Record<string, Scene> = {
   team: {
     period: 8000,
     draw: (t, me, o) => {
-      const code = 'PO2-7KQX-M4T9';
+      const code = '••••';
       const joined = t > 3000;
       const q = (t % 1000) / 1000;
       return (

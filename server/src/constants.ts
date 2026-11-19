@@ -192,11 +192,8 @@ export const X25519_PUBLIC_KEY_BYTES = 32;
 export const X25519_SPKI_PREFIX = '302a300506032b656e032100';
 export const GCM_NONCE_BYTES = 12;
 export const GCM_TAG_BYTES = 16;
-/** Invite secret: 13 bytes = 104 bits = 21 Crockford base32 chars, shown as PO2-XXXX-…. */
+/** Room (team office) secret: 13 random bytes (104 bits). */
 export const INVITE_SECRET_BYTES = 13;
-export const INVITE_PREFIX = 'PO2';
-export const INVITE_GROUP_LEN = 4;
-export const CROCKFORD_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
 // ── v2 peer protocol / offices (lan/peerNet.ts, lan/profile.ts) ──
 /** Every PeerNet datagram fits this on the wire: below 1472 (1500 MTU − IP/UDP) and
@@ -229,8 +226,21 @@ export const KNOWN_PEERS_FILE_NAME = 'known-peers.json';
 export const MAX_KNOWN_PEERS = 1_000;
 /** New pins are written at most this often (a hello flood must not hammer the disk). */
 export const PIN_SAVE_DELAY_MS = 1_000;
-/** Public-office peers tracked at once; hellos from further new ids are ignored. */
+/** Watchers (PCs outside the public office) tracked at once; further new ids are ignored. */
 export const MAX_HELLO_PEERS = 256;
+/** People in one office per network, this PC included (user decision 1.0.75): the public
+ *  office tracks at most this many − 1 other PCs heard over UDP (the relay never counts),
+ *  a room's host admits no one past it. */
+export const OFFICE_MAX_PEOPLE = 20;
+/** A room's access code, code points. */
+export const MAX_ROOM_PASSWORD = 32;
+/** A join waits this long for the host's answer (asks re-sent every send tick). */
+export const ROOM_JOIN_TIMEOUT_MS = 6_000;
+/** The host answers one ask per requester at most this often, ROOM_ASKS_PER_SEC in all. */
+export const ROOM_ASK_GAP_MS = 900;
+export const ROOM_ASKS_PER_SEC = 10;
+/** A room's host label on the wire, code points. */
+export const MAX_ROOM_HOST = 48;
 /** A received hello is answered with a unicast hello at most this often per peer (< PEER_TTL_MS). */
 export const HELLO_REPLY_MS = 2_000;
 /** Distinct once-only UDP warnings (ids/addresses come from the network); then logging stops. */

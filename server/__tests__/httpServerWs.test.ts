@@ -8,7 +8,9 @@ import { WebSocket } from 'ws';
 import { WS_CLOSE_REPLACED } from '../../core/src/constants.js';
 import { PUBLIC_VIEW } from '../../core/src/lan.js';
 import { WS_CLOSE_FORBIDDEN } from '../src/constants.js';
-import type { CreatedOffice } from '../src/lan/office.js';
+import { newRoomSecret } from '../src/lan/crypto.js';
+import type { JoinResult } from '../src/lan/peerNet.js';
+import { officeFromSecret } from '../src/lan/profile.js';
 
 // Isolated temp HOME: layout and config land under ~/.pixel-office/.
 let tmpBase: string;
@@ -323,16 +325,16 @@ describe('/ws LAN office', () => {
     expect(r.closeCode).toBe(WS_CLOSE_FORBIDDEN);
   });
 
-  it('team office: the code goes to the creator only; setRemoteView is unknown', async () => {
+  it('room: its code goes to its host only; setRemoteView is unknown', async () => {
     const local = await open('localhost');
-    const created = waitForMessage(local, 'officeCreated');
-    const state = waitForMessage(local, 'officesState');
-    local.send(JSON.stringify({ type: 'createOffice', name: '팀' }));
-    const c = (await created) as { tag: string; code: string };
-    expect(c.code).toMatch(/^PO2-/);
-    const st = await state;
-    expect(JSON.stringify(st)).not.toContain(c.code);
+    const state = waitForMessage(local, 'officesState', 2_000, (m) => m.activeView !== PUBLIC_VIEW);
+    local.send(JSON.stringify({ type: 'createOffice', name: '팀', password: ' 1234 ' }));
+    const st = (await state) as { offices: unknown[] };
+    expect(st.offices).toEqual([
+      { tag: lan.profile.offices[0].tag, name: '팀', host: true, password: '1234' },
+    ]);
     expect(st).not.toHaveProperty('remoteView');
+    expect(JSON.stringify(st)).not.toContain(lan.profile.offices[0].secret);
     const localSnap = (await waitForMessage(local, 'officeSnapshot')) as { agents: unknown[] };
     expect(localSnap.agents).toHaveLength(1);
 
@@ -347,21 +349,32 @@ describe('/ws LAN office', () => {
     expect(fs.readFileSync(profilePath(), 'utf-8')).not.toContain('remoteView');
   });
 
-  it('a refused join tells the asking socket why; alreadyJoined still switches', async () => {
-    const created = lan.createOffice('팀') as CreatedOffice;
-    lan.leaveOffice(created.tag);
+  it('a join goes through the host: refusals reach the asking socket; alreadyJoined still switches', async () => {
+    const secret = newRoomSecret();
+    const tag = officeFromSecret(secret, '').tag;
+    let answer: JoinResult = { ok: false, reason: 'wrongPassword' };
+    const asked: [string, string][] = [];
+    lan.net = {
+      ...lan.net,
+      roomList: () => [{ tag, title: '방', host: 'kim', hostId: 'H', locked: true, count: 3 }],
+      joinRoom: (t, pw, done) => {
+        asked.push([t, pw]);
+        setTimeout(() => done(answer), 10);
+      },
+    };
     const a = await open('localhost');
     const err = waitForMessage(a, 'officeError');
-    a.send(JSON.stringify({ type: 'joinOffice', code: 'PO2-NOPE' }));
-    expect(await err).toEqual({ type: 'officeError', reason: 'invalidCode' });
+    a.send(JSON.stringify({ type: 'joinOffice', tag, password: 'nope' }));
+    expect(await err).toEqual({ type: 'officeError', reason: 'wrongPassword' });
+    expect(asked).toEqual([[tag, 'nope']]);
 
-    // The refusal above also re-sent officesState (still public); it may land only now.
-    const ok = waitForMessage(a, 'officesState', 2_000, (m) => m.activeView === created.tag);
-    a.send(JSON.stringify({ type: 'joinOffice', code: created.code.toLowerCase() }));
-    expect(await ok).toMatchObject({ activeView: created.tag });
+    answer = { ok: true, secret, title: '방' };
+    const ok = waitForMessage(a, 'officesState', 2_000, (m) => m.activeView === tag);
+    a.send(JSON.stringify({ type: 'joinOffice', tag, password: '1234' }));
+    expect(await ok).toMatchObject({ activeView: tag, offices: [{ tag, name: '방' }] });
 
     const again = waitForMessage(a, 'officeError');
-    a.send(JSON.stringify({ type: 'joinOffice', code: created.code }));
+    a.send(JSON.stringify({ type: 'joinOffice', tag }));
     expect(await again).toEqual({ type: 'officeError', reason: 'alreadyJoined' });
     expect(lan.profile.offices).toHaveLength(1);
 
@@ -369,27 +382,32 @@ describe('/ws LAN office', () => {
     a.send(JSON.stringify({ type: 'createOffice', name: '' }));
     expect(await bad).toEqual({ type: 'officeError', reason: 'nameInvalid' });
     const left = waitForMessage(a, 'officesState', 2_000, (m) => m.activeView === PUBLIC_VIEW);
-    a.send(JSON.stringify({ type: 'leaveOffice', tag: created.tag }));
+    a.send(JSON.stringify({ type: 'leaveOffice', tag }));
     expect(await left).not.toBeNull();
   });
 
+  it('re-sends roomsState when the list changes', async () => {
+    const a = await open('localhost');
+    const listed = waitForMessage(a, 'roomsState', 3_000, (m) => (m.rooms as unknown[]).length > 0);
+    lan.net = {
+      ...lan.net,
+      roomList: () => [
+        { tag: 'T', title: '방', host: 'kim', hostId: 'H', locked: false, count: 2 },
+      ],
+    };
+    expect(await listed).toEqual({
+      type: 'roomsState',
+      rooms: [{ tag: 'T', title: '방', host: 'kim', locked: false, count: 2, max: 20 }],
+    });
+  });
+
   it('re-sends officesState once a member announces the team name', async () => {
-    const created = lan.createOffice('팀') as CreatedOffice;
-    lan.leaveOffice(created.tag);
-    lan.joinOffice(created.code); // joined without a name
+    const office = officeFromSecret(newRoomSecret(), ''); // an old invite-code team, unnamed
+    lan.profile = { ...lan.profile, offices: [office], activeView: office.tag };
     const a = await open('localhost');
     const named = waitForMessage(a, 'officesState', 3_000);
     lan.net = { ...lan.net, teamName: () => '알림팀' };
-    expect(await named).toMatchObject({ offices: [{ tag: created.tag, name: '알림팀' }] });
-  });
-
-  // Only one UI socket exists at a time (WS_CLOSE_REPLACED), so a reply has no one else to reach.
-  it('getOfficeCode answers the asking loopback socket', async () => {
-    const created = lan.createOffice('팀') as CreatedOffice;
-    const a = await open('localhost');
-    const code = waitForMessage(a, 'officeCode');
-    a.send(JSON.stringify({ type: 'getOfficeCode', tag: created.tag }));
-    expect(await code).toEqual({ type: 'officeCode', tag: created.tag, code: created.code });
+    expect(await named).toMatchObject({ offices: [{ tag: office.tag, name: '알림팀' }] });
   });
 });
 

@@ -218,12 +218,6 @@ export function handleClientMessage(
       ctx.lan?.setSeats(msg.seats); // goes out with the next presence
       break;
 
-    case 'getOfficeCode': {
-      const code = ctx.lan?.officeCode(msg.tag);
-      if (code) send({ type: 'officeCode', tag: msg.tag as string, code });
-      break;
-    }
-
     // Results reach privileged sockets via updater.broadcast.
     case 'installUpdate':
       void ctx.updater?.install();
@@ -325,18 +319,20 @@ function handleOfficeChange(
   try {
     switch (msg.type) {
       case 'createOffice': {
-        const created = lan.createOffice(msg.name);
-        if (typeof created === 'string') send(officeError(created));
-        else send({ type: 'officeCreated', ...created }); // the code goes to this socket only
-        ok = typeof created !== 'string';
-        break;
-      }
-      case 'joinOffice': {
-        const err = lan.joinOffice(msg.code, msg.name);
+        const err = lan.createOffice(msg.name, msg.password);
         if (err) send(officeError(err));
-        ok = err === null || err === 'alreadyJoined'; // alreadyJoined switched the view
+        ok = err === null;
         break;
       }
+      case 'joinOffice':
+        // Answered later: the room's host lets this PC in (or not) over the LAN.
+        lan.joinOffice(msg.tag, msg.password, (err) => {
+          if (err) send(officeError(err));
+          if (err === null || err === 'alreadyJoined')
+            onChanged?.(lan.profile.activeView !== wasView); // alreadyJoined switched the view
+          else send(officesMessage(lan));
+        });
+        return;
       case 'leaveOffice':
         ok = lan.leaveOffice(msg.tag);
         break;
@@ -354,7 +350,13 @@ function handleOfficeChange(
 
 const officeError = (reason: OfficeErrorReason) => ({ type: 'officeError', reason }) as const;
 
-/** officesState: names only, never secrets or codes. Privileged clients only. */
+/** roomsState: rooms heard on this LAN (never secrets or codes). Privileged clients only. */
+export function roomsMessage(lan: LanService) {
+  return { type: 'roomsState', rooms: lan.rooms() } as const;
+}
+
+/** officesState: names only, never secrets (my own room's code to me, its host).
+ *  Privileged clients only. */
 export function officesMessage(lan: LanService) {
   return {
     type: 'officesState',
@@ -478,7 +480,10 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
   // 2. Settings
   send(settingsSnapshot(ctx));
   if (ctx.lan) send(profileMessage(ctx.lan, ctx.privileged === true));
-  if (ctx.lan && ctx.privileged) send(officesMessage(ctx.lan));
+  if (ctx.lan && ctx.privileged) {
+    send(officesMessage(ctx.lan));
+    send(roomsMessage(ctx.lan));
+  }
 
   // 3. Layout last: the webview builds the office once it arrives.
   send(layoutMessage(cache, ctx.lan));
@@ -539,7 +544,6 @@ const KNOWN_CLIENT_TYPES: ReadonlySet<string> = new Set<ClientMessage['type']>([
   'joinOffice',
   'leaveOffice',
   'setActiveView',
-  'getOfficeCode',
   'setRelayAdminToken',
   'relayKick',
   'arcadeStart',

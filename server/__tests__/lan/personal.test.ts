@@ -10,11 +10,16 @@ import type { AssetCache } from '../../src/clientMessageHandler.js';
 import { handleClientMessage, snapshotMessage } from '../../src/clientMessageHandler.js';
 import { FileStateAdapter } from '../../src/fileStateAdapter.js';
 import { createIdentity } from '../../src/lan/crypto.js';
-import type { CreatedOffice } from '../../src/lan/office.js';
 import { LanService } from '../../src/lan/office.js';
 import type { Profile } from '../../src/lan/profile.js';
 import { loadProfile } from '../../src/lan/profile.js';
 import { getLayoutFilePath } from '../../src/layoutPersistence.js';
+
+/** A room created by `lan` (its host), as stored. */
+const room = (lan: LanService, name: string, password?: string) => {
+  expect(lan.createOffice(name, password)).toBeNull();
+  return lan.profile.offices[0];
+};
 
 const view: AgentView = {
   id: 's1',
@@ -127,7 +132,7 @@ describe('personal mode', () => {
   });
 
   it('keeps team memberships inactive and switches back to a team without a code', () => {
-    const team = lan.createOffice('팀') as CreatedOffice;
+    const team = room(lan, '팀');
     expect(lan.setActiveView(PERSONAL_VIEW)).toBe(true);
     expect(loadProfile(home)).toMatchObject({ activeView: PERSONAL_VIEW });
     expect(loadProfile(home).offices.map((o) => o.tag)).toEqual([team.tag]);
@@ -135,7 +140,9 @@ describe('personal mode', () => {
     lan.leaveOffice(team.tag);
     expect(lan.personal).toBe(true);
     expect(lan.profile.offices).toEqual([]);
-    lan.joinOffice(team.code);
+    lan.net.joinRoom = (_t, _pw, done) =>
+      done({ ok: true, secret: Buffer.from(team.secret, 'base64'), title: '팀' });
+    lan.joinOffice(team.tag, '', () => {});
     lan.setActiveView(PERSONAL_VIEW);
     msg({ type: 'setActiveView', view: team.tag });
     expect(lan.profile.activeView).toBe(team.tag);
@@ -143,7 +150,7 @@ describe('personal mode', () => {
   });
 
   it('every office switch resends the layout (each office has its own); a no-op switch does not', () => {
-    const a = lan.createOffice('a') as CreatedOffice;
+    const a = room(lan, 'a');
     lan.setActiveView(PERSONAL_VIEW);
     msg({ type: 'setActiveView', view: a.tag });
     expect(onOfficesChanged).toHaveBeenLastCalledWith(true);
@@ -190,7 +197,7 @@ describe('personal mode', () => {
     msg({ type: 'webviewReady' });
     expect(layoutMarker()).toBe('office-saved');
 
-    const team = lan.createOffice('t') as CreatedOffice; // a team starts from the default
+    const team = room(lan, 't'); // a team starts from the default
     sent = [];
     msg({ type: 'webviewReady' });
     expect(layoutMarker()).toBe('office-default');

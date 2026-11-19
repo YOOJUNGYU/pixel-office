@@ -4,8 +4,6 @@ import type { OfficeAgent } from '../../../core/src/lan.js';
 import { isLayoutGrid } from '../../../core/src/lan.js';
 import type {
   AutostartState,
-  OfficeCode,
-  OfficeCreated,
   OfficeError,
   OfficePersonMessage,
   OfficeSnapshot,
@@ -16,6 +14,8 @@ import type {
   ProfileLoaded,
   RelayKickResult,
   RelayState,
+  RoomsState,
+  RoomSummary,
   UpdateAvailable,
   UpdateStatus,
 } from '../../../core/src/messages.js';
@@ -108,6 +108,8 @@ interface ExtensionMessageState {
   autostart: AutostartState | null;
   /** Team offices + active view (this PC's browser only); null for read-only viewers. */
   offices: Omit<OfficesState, 'type'> | null;
+  /** Rooms heard on this PC's LAN (this PC's browser only). */
+  rooms: RoomSummary[];
   notify: NotifySettings | null;
   setNotify: (v: NotifySettings) => void;
   /** Latest reply to an office request from this browser (each a new object). */
@@ -125,7 +127,7 @@ interface ExtensionMessageState {
 
 export type RelayStatus = Omit<RelayState, 'type'> & { at: number };
 
-export type OfficeReply = OfficeCreated | OfficeCode | OfficeError;
+export type OfficeReply = OfficeError;
 
 export function useExtensionMessages(
   getOfficeState: () => OfficeState,
@@ -155,6 +157,7 @@ export function useExtensionMessages(
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
   const [autostart, setAutostart] = useState<AutostartState | null>(null);
   const [offices, setOffices] = useState<Omit<OfficesState, 'type'> | null>(null);
+  const [rooms, setRooms] = useState<RoomSummary[]>([]);
   const [notify, setNotify] = useState<NotifySettings | null>(null);
   const [officeReply, setOfficeReply] = useState<OfficeReply | null>(null);
   const clearOfficeReply = useCallback(() => setOfficeReply(null), []);
@@ -253,11 +256,9 @@ export function useExtensionMessages(
       } else if (msg.type === 'officesState') {
         const { offices, activeView } = msg as OfficesState;
         setOffices({ offices, activeView });
-      } else if (
-        msg.type === 'officeCreated' ||
-        msg.type === 'officeCode' ||
-        msg.type === 'officeError'
-      ) {
+      } else if (msg.type === 'roomsState') {
+        setRooms((msg as RoomsState).rooms);
+      } else if (msg.type === 'officeError') {
         setOfficeReply(msg as OfficeReply);
       } else if (msg.type === 'characterSpritesLoaded') {
         const characters = msg.characters as Array<{
@@ -374,6 +375,7 @@ export function useExtensionMessages(
     setUpdateStatus,
     autostart,
     offices,
+    rooms,
     officeReply,
     clearOfficeReply,
     savedLayoutRef,

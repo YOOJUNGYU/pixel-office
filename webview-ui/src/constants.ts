@@ -748,6 +748,8 @@ export const ROOM_TIP_WIDTH_PX = 300;
 // ── Team offices ─────────────────────────────────────────────
 /** Office name length the server accepts (server MAX_OFFICE_NAME). */
 export const MAX_OFFICE_NAME = 20;
+/** A room's access code length the server accepts (server MAX_ROOM_PASSWORD). */
+export const MAX_ROOM_PASSWORD = 32;
 /** How long "copied" stays next to a Copy button. */
 export const OFFICE_COPIED_MS = 2_000;
 

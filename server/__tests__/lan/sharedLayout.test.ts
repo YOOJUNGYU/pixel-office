@@ -10,7 +10,7 @@ import { DEFAULT_LAYOUT_REV, newerLayout, PUBLIC_VIEW } from '../../../core/src/
 import { LAYOUT_PUSH_MS, MAX_DATAGRAM_BYTES } from '../../src/constants.js';
 import {
   createIdentity,
-  newInviteCode,
+  newRoomSecret,
   parseWire,
   pubAad,
   seal,
@@ -133,7 +133,7 @@ describe('shared layout sync (PeerNet)', () => {
 
   it('team: members get the newest layout over the team channel; outsiders get nothing', async () => {
     const [a, b, c] = await mkNodes(3);
-    const key = teamKey(newInviteCode().secret);
+    const key = teamKey(newRoomSecret());
     const team = { tag: teamTag(key), key, name: 't' };
     a.offices = [team];
     b.offices = [team];

@@ -5,7 +5,7 @@ import * as path from 'path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { AgentView, PeerInfo, PeerPacket } from '../../../core/src/lan.js';
-import { PERSONAL_VIEW, PUBLIC_VIEW } from '../../../core/src/lan.js';
+import { peerLabel, PERSONAL_VIEW, PUBLIC_VIEW } from '../../../core/src/lan.js';
 import {
   handleClientMessage,
   officesMessage,
@@ -13,12 +13,18 @@ import {
   snapshotMessage,
 } from '../../src/clientMessageHandler.js';
 import { FileStateAdapter } from '../../src/fileStateAdapter.js';
-import { createIdentity, parseInviteCode } from '../../src/lan/crypto.js';
-import type { CreatedOffice } from '../../src/lan/office.js';
+import { createIdentity, newRoomSecret } from '../../src/lan/crypto.js';
 import { buildOffice, LanService } from '../../src/lan/office.js';
+import type { JoinResult } from '../../src/lan/peerNet.js';
 import type { Profile } from '../../src/lan/profile.js';
 import { loadProfile, osAccount } from '../../src/lan/profile.js';
 import { APP_VERSION } from '../../src/lan/updater.js';
+
+/** A room created by `lan` (its host), as stored. */
+const room = (lan: LanService, name: string, password?: string) => {
+  expect(lan.createOffice(name, password)).toBeNull();
+  return lan.profile.offices[0];
+};
 
 const saves = vi.hoisted(() => vi.fn());
 vi.mock('../../src/lan/profile.js', async (orig) => {
@@ -440,18 +446,17 @@ describe('LanService', () => {
         hueShift: 10,
         self: false,
       });
-      const created = lan.createOffice('팀') as CreatedOffice;
+      const created = room(lan, '팀');
       expect(ids(snapshotMessage(lan))).toEqual(['me*', 'mate']);
       expect(lan.people(PUBLIC_VIEW)).toEqual([]);
       expect(lan.people('unknown-tag')).toEqual([]);
       expect(lan.people(created.tag).map((p) => p.peerId)).toEqual(['me', 'mate']);
     });
 
-    it('create: code to the caller, team view active, the public office is empty', () => {
+    it('create: a hosted room becomes the view, the public office is empty', () => {
       const { lan, sendNow } = mk();
-      const created = lan.createOffice(' 우리팀 ') as CreatedOffice;
-      expect(created.name).toBe('우리팀');
-      expect(parseInviteCode(created.code)).not.toBeNull();
+      const created = room(lan, ' 우리팀 ', ' 1234 ');
+      expect(created).toMatchObject({ name: '우리팀', host: true, password: '1234' });
       expect(sendNow).toHaveBeenCalled();
       expect(lan.profile.activeView).toBe(created.tag);
       expect(keys(lan.office(created.tag))).toEqual(['me:s1', 'mate:team-secret-work']);
@@ -459,43 +464,82 @@ describe('LanService', () => {
       // this PC's browser follows activeView
       expect(keys(snapshotMessage(lan).agents)).toContain('mate:team-secret-work');
       expect(lan.setActiveView(PUBLIC_VIEW)).toBe(false);
+      expect(lan.createOffice('a', 'x'.repeat(33))).toBe('passwordInvalid');
+      expect(lan.createOffice('a', 5)).toBe('passwordInvalid');
     });
 
-    it('officesState carries names only; the secret stays in the 0600 profile', () => {
+    it('hostedRoom: only while the room is on screen; no code = open', () => {
       const { lan } = mk();
-      const created = lan.createOffice('팀') as CreatedOffice;
+      const r = room(lan, '방');
+      expect(lan.hostedRoom()).toMatchObject({
+        tag: r.tag,
+        title: '방',
+        by: peerLabel(lan.self()),
+        password: '',
+      });
+      expect(lan.hostedRoom()?.secret.toString('base64')).toBe(r.secret);
+      lan.setActiveView(PERSONAL_VIEW);
+      expect(lan.hostedRoom()).toBeNull();
+    });
+
+    it('officesState carries names only; the code to its host; the secret stays in the 0600 profile', () => {
+      const { lan } = mk();
+      const created = room(lan, '팀', 'pw');
       const msg = JSON.stringify(officesMessage(lan));
       const { secret } = lan.profile.offices[0];
       expect(msg).not.toContain(secret);
-      expect(msg).not.toContain(created.code);
-      expect(msg).not.toContain(created.code.replace(/-/g, ''));
       expect(officesMessage(lan)).toEqual({
         type: 'officesState',
-        offices: [{ tag: created.tag, name: '팀' }],
+        offices: [{ tag: created.tag, name: '팀', host: true, password: 'pw' }],
         activeView: created.tag,
       });
       const file = path.join(dir, 'profile.json');
       expect(fs.readFileSync(file, 'utf-8')).toContain(secret);
       if (process.platform !== 'win32') expect(fs.statSync(file).mode & 0o777).toBe(0o600);
       expect(loadProfile(dir).offices).toEqual(lan.profile.offices);
-      expect(lan.officeCode(created.tag)).toBe(created.code);
     });
 
-    it('join by a sloppy code (name announced by members), leave back to public', () => {
-      const a = mk().lan;
-      const { code, tag } = a.createOffice('팀') as CreatedOffice;
+    it('join through the host, leave back to public', () => {
+      const host = mk().lan;
+      const { tag, secret } = room(host, '팀');
       const { lan } = mk();
-      expect(lan.joinOffice('nope')).toBe('invalidCode');
-      expect(lan.joinOffice(code, 'x'.repeat(21))).toBe('nameInvalid');
-      expect(lan.joinOffice(` ${code.toLowerCase().replace(/-/g, ' ')} `, '')).toBeNull();
+      const answers: JoinResult[] = [{ ok: false, reason: 'wrongPassword' }];
+      lan.net.joinRoom = (_t, _pw, done) =>
+        done(answers.shift() ?? { ok: true, secret: Buffer.from(secret, 'base64'), title: '팀' });
+      const got: (string | null)[] = [];
+      const join = (t: unknown, pw?: unknown) => lan.joinOffice(t, pw, (e) => got.push(e));
+      join(tag, 'x'.repeat(33));
+      join(tag, 'bad');
+      join(tag, 'ok');
       expect(lan.profile.offices.map((o) => o.tag)).toEqual([tag]);
-      expect(lan.officeList()).toEqual([{ tag, name: 'announced' }]);
-      expect(lan.joinOffice(code)).toBe('alreadyJoined'); // again: no duplicate
+      expect(lan.profile.offices[0]).not.toHaveProperty('host');
+      expect(lan.officeList()).toEqual([{ tag, name: '팀' }]);
+      join(tag); // again: no duplicate
+      expect(got).toEqual(['passwordInvalid', 'wrongPassword', null, 'alreadyJoined']);
       expect(lan.profile.offices).toHaveLength(1);
       expect(lan.leaveOffice('other')).toBe(false);
       expect(lan.leaveOffice(tag)).toBe(true);
       expect(lan.profile).toMatchObject({ offices: [], activeView: PUBLIC_VIEW });
       expect(keys(lan.office(PUBLIC_VIEW))).toContain('p1:public-work');
+    });
+
+    it("a join answered with another room's secret is refused", () => {
+      const { lan } = mk();
+      lan.net.joinRoom = (_t, _pw, done) => done({ ok: true, secret: newRoomSecret(), title: 'x' });
+      const got: (string | null)[] = [];
+      lan.joinOffice('AAAAAAAAAAA', '', (e) => got.push(e));
+      expect(got).toEqual(['roomGone']);
+      expect(lan.profile.offices).toEqual([]);
+    });
+
+    it('rooms: the LAN list with the cap, never a secret', () => {
+      const { lan } = mk();
+      lan.net.roomList = () => [
+        { tag: 'T', title: '방', host: 'kim', hostId: 'H', locked: true, count: 4 },
+      ];
+      expect(lan.rooms()).toEqual([
+        { tag: 'T', title: '방', host: 'kim', locked: true, count: 4, max: 20 },
+      ]);
     });
 
     it('rejects bad names', () => {
@@ -507,18 +551,21 @@ describe('LanService', () => {
 
     it('create or join while in a team replaces the team in one save', () => {
       const { lan } = mk();
-      const a = lan.createOffice('a') as CreatedOffice;
+      const a = room(lan, 'a');
       saves.mockClear();
-      const b = lan.createOffice('b') as CreatedOffice;
+      const b = room(lan, 'b');
       expect(saves).toHaveBeenCalledTimes(1);
       expect(lan.profile.offices.map((o) => o.name)).toEqual(['b']);
       expect(lan.profile.activeView).toBe(b.tag);
       expect(loadProfile(dir).offices.map((o) => o.name)).toEqual(['b']);
-      expect(lan.joinOffice(a.code)).toBeNull();
+      lan.net.joinRoom = (_t, _pw, done) =>
+        done({ ok: true, secret: Buffer.from(a.secret, 'base64'), title: 'a' });
+      const got: (string | null)[] = [];
+      lan.joinOffice(a.tag, '', (e) => got.push(e));
+      lan.joinOffice(a.tag, '', (e) => got.push(e));
+      expect(got).toEqual([null, 'alreadyJoined']);
       expect(lan.profile.offices.map((o) => o.tag)).toEqual([a.tag]);
       expect(lan.profile.activeView).toBe(a.tag);
-      expect(lan.joinOffice(a.code)).toBe('alreadyJoined');
-      expect(lan.profile.offices.map((o) => o.tag)).toEqual([a.tag]);
     });
   });
 
@@ -554,7 +601,7 @@ describe('LanService', () => {
 
     it('team PC: me in the team under its name, public PCs listed without me', () => {
       const lan = mk({});
-      const { tag } = lan.createOffice('우리팀') as CreatedOffice;
+      const { tag } = room(lan, '우리팀');
       lan.net.directory = () => ({
         public: [mkPeer('a')],
         teams: { [tag]: [mkPeer('m')] },
@@ -569,7 +616,7 @@ describe('LanService', () => {
 
     it('personal PC in a team: me in personal only; the team still lists its members', () => {
       const lan = mk({});
-      const { tag } = lan.createOffice('우리팀') as CreatedOffice;
+      const { tag } = room(lan, '우리팀');
       lan.net.directory = () => ({ public: [], teams: { [tag]: [mkPeer('m')] }, personal: [] });
       lan.setActiveView(PERSONAL_VIEW);
       const d = lan.directory();
@@ -597,7 +644,7 @@ describe('LanService', () => {
       expect(d.public.map((p) => p.net)).toEqual(['lan', '0a1b2c3d', undefined]);
       expect(d.public[2]).not.toHaveProperty('net');
       expect(lan.people(PUBLIC_VIEW).map((p) => p.net)).toEqual(['lan', '0a1b2c3d']);
-      const { tag } = lan.createOffice('우리팀') as CreatedOffice;
+      const { tag } = room(lan, '우리팀');
       lan.net.directory = () => ({ public: [], teams: { [tag]: [mkPeer('a')] }, personal: [] });
       for (const p of [...lan.directory().teams[0].people, ...lan.people(tag)])
         expect(p).not.toHaveProperty('net');
@@ -611,7 +658,7 @@ describe('LanService', () => {
       expect(lan.directory().public.map((p) => p.via)).toEqual([undefined, 'lan', 'relay']);
       expect(lan.directory().public[0]).not.toHaveProperty('via');
       expect(lan.people(PUBLIC_VIEW).map((p) => p.via)).toEqual([undefined, 'relay']);
-      const { tag } = lan.createOffice('우리팀') as CreatedOffice;
+      const { tag } = room(lan, '우리팀');
       lan.net.directory = () => ({ public: [], teams: { [tag]: [mkPeer('a')] }, personal: [] });
       for (const p of [...lan.directory().teams[0].people, ...lan.people(tag)])
         expect(p).not.toHaveProperty('via');

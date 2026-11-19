@@ -1,77 +1,65 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type { OfficeErrorReason, OfficesState } from '../../../core/src/messages.js';
+import type { OfficeErrorReason, OfficesState, RoomSummary } from '../../../core/src/messages.js';
 import { Button } from '../components/ui/Button.js';
-import { MAX_OFFICE_NAME, OFFICE_COPIED_MS } from '../constants.js';
+import { MAX_OFFICE_NAME, MAX_ROOM_PASSWORD, OFFICE_COPIED_MS } from '../constants.js';
 import type { OfficeReply } from '../hooks/useExtensionMessages.js';
 import { t } from '../i18n.js';
 import { transport } from '../transport/index.js';
-import { normalizeCodeInput, switchConfirmName } from './offices.js';
+import { switchConfirmName } from './offices.js';
 
 const INPUT = 'flex-1 min-w-0 py-2 px-4 bg-bg border-2 border-border rounded-none text-text';
-/** Created office's code panel key in `copied` (list rows use the office tag). */
-const CREATED = 'created';
 
 interface OfficeSettingsProps {
   state: Omit<OfficesState, 'type'>;
+  /** Rooms heard on this LAN. */
+  rooms: RoomSummary[];
   reply: OfficeReply | null;
   /** Consumes `reply`: a remount (Settings reopened) must not apply it again. */
   onReplyHandled: () => void;
 }
 
-/** Settings → 오피스: create, join, copy code / leave. This PC's browser only. */
-export function OfficeSettings({ state, reply, onReplyHandled }: OfficeSettingsProps) {
+/** Settings → 오피스: create a room, join one from the LAN's list, leave. This PC's browser only. */
+export function OfficeSettings({ state, rooms, reply, onReplyHandled }: OfficeSettingsProps) {
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  /** A locked room picked from the list: its code field is open. */
+  const [picked, setPicked] = useState<string | null>(null);
   const [code, setCode] = useState('');
-  const [joinName, setJoinName] = useState('');
-  const [created, setCreated] = useState<{ tag: string; code: string } | null>(null);
-  /** Codes fetched for re-copying, shown too in case the clipboard is unavailable. */
-  const [codes, setCodes] = useState<Record<string, string>>({});
-  const [copied, setCopied] = useState<string | null>(null);
+  /** The room being joined (waiting for its host). */
+  const [joining, setJoining] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<OfficeErrorReason | null>(null);
   const [leftPublic, setLeftPublic] = useState(false);
   const prevCount = useRef(state.offices.length);
-
-  const copy = (key: string, text: string) => {
-    void navigator.clipboard
-      ?.writeText(text)
-      .then(() => {
-        setCopied(key);
-        setTimeout(() => setCopied((k) => (k === key ? null : k)), OFFICE_COPIED_MS);
-      })
-      .catch(() => {});
-  };
+  const current = state.offices[0];
 
   useEffect(() => {
     if (!reply) return;
-    if (reply.type === 'officeError') {
-      setError(reply.reason);
-    } else if (reply.type === 'officeCreated') {
-      setError(null);
-      setName('');
-      setCreated({ tag: reply.tag, code: reply.code });
-    } else {
-      setCodes((c) => ({ ...c, [reply.tag]: reply.code }));
-      copy(reply.tag, reply.code);
-    }
+    setError(reply.reason);
+    setJoining(null);
     onReplyHandled();
   }, [reply, onReplyHandled]);
 
-  // Joined/created the first team: say that this PC left the public office.
+  // Joined/created the first room: say that this PC left the public office.
   useEffect(() => {
     const n = state.offices.length;
     if (prevCount.current === 0 && n > 0) setLeftPublic(true);
     if (n === 0) setLeftPublic(false);
-    if (n > prevCount.current) {
-      setCode('');
-      setJoinName('');
-    }
     prevCount.current = n;
   }, [state.offices.length]);
 
+  // In the room now: the join is over.
+  useEffect(() => {
+    if (current?.tag !== joining) return;
+    setJoining(null);
+    setPicked(null);
+    setCode('');
+  }, [current?.tag, joining]);
+
   const trimmedName = name.trim();
   const nameOk = trimmedName.length >= 1 && trimmedName.length <= MAX_OFFICE_NAME;
-  /** In a team already: the new one replaces it, so ask first. */
+  /** In a room already: the new one replaces it, so ask first. */
   const confirmSwitch = (): boolean => {
     const cur = switchConfirmName(state);
     return (
@@ -82,15 +70,24 @@ export function OfficeSettings({ state, reply, onReplyHandled }: OfficeSettingsP
   const create = () => {
     if (!nameOk || !confirmSwitch()) return;
     setError(null);
-    transport.send({ type: 'createOffice', name: trimmedName });
+    transport.send({ type: 'createOffice', name: trimmedName, password: password.trim() });
+    setName('');
+    setPassword('');
   };
-  const join = () => {
-    const c = normalizeCodeInput(code);
-    if (!c || !confirmSwitch()) return;
+  const join = (tag: string, pw: string) => {
+    if (!confirmSwitch()) return;
     setError(null);
-    setCreated(null);
-    const n = joinName.trim();
-    transport.send({ type: 'joinOffice', code: c, ...(n && { name: n }) });
+    setJoining(tag);
+    transport.send({ type: 'joinOffice', tag, ...(pw && { password: pw }) });
+  };
+  const copy = (text: string) => {
+    void navigator.clipboard
+      ?.writeText(text)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), OFFICE_COPIED_MS);
+      })
+      .catch(() => {});
   };
 
   return (
@@ -98,60 +95,100 @@ export function OfficeSettings({ state, reply, onReplyHandled }: OfficeSettingsP
       <div data-tour="settings-offices" className="flex flex-col gap-6">
         <div className="text-accent-bright">{t('settings.offices')}</div>
 
-        <label htmlFor="office-name">{t('office.create')}</label>
+        <label htmlFor="room-title">{t('office.create')}</label>
+        <input
+          id="room-title"
+          type="text"
+          value={name}
+          maxLength={MAX_OFFICE_NAME}
+          placeholder={t('office.namePlaceholder')}
+          onChange={(e) => setName(e.target.value)}
+          className={INPUT}
+        />
         <div className="flex gap-4">
           <input
-            id="office-name"
             type="text"
-            value={name}
-            maxLength={MAX_OFFICE_NAME}
-            placeholder={t('office.namePlaceholder')}
-            onChange={(e) => setName(e.target.value)}
+            value={password}
+            maxLength={MAX_ROOM_PASSWORD}
+            autoComplete="off"
+            spellCheck={false}
+            aria-label={t('office.passwordPlaceholder')}
+            placeholder={t('office.passwordPlaceholder')}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && create()}
             className={INPUT}
           />
           <Button size="sm" variant={nameOk ? 'accent' : 'disabled'} onClick={create}>
             {t('office.createButton')}
           </Button>
         </div>
-        {created && (
-          <div className="flex flex-col gap-4 p-6 border-2 border-accent bg-bg-dark">
-            <span>{t('office.shareHint')}</span>
-            <div className="flex items-center gap-8">
-              <code data-testid="office-created-code" className="flex-1 select-all break-all">
-                {created.code}
-              </code>
-              <Button size="sm" onClick={() => copy(CREATED, created.code)}>
-                {copied === CREATED ? t('office.copied') : t('office.copy')}
-              </Button>
-            </div>
-          </div>
-        )}
+        <span className="text-xs text-text-muted">{t('office.createHint')}</span>
 
-        <label htmlFor="office-code">{t('office.join')}</label>
-        <input
-          id="office-code"
-          type="text"
-          value={code}
-          placeholder="PO2-…"
-          autoComplete="off"
-          spellCheck={false}
-          onChange={(e) => setCode(normalizeCodeInput(e.target.value))}
-          className={INPUT}
-        />
-        <div className="flex gap-4">
-          <input
-            type="text"
-            value={joinName}
-            maxLength={MAX_OFFICE_NAME}
-            aria-label={t('office.joinNamePlaceholder')}
-            placeholder={t('office.joinNamePlaceholder')}
-            onChange={(e) => setJoinName(e.target.value)}
-            className={INPUT}
-          />
-          <Button size="sm" variant={code ? 'accent' : 'disabled'} onClick={join}>
-            {t('office.joinButton')}
-          </Button>
-        </div>
+        <div>{t('office.rooms')}</div>
+        {rooms.length === 0 && <div className="text-text-muted">{t('office.noRooms')}</div>}
+        {rooms.map((r) => {
+          const inside = current?.tag === r.tag;
+          const full = r.count >= r.max;
+          const waiting = joining === r.tag;
+          return (
+            <div key={r.tag} data-room={r.tag} className="flex flex-col gap-2">
+              <div className="flex items-center gap-4">
+                <span className="flex-1 min-w-0 truncate">
+                  {r.locked ? '🔒' : '🚪'} {r.title}
+                  <span className="text-text-muted">
+                    {' · '}
+                    {t('office.roomHost', { name: r.host })}
+                  </span>
+                </span>
+                <span className={full ? 'text-danger' : 'text-text-muted'}>
+                  {r.count}/{r.max}
+                </span>
+                <Button
+                  size="sm"
+                  variant={inside || full || waiting ? 'disabled' : 'default'}
+                  onClick={() => {
+                    if (inside || full || waiting) return;
+                    if (r.locked) {
+                      setPicked(picked === r.tag ? null : r.tag);
+                      setCode('');
+                    } else join(r.tag, '');
+                  }}
+                >
+                  {inside
+                    ? t('office.inRoom')
+                    : waiting
+                      ? t('office.joining')
+                      : full
+                        ? t('office.full')
+                        : t('office.joinButton')}
+                </Button>
+              </div>
+              {picked === r.tag && !inside && (
+                <div className="flex gap-4">
+                  <input
+                    type="password"
+                    value={code}
+                    maxLength={MAX_ROOM_PASSWORD}
+                    autoFocus
+                    autoComplete="off"
+                    aria-label={t('office.codePlaceholder')}
+                    placeholder={t('office.codePlaceholder')}
+                    onChange={(e) => setCode(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && code.trim() && join(r.tag, code.trim())}
+                    className={INPUT}
+                  />
+                  <Button
+                    size="sm"
+                    variant={code.trim() && !waiting ? 'accent' : 'disabled'}
+                    onClick={() => code.trim() && !waiting && join(r.tag, code.trim())}
+                  >
+                    {t('office.enter')}
+                  </Button>
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {error && (
           <span role="alert" className="text-xs text-danger">
@@ -161,40 +198,44 @@ export function OfficeSettings({ state, reply, onReplyHandled }: OfficeSettingsP
         {leftPublic && <span className="text-xs text-accent-bright">{t('office.leftPublic')}</span>}
 
         <div>{t('office.list')}</div>
-        {state.offices.length === 0 && <div className="text-text-muted">{t('office.none')}</div>}
-        {state.offices.map((o) => {
-          const label = o.name || t('office.unnamed');
-          return (
-            <div key={o.tag} className="flex flex-col gap-2">
-              <div className="flex items-center gap-4">
-                <span className="flex-1 min-w-0 truncate">🔒 {label}</span>
-                <Button
-                  size="sm"
-                  onClick={() =>
-                    codes[o.tag]
-                      ? copy(o.tag, codes[o.tag])
-                      : transport.send({ type: 'getOfficeCode', tag: o.tag })
+        {!current && <div className="text-text-muted">{t('office.none')}</div>}
+        {current && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-4">
+              <span className="flex-1 min-w-0 truncate">
+                🔒 {current.name || t('office.unnamed')}
+                {current.host && <span className="text-accent-bright"> · {t('office.host')}</span>}
+              </span>
+              <Button
+                size="sm"
+                onClick={() => {
+                  const label = current.name || t('office.unnamed');
+                  if (window.confirm(t('office.leaveConfirm', { name: label }))) {
+                    transport.send({ type: 'leaveOffice', tag: current.tag });
                   }
-                >
-                  {copied === o.tag ? t('office.copied') : t('office.copy')}
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (window.confirm(t('office.leaveConfirm', { name: label }))) {
-                      transport.send({ type: 'leaveOffice', tag: o.tag });
-                    }
-                  }}
-                >
-                  {t('office.leave')}
-                </Button>
-              </div>
-              {codes[o.tag] && (
-                <code className="text-xs text-text-muted select-all break-all">{codes[o.tag]}</code>
-              )}
+                }}
+              >
+                {t('office.leave')}
+              </Button>
             </div>
-          );
-        })}
+            {current.host && (
+              <div className="flex items-center gap-4 text-xs text-text-muted">
+                {current.password ? (
+                  <>
+                    <span className="flex-1 min-w-0 truncate">
+                      {t('office.myCode')} <code className="select-all">{current.password}</code>
+                    </span>
+                    <Button size="sm" onClick={() => copy(current.password ?? '')}>
+                      {copied ? t('office.copied') : t('office.copy')}
+                    </Button>
+                  </>
+                ) : (
+                  <span>{t('office.openRoom')}</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

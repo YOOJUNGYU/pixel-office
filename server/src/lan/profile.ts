@@ -33,15 +33,21 @@ import {
   MAX_KNOWN_PEERS,
   MAX_OFFICE_NAME,
   MAX_OFFICES,
+  MAX_ROOM_PASSWORD,
   PIN_SAVE_DELAY_MS,
 } from '../constants.js';
 import { createIdentity, isWireId, publicKeyOf, teamKey, teamTag } from './crypto.js';
 
-/** A joined team office. `secret` (base64 invite secret) never leaves this PC. */
+/** A joined team office (room). `secret` (base64) never leaves this PC except sealed to a
+ *  joiner this PC admits as the room's host. */
 export interface TeamOffice {
   tag: string;
   name: string;
   secret: string;
+  /** This PC created the room: it lists it on the LAN and admits joiners. */
+  host?: true;
+  /** The host's access code ('' or absent = anyone may join). */
+  password?: string;
 }
 
 export interface Profile {
@@ -138,7 +144,15 @@ export function validateOfficeName(x: unknown): string | null {
   return s.length >= 1 && s.length <= MAX_OFFICE_NAME ? s : null;
 }
 
-/** Team office from its invite secret; the tag is always derived, never trusted from disk. */
+/** Access code: up to MAX_ROOM_PASSWORD code points, '' = none; null otherwise. */
+export function validateRoomPassword(x: unknown): string | null {
+  if (x === undefined) return '';
+  if (typeof x !== 'string') return null;
+  const s = x.trim();
+  return [...s].length <= MAX_ROOM_PASSWORD ? s : null;
+}
+
+/** Team office from its secret; the tag is always derived, never trusted from disk. */
 export function officeFromSecret(secret: Buffer, name: string): TeamOffice {
   return { tag: teamTag(teamKey(secret)), name, secret: secret.toString('base64') };
 }
@@ -152,6 +166,11 @@ function parseOffices(x: unknown, keepTag: unknown): TeamOffice[] {
     const secret = Buffer.from(o.secret, 'base64');
     if (secret.length !== INVITE_SECRET_BYTES || secret.toString('base64') !== o.secret) continue;
     const office = officeFromSecret(secret, validateOfficeName(o.name) ?? '');
+    const password = validateRoomPassword(o.password);
+    if (o.host === true) {
+      office.host = true;
+      if (password) office.password = password;
+    }
     if (!all.some((e) => e.tag === office.tag)) all.push(office);
   }
   const keep = all.find((e) => e.tag === keepTag) ?? all[0];

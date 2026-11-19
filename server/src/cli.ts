@@ -232,6 +232,7 @@ export async function main(boot = true): Promise<void> {
     getPacket: (channel) => lan.packet(channel),
     manualPeers: () => lan.profile.manualPeers,
     offices: () => lan.teamChannels(),
+    hostedRoom: () => lan.hostedRoom(),
     offline: () => lan.personal,
     onAvatar: () => lan.peerMoved(),
     layouts: {

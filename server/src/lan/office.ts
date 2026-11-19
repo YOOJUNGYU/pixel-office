@@ -16,6 +16,7 @@ import {
   nicknameKey,
   parseAvatar,
   parseChat,
+  peerLabel,
   PERSONAL_VIEW,
   PUBLIC_VIEW,
   SEAT_ID,
@@ -26,16 +27,18 @@ import type {
   OfficeErrorReason,
   OfficePersonMessage,
   PeopleDirectory,
+  RoomSummary,
 } from '../../../core/src/messages.js';
 import {
   AVATAR_SAVE_DELAY_MS,
   AVATAR_SEND_DELAY_MS,
+  OFFICE_MAX_PEOPLE,
   PING_APP,
   PING_TIMEOUT_MS,
 } from '../constants.js';
 import { MAX_SEAT_REPORT, MAX_SEAT_VIEW_ID } from '../constants.js';
-import { inviteText, newInviteCode, parseInviteCode, teamKey } from './crypto.js';
-import type { NetDirectory, TeamChannel } from './peerNet.js';
+import { newRoomSecret, teamKey } from './crypto.js';
+import type { HostedRoom, JoinResult, NetDirectory, RoomInfo, TeamChannel } from './peerNet.js';
 import { fitPacket } from './peerNet.js';
 import type { EditableProfile, Profile, TeamOffice } from './profile.js';
 import {
@@ -44,6 +47,7 @@ import {
   osAccount,
   saveProfile,
   validateOfficeName,
+  validateRoomPassword,
 } from './profile.js';
 import { quietView, redactView } from './redact.js';
 import { SharedLayouts } from './sharedLayout.js';
@@ -83,12 +87,6 @@ export async function checkExisting(port: number): Promise<boolean> {
   }
 }
 
-export interface CreatedOffice {
-  tag: string;
-  name: string;
-  code: string;
-}
-
 /** This PC's live LAN state: profile, local agents, peers, offices. */
 export class LanService {
   /** Set once PeerNet is up; until then (or if UDP bind failed) there are no peers. */
@@ -101,6 +99,10 @@ export class LanService {
     netOf?(id: string): string | undefined;
     /** How a person reaches this PC (UDP or relay); public office only. */
     viaOf?(id: string): 'lan' | 'relay' | undefined;
+    /** Rooms heard on the LAN. */
+    roomList?(): RoomInfo[];
+    /** Ask a room's host to let this PC in. */
+    joinRoom?(tag: string, pw: string, done: (r: JoinResult) => void): void;
   } = {
     peers: () => [],
     sendNow: () => {},
@@ -412,40 +414,92 @@ export class LanService {
     return isViewOpen(this.profile.offices, view);
   }
 
-  /** Offices for this PC's browser: names only, never secrets. */
-  officeList(): { tag: string; name: string }[] {
+  /** Offices for this PC's browser: names only, never secrets (my own room's access code
+   *  is shown to me, its host). */
+  officeList(): { tag: string; name: string; host?: true; password?: string }[] {
     return this.profile.offices.map((o) => ({
       tag: o.tag,
       name: o.name || this.net.teamName(o.tag) || '',
+      ...(o.host && { host: true as const }),
+      ...(o.host && o.password && { password: o.password }),
     }));
   }
 
-  /** New team office with a fresh invite code; it becomes the active view and replaces
-   *  the current team (one team at a time) in the same save. */
-  createOffice(name: unknown): CreatedOffice | OfficeErrorReason {
+  /** New room hosted by this PC (title + optional access code); it becomes the active view
+   *  and replaces the current team (one at a time) in the same save. null = created. */
+  createOffice(name: unknown, password?: unknown): OfficeErrorReason | null {
     const n = validateOfficeName(name);
     if (n === null) return 'nameInvalid';
-    const code = newInviteCode();
-    const office = officeFromSecret(code.secret, n);
-    this.update({ offices: [office], activeView: office.tag });
-    return { tag: office.tag, name: n, code: code.text };
-  }
-
-  /** Join by invite code (name optional: members announce theirs). null = joined.
-   *  Already joined → switches to it and still reports 'alreadyJoined'. */
-  joinOffice(code: unknown, name?: unknown): OfficeErrorReason | null {
-    const secret = typeof code === 'string' ? parseInviteCode(code) : null;
-    if (!secret) return 'invalidCode';
-    const n = name === undefined || name === '' ? '' : validateOfficeName(name);
-    if (n === null) return 'nameInvalid';
-    const office = officeFromSecret(secret, n);
-    const { offices } = this.profile;
-    if (offices.some((o) => o.tag === office.tag)) {
-      this.setActiveView(office.tag);
-      return 'alreadyJoined';
-    }
+    const pw = validateRoomPassword(password);
+    if (pw === null) return 'passwordInvalid';
+    const office: TeamOffice = { ...officeFromSecret(newRoomSecret(), n), host: true };
+    if (pw) office.password = pw;
     this.update({ offices: [office], activeView: office.tag });
     return null;
+  }
+
+  /** Join a listed room through its host. `done(null)` = joined (the room is the view now);
+   *  already in it → switched to it, 'alreadyJoined'. */
+  joinOffice(tag: unknown, password: unknown, done: (err: OfficeErrorReason | null) => void): void {
+    const pw = validateRoomPassword(password);
+    if (typeof tag !== 'string' || pw === null) {
+      done(pw === null ? 'passwordInvalid' : 'roomGone');
+      return;
+    }
+    if (this.profile.offices.some((o) => o.tag === tag)) {
+      this.setActiveView(tag);
+      done('alreadyJoined');
+      return;
+    }
+    if (!this.net.joinRoom) {
+      done('roomGone');
+      return;
+    }
+    this.net.joinRoom(tag, pw, (r) => {
+      if (!r.ok) {
+        done(r.reason);
+        return;
+      }
+      const office = officeFromSecret(r.secret, validateOfficeName(r.title) ?? '');
+      if (office.tag !== tag) {
+        done('roomGone');
+        return;
+      }
+      try {
+        this.update({ offices: [office], activeView: office.tag });
+      } catch (err) {
+        // Runs from a UDP datagram: never throw out of it.
+        console.error('[Pixel Office] Failed to save offices:', err);
+        done('roomGone');
+        return;
+      }
+      done(null);
+    });
+  }
+
+  /** The room this PC hosts while it is on screen (advertised and admitting), else null. */
+  hostedRoom(): HostedRoom | null {
+    const o = this.profile.offices[0];
+    if (!o?.host || this.profile.activeView !== o.tag) return null;
+    return {
+      tag: o.tag,
+      title: o.name,
+      by: peerLabel(this.self()),
+      password: o.password ?? '',
+      secret: Buffer.from(o.secret, 'base64'),
+    };
+  }
+
+  /** Rooms on this LAN for the browser (never their secrets or codes). */
+  rooms(): RoomSummary[] {
+    return (this.net.roomList?.() ?? []).map((r) => ({
+      tag: r.tag,
+      title: r.title,
+      host: r.host,
+      locked: r.locked,
+      count: r.count,
+      max: OFFICE_MAX_PEOPLE,
+    }));
   }
 
   leaveOffice(tag: unknown): boolean {
@@ -464,12 +518,6 @@ export class LanService {
     if (!isViewOpen(this.profile.offices, view)) return false;
     if (view !== this.profile.activeView) this.update({ activeView: view as string });
     return true;
-  }
-
-  /** Invite code of a joined office, for re-copying. */
-  officeCode(tag: unknown): string | null {
-    const o = this.profile.offices.find((x) => x.tag === tag);
-    return o ? inviteText(Buffer.from(o.secret, 'base64')) : null;
   }
 
   /** Persist a validated update and announce it to peers right away. */

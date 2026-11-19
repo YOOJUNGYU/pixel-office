@@ -2,9 +2,6 @@
 import { PERSONAL_VIEW, PUBLIC_VIEW } from '../../../core/src/lan.js';
 import type { OfficesState } from '../../../core/src/messages.js';
 
-/** Typed/pasted invite code as sent and shown: upper-case, no spaces (the server tolerates the rest). */
-export const normalizeCodeInput = (s: string): string => s.toUpperCase().replace(/\s+/g, '');
-
 export interface SwitcherItem {
   view: string;
   /** '' for the public office and for a team whose name is not known yet. */

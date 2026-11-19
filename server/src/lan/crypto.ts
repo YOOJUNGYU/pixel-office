@@ -1,15 +1,15 @@
 import * as crypto from 'crypto';
 
-import { MAX_PACKET_BYTES } from '../../../core/src/lan.js';
+import { cleanChatText, MAX_PACKET_BYTES, takeCodePoints } from '../../../core/src/lan.js';
 import { isPeerId } from '../../../core/src/relay.js';
 import {
-  CROCKFORD_ALPHABET,
   GCM_NONCE_BYTES,
   GCM_TAG_BYTES,
-  INVITE_GROUP_LEN,
-  INVITE_PREFIX,
   INVITE_SECRET_BYTES,
   KEY_BYTES,
+  MAX_OFFICE_NAME,
+  MAX_ROOM_HOST,
+  OFFICE_MAX_PEOPLE,
   PUB_KEY_SALT,
   TEAM_KEY_INFO,
   TEAM_KEY_SALT,
@@ -26,20 +26,30 @@ export interface Identity {
   privateKeyPem: string;
 }
 
-export interface InviteCode {
-  secret: Buffer;
-  text: string;
-}
-
 export type Wire =
   | { v: 2; t: 'hello'; id: string; pk: string }
   | { v: 2; t: 'watch'; id: string; pk: string }
   | { v: 2; t: 'pub'; from: string; to: string; n: string; c: string }
   | { v: 2; t: 'card'; from: string; to: string; n: string; c: string }
-  | { v: 2; t: 'team'; tag: string; n: string; c: string };
+  | { v: 2; t: 'team'; tag: string; n: string; c: string }
+  | RoomWire
+  | { v: 2; t: 'ask'; from: string; to: string; pk: string; n: string; c: string }
+  | { v: 2; t: 'admit'; from: string; to: string; n: string; c: string };
+
+/** A room's plaintext advert, broadcast by its host (`id`, `pk`). */
+export interface RoomWire {
+  v: 2;
+  t: 'room';
+  id: string;
+  pk: string;
+  tag: string;
+  title: string;
+  by: string;
+  locked: boolean;
+  n: number;
+}
 
 const TAG = new RegExp(`^[A-Za-z0-9_-]{${Math.ceil((TEAM_TAG_BYTES * 4) / 3)}}$`);
-const INVITE_CHARS = Math.ceil((INVITE_SECRET_BYTES * 8) / 5);
 
 const hkdf = (ikm: Buffer, salt: string, info: string): Buffer =>
   Buffer.from(crypto.hkdfSync('sha256', ikm, salt, info, KEY_BYTES));
@@ -102,43 +112,13 @@ export function pairKey(
   }
 }
 
-export function newInviteCode(): InviteCode {
-  const secret = crypto.randomBytes(INVITE_SECRET_BYTES);
-  return { secret, text: inviteText(secret) };
-}
+/** A fresh room (team office) secret. */
+export const newRoomSecret = (): Buffer => crypto.randomBytes(INVITE_SECRET_BYTES);
 
-/** The shareable code text of an invite secret. */
-export function inviteText(secret: Buffer): string {
-  let bits = '';
-  for (const b of secret) bits += b.toString(2).padStart(8, '0');
-  bits = bits.padEnd(INVITE_CHARS * 5, '0');
-  let chars = '';
-  for (let i = 0; i < bits.length; i += 5)
-    chars += CROCKFORD_ALPHABET[parseInt(bits.slice(i, i + 5), 2)];
-  const groups = chars.match(new RegExp(`.{1,${INVITE_GROUP_LEN}}`, 'g')) ?? [];
-  return [INVITE_PREFIX, ...groups].join('-');
-}
-
-/** Tolerant: any case, spaces/dashes, optional PO2 prefix, O→0 and I/L→1. */
-export function parseInviteCode(text: string): Buffer | null {
-  if (typeof text !== 'string') return null;
-  let s = text.toUpperCase().replace(/[\s-]/g, '');
-  const alias = (x: string): string => x.replace(/O/g, '0').replace(/[IL]/g, '1');
-  s = alias(s);
-  if (s.length === INVITE_CHARS + INVITE_PREFIX.length && s.startsWith(alias(INVITE_PREFIX)))
-    s = s.slice(INVITE_PREFIX.length);
-  if (s.length !== INVITE_CHARS) return null;
-  let bits = '';
-  for (const ch of s) {
-    const v = CROCKFORD_ALPHABET.indexOf(ch);
-    if (v < 0) return null;
-    bits += v.toString(2).padStart(5, '0');
-  }
-  // Padding bits must be zero so each secret has exactly one code.
-  if (/1/.test(bits.slice(INVITE_SECRET_BYTES * 8))) return null;
-  const out = Buffer.alloc(INVITE_SECRET_BYTES);
-  for (let i = 0; i < INVITE_SECRET_BYTES; i++) out[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
-  return out;
+/** A room secret as sent sealed by its host; null unless it is one. */
+export function parseRoomSecret(x: unknown): Buffer | null {
+  const buf = b64(x);
+  return buf?.length === INVITE_SECRET_BYTES ? buf : null;
 }
 
 export function teamKey(secret: Buffer): Buffer {
@@ -166,6 +146,8 @@ export function seal(key: Buffer, aad: string, plaintext: string): { n: string; 
 export const pubAad = (from: string, to: string): string => `pub|${from}|${to}`;
 export const cardAad = (from: string, to: string): string => `card|${from}|${to}`;
 export const teamAad = (tag: string): string => `team|${tag}`;
+export const askAad = (from: string, to: string): string => `ask|${from}|${to}`;
+export const admitAad = (from: string, to: string): string => `admit|${from}|${to}`;
 
 export function open(key: Buffer, aad: string, n: string, c: string): string | null {
   try {
@@ -187,6 +169,8 @@ export function open(key: Buffer, aad: string, n: string, c: string): string | n
   }
 }
 
+const isPk = (s: unknown): boolean => b64(s)?.length === X25519_PUBLIC_KEY_BYTES;
+const isTag = (s: unknown): s is string => typeof s === 'string' && TAG.test(s);
 const isNonce = (s: unknown): s is string => b64(s)?.length === GCM_NONCE_BYTES;
 const isCipher = (s: unknown): s is string => (b64(s)?.length ?? 0) > GCM_TAG_BYTES;
 
@@ -205,17 +189,42 @@ export function parseWire(text: string): Wire | null {
   switch (o.t) {
     case 'hello':
     case 'watch':
-      return isWireId(o.id) && b64(o.pk)?.length === X25519_PUBLIC_KEY_BYTES
-        ? { v: 2, t: o.t, id: o.id, pk: o.pk as string }
-        : null;
+      return isWireId(o.id) && isPk(o.pk) ? { v: 2, t: o.t, id: o.id, pk: o.pk as string } : null;
     case 'pub':
     case 'card':
       return isWireId(o.from) && isWireId(o.to) && isNonce(o.n) && isCipher(o.c)
         ? { v: 2, t: o.t, from: o.from, to: o.to, n: o.n, c: o.c }
         : null;
     case 'team':
-      return typeof o.tag === 'string' && TAG.test(o.tag) && isNonce(o.n) && isCipher(o.c)
+      return isTag(o.tag) && isNonce(o.n) && isCipher(o.c)
         ? { v: 2, t: 'team', tag: o.tag, n: o.n, c: o.c }
+        : null;
+    case 'room': {
+      const title = cleanChatText(o.title);
+      const by = cleanChatText(o.by);
+      if (!isWireId(o.id) || !isPk(o.pk) || !isTag(o.tag) || !title || !by) return null;
+      if (typeof o.locked !== 'boolean') return null;
+      if (!Number.isInteger(o.n) || (o.n as number) < 1 || (o.n as number) > OFFICE_MAX_PEOPLE)
+        return null;
+      return {
+        v: 2,
+        t: 'room',
+        id: o.id,
+        pk: o.pk as string,
+        tag: o.tag,
+        title: takeCodePoints(title, MAX_OFFICE_NAME),
+        by: takeCodePoints(by, MAX_ROOM_HOST),
+        locked: o.locked,
+        n: o.n as number,
+      };
+    }
+    case 'ask':
+      return isWireId(o.from) && isWireId(o.to) && isPk(o.pk) && isNonce(o.n) && isCipher(o.c)
+        ? { v: 2, t: 'ask', from: o.from, to: o.to, pk: o.pk as string, n: o.n, c: o.c }
+        : null;
+    case 'admit':
+      return isWireId(o.from) && isWireId(o.to) && isNonce(o.n) && isCipher(o.c)
+        ? { v: 2, t: 'admit', from: o.from, to: o.to, n: o.n, c: o.c }
         : null;
     default:
       return null;

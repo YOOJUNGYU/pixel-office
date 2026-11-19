@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { parsePeerPacket, PERSONAL_VIEW, PUBLIC_VIEW } from '../../../core/src/lan.js';
 import { ACCOUNT_FALLBACK, MAX_KNOWN_PEERS } from '../../src/constants.js';
-import { createIdentity, newInviteCode, publicKeyOf } from '../../src/lan/crypto.js';
+import { createIdentity, newRoomSecret, publicKeyOf } from '../../src/lan/crypto.js';
 import {
   accountName,
   KnownPeers,
@@ -40,7 +40,7 @@ describe('loadProfile', () => {
   });
   it('round-trips a saved profile', () => {
     const { publicKey, privateKeyPem } = createIdentity('abc');
-    const office = officeFromSecret(newInviteCode().secret, '우리팀');
+    const office = officeFromSecret(newRoomSecret(), '우리팀');
     const p = {
       peerId: 'abc',
       ...ok,
@@ -68,7 +68,7 @@ describe('loadProfile', () => {
     if (posix) expect(mode(f)).toBe(0o600);
   });
   it('drops broken offices, derives tags, fixes activeView; secrets only on disk at 0600', () => {
-    const code = newInviteCode();
+    const code = { secret: newRoomSecret() };
     const good = officeFromSecret(code.secret, '팀');
     fs.writeFileSync(
       path.join(dir, 'profile.json'),
@@ -91,7 +91,7 @@ describe('loadProfile', () => {
     if (posix) expect(mode(path.join(dir, 'profile.json'))).toBe(0o600);
   });
   it('keeps only the viewed team of several, else the first; logs once', () => {
-    const [a, b, c] = ['가', '나', '다'].map((n) => officeFromSecret(newInviteCode().secret, n));
+    const [a, b, c] = ['가', '나', '다'].map((n) => officeFromSecret(newRoomSecret(), n));
     const write = (activeView: string) =>
       fs.writeFileSync(
         path.join(dir, 'profile.json'),
@@ -114,7 +114,7 @@ describe('loadProfile', () => {
     log.mockRestore();
   });
   it('a chat said in a dropped team is dropped with it', () => {
-    const [a, b] = ['가', '나'].map((n) => officeFromSecret(newInviteCode().secret, n));
+    const [a, b] = ['가', '나'].map((n) => officeFromSecret(newRoomSecret(), n));
     fs.writeFileSync(
       path.join(dir, 'profile.json'),
       JSON.stringify({

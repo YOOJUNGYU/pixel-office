@@ -5,12 +5,11 @@ import { MAX_PACKET_BYTES } from '../../../core/src/lan.js';
 import {
   cardAad,
   createIdentity,
-  inviteText,
   isWireId,
-  newInviteCode,
+  newRoomSecret,
   open,
   pairKey,
-  parseInviteCode,
+  parseRoomSecret,
   parseWire,
   pubAad,
   publicKeyOf,
@@ -61,49 +60,14 @@ describe('pairKey', () => {
   });
 });
 
-describe('invite code', () => {
-  it('formats and parses back, tolerantly', () => {
-    const code = newInviteCode();
-    expect(code.secret).toHaveLength(13);
-    expect(code.text).toMatch(
-      /^PO2-[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){4}-[0-9A-HJKMNP-TV-Z]$/,
-    );
-    const bare = code.text.slice(4).replace(/-/g, '');
-    for (const t of [
-      code.text,
-      code.text.toLowerCase(),
-      bare,
-      ` ${bare.slice(0, 7)} ${bare.slice(7)} `,
-      bare.replace(/0/g, 'O').replace(/1/g, 'l'),
-      'po2' + bare,
-    ]) {
-      expect(parseInviteCode(t)?.equals(code.secret)).toBe(true);
-    }
-  });
-  it('inviteText re-creates the same code from the secret', () => {
-    const code = newInviteCode();
-    expect(inviteText(code.secret)).toBe(code.text);
-  });
-  it('the prefix is only stripped as a whole (PO2, P02, po2)', () => {
-    const bare = newInviteCode().text.slice(4).replace(/-/g, '');
-    expect(parseInviteCode('P02' + bare)).not.toBeNull();
-    expect(parseInviteCode('PX2' + bare)).toBeNull();
-  });
-  it('codes differ', () => {
-    expect(newInviteCode().text).not.toBe(newInviteCode().text);
-  });
-  it('rejects invalid input', () => {
-    const bare = newInviteCode().text.slice(4).replace(/-/g, '');
-    for (const t of [
-      '',
-      'PO2-',
-      bare.slice(1),
-      bare + '0',
-      bare.slice(1) + 'U',
-      bare.slice(0, 20) + 'Z',
-    ]) {
-      expect(parseInviteCode(t)).toBeNull();
-    }
+describe('room secret', () => {
+  it('is 13 random bytes and parses back from base64 only', () => {
+    const s = newRoomSecret();
+    expect(s).toHaveLength(13);
+    expect(newRoomSecret().equals(s)).toBe(false);
+    expect(parseRoomSecret(s.toString('base64'))?.equals(s)).toBe(true);
+    for (const x of ['', 'nope', Buffer.alloc(12).toString('base64'), 5, null])
+      expect(parseRoomSecret(x)).toBeNull();
   });
 });
 
@@ -126,11 +90,11 @@ describe('isWireId', () => {
 
 describe('teamKey/teamTag', () => {
   it('is stable, 11 chars, secret-specific', () => {
-    const s = newInviteCode().secret;
+    const s = newRoomSecret();
     const tag = teamTag(teamKey(s));
     expect(tag).toMatch(/^[A-Za-z0-9_-]{11}$/);
     expect(teamTag(teamKey(Buffer.from(s)))).toBe(tag);
-    expect(teamTag(teamKey(newInviteCode().secret))).not.toBe(tag);
+    expect(teamTag(teamKey(newRoomSecret()))).not.toBe(tag);
     expect(teamKey(s).equals(Buffer.from(s))).toBe(false);
   });
 });
@@ -193,7 +157,7 @@ describe('parseWire', () => {
     for (const j of junk) {
       expect(() => parseWire(j as string)).not.toThrow();
       expect(parseWire(j as string)).toBeNull();
-      expect(() => parseInviteCode(j as string)).not.toThrow();
+      expect(() => parseRoomSecret(j)).not.toThrow();
       expect(() => open(key, 'x', j as string, j as string)).not.toThrow();
       expect(open(key, 'x', j as string, j as string)).toBeNull();
     }

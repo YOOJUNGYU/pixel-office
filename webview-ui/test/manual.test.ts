@@ -38,7 +38,7 @@ test('search: empty = all, words in either language, title hits first, none = []
   assert.equal(chat[0].id, 'chat');
   assert.equal(searchManual('status message')[0].id, 'chat'); // English word, any page language
   assert.equal(searchManual('STATUS MESSAGE')[0].id, 'chat');
-  assert.ok(searchManual('PO2').some((m) => m.id === 'team'));
+  assert.ok(searchManual('접속코드').some((m) => m.id === 'team'));
   assert.ok(searchManual('토큰 불꽃').some((m) => m.id === 'heat'));
   assert.deepEqual(searchManual('zzqqxx'), []);
   // A category name finds its entries.

@@ -17,6 +17,7 @@ import {
   layoutMessage,
   officesMessage,
   profileMessage,
+  roomsMessage,
   snapshotMessage,
 } from './clientMessageHandler.js';
 import {
@@ -236,12 +237,17 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
   if (lan) {
     // A team joined without a name learns it when a member announces it: re-send then.
     let lastOffices = JSON.stringify(officesMessage(lan));
+    let lastRooms = JSON.stringify(roomsMessage(lan));
     const timer = setInterval(() => {
       const offices = JSON.stringify(officesMessage(lan));
       const officesChanged = offices !== lastOffices;
       lastOffices = offices;
+      const rooms = JSON.stringify(roomsMessage(lan));
+      const roomsChanged = rooms !== lastRooms;
+      lastRooms = rooms;
       for (const c of clients) {
         if (officesChanged) safeSend(c, officesMessage(lan));
+        if (roomsChanged) safeSend(c, roomsMessage(lan));
         try {
           safeSend(c, snapshotMessage(lan));
           safeSend(c, directoryMessage(lan));

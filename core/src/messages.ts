@@ -32,8 +32,7 @@ export type ServerMessage =
   | ArcadeResult
   | ArcadeBoard
   | OfficesState
-  | OfficeCreated
-  | OfficeCode
+  | RoomsState
   | OfficeError
   | ProfileError
   | TranscriptLoaded
@@ -60,7 +59,6 @@ export type ClientMessage =
   | JoinOffice
   | LeaveOffice
   | SetActiveView
-  | GetOfficeCode
   | SendChat
   | DeleteChat
   | ArcadeStart
@@ -486,19 +484,22 @@ export interface OfficesState {
 export interface OfficeSummary {
   tag: string;
   name: string;
+  host?: boolean;
+  password?: string;
 }
 
-export interface OfficeCreated {
-  type: 'officeCreated';
-  tag: string;
-  name: string;
-  code: string;
+export interface RoomsState {
+  type: 'roomsState';
+  rooms: RoomSummary[];
 }
 
-export interface OfficeCode {
-  type: 'officeCode';
+export interface RoomSummary {
   tag: string;
-  code: string;
+  title: string;
+  host: string;
+  locked: boolean;
+  count: number;
+  max: number;
 }
 
 export interface OfficeError {
@@ -506,7 +507,14 @@ export interface OfficeError {
   reason: OfficeErrorReason;
 }
 
-export type OfficeErrorReason = 'invalidCode' | 'alreadyJoined' | 'nameInvalid';
+export type OfficeErrorReason =
+  | 'alreadyJoined'
+  | 'nameInvalid'
+  | 'passwordInvalid'
+  | 'wrongPassword'
+  | 'roomFull'
+  | 'roomGone'
+  | 'timeout';
 
 export interface ProfileError {
   type: 'profileError';
@@ -705,12 +713,13 @@ export interface QuitApp {
 export interface CreateOffice {
   type: 'createOffice';
   name: string;
+  password?: string;
 }
 
 export interface JoinOffice {
   type: 'joinOffice';
-  code: string;
-  name?: string;
+  tag: string;
+  password?: string;
 }
 
 export interface LeaveOffice {
@@ -721,11 +730,6 @@ export interface LeaveOffice {
 export interface SetActiveView {
   type: 'setActiveView';
   view: string;
-}
-
-export interface GetOfficeCode {
-  type: 'getOfficeCode';
-  tag: string;
 }
 
 export interface SendChat {
