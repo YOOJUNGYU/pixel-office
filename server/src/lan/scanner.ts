@@ -93,7 +93,6 @@ export interface TranscriptSource {
 const dirents = (d: string) => readdir(d, { withFileTypes: true }).catch(() => []);
 const jsonlBase = (f: string) => path.basename(f, '.jsonl');
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?=\.jsonl$)/i;
-const pad = (n: number) => String(n).padStart(2, '0');
 
 /** Reads [from, to) of an open file. */
 async function readRange(fh: FileHandle, from: number, to: number): Promise<Buffer> {
@@ -578,17 +577,21 @@ export class Scanner {
         }
       }
     }
-    const d = new Date(this.now());
-    const days = [0, 1].map((back) => {
-      const x = new Date(d.getFullYear(), d.getMonth(), d.getDate() - back);
-      return [String(x.getFullYear()), pad(x.getMonth() + 1), pad(x.getDate())];
-    });
+    // Every YYYY/MM/DD dir, not just the last days: a resumed or days-long Codex session keeps
+    // appending to the rollout in the dir of the day it started (the mtime TTL picks live ones).
     for (const root of this.roots.codex) {
-      for (const day of days) {
-        const dayDir = path.join(root, ...day);
-        for (const e of await dirents(dayDir)) {
-          if (e.isFile() && e.name.endsWith('.jsonl')) {
-            out.push({ file: path.join(dayDir, e.name), provider: 'codex' });
+      for (const y of await dirents(root)) {
+        if (!y.isDirectory()) continue;
+        for (const m of await dirents(path.join(root, y.name))) {
+          if (!m.isDirectory()) continue;
+          for (const dd of await dirents(path.join(root, y.name, m.name))) {
+            if (!dd.isDirectory()) continue;
+            const dayDir = path.join(root, y.name, m.name, dd.name);
+            for (const e of await dirents(dayDir)) {
+              if (e.isFile() && e.name.endsWith('.jsonl')) {
+                out.push({ file: path.join(dayDir, e.name), provider: 'codex' });
+              }
+            }
           }
         }
       }

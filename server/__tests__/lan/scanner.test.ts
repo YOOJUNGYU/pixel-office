@@ -64,6 +64,20 @@ describe('Scanner', () => {
     expect(scanner.views().map((v) => [v.id, v.num])).toEqual([['new', 1]]);
   });
 
+  it('finds a live Codex rollout in an old day dir (resumed / days-long session)', async () => {
+    const day = join(dir, 'codex', '2020', '01', '05');
+    mkdirSync(day, { recursive: true });
+    writeFileSync(
+      join(day, 'rollout-old.jsonl'),
+      JSON.stringify({ type: 'session_meta', payload: { id: 'cx-old', cwd: '/w/r' } }) +
+        '\n' +
+        JSON.stringify({ type: 'event_msg', payload: { type: 'task_started' } }) +
+        '\n',
+    );
+    await scanner.discover();
+    expect(scanner.views().map((v) => v.id)).toEqual(['cx-old']);
+  });
+
   it('reads only the tail of a large file', async () => {
     const grep = assistant([
       { type: 'text', text: 'OLD reason' },
