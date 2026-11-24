@@ -402,7 +402,16 @@ export function GameCanvas(props: {
     const onKey = (e: KeyboardEvent) => {
       const k = lower(e);
       const a = downAction(game, e);
-      const used = a >= 0 || k === ' ' || k === 'Enter' || k === 'Escape' || k === 'p' || k === 'm';
+      // Every arrow is swallowed while the game is open, even one the game ignores (drone's ↓):
+      // otherwise it reaches useAvatarKeys and stands the avatar up, closing the game.
+      const used =
+        a >= 0 ||
+        k.startsWith('Arrow') ||
+        k === ' ' ||
+        k === 'Enter' ||
+        k === 'Escape' ||
+        k === 'p' ||
+        k === 'm';
       if (!used) return;
       e.preventDefault();
       e.stopPropagation();
