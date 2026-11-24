@@ -23,6 +23,7 @@ import {
 import { t, useLang } from '../i18n.js';
 import { transport } from '../transport/index.js';
 import { providerName, tagBadge } from './lanAgents.js';
+import { Loading } from './Loading.js';
 import { PanelGrips } from './PanelGrips.js';
 import { SessionFinder, SessionRow } from './SessionFinder.js';
 import { openPopout } from './transcriptWindows.js';
@@ -163,7 +164,11 @@ export function UsagePanel({ onClose }: { onClose: () => void }) {
             <>
               <NowPanel agents={agents} today={now.today} scanning={scanning} />
               {!!now.limits?.length && <Limits limits={now.limits} />}
-              {data && <History data={data} />}
+              {data?.range === range ? (
+                <History data={data} />
+              ) : (
+                <Loading text={t('usage.loading')} className="px-2" />
+              )}
             </>
           )}
         </div>
@@ -198,9 +203,7 @@ function NowPanel({
         <span className="text-text-muted font-normal">
           · {t('usage.today', { n: tokensText(today) })}
         </span>
-        {scanning && (
-          <span className="ml-auto text-xs text-text-muted font-normal">{t('usage.scanning')}</span>
-        )}
+        {scanning && <Loading text={t('usage.scanning')} className="ml-auto font-normal" />}
       </h2>
       {rows.length === 0 && <div className="text-xs text-text-muted">{t('usage.noAgents')}</div>}
       {rows.map(({ a, parent }) => (

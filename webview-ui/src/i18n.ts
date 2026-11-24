@@ -35,6 +35,7 @@ const ko = {
   'limit.age': '{t} 전 기준',
   'cache.tip': '프롬프트 캐시 남은 시간 — 지나면 다음 턴이 전체 컨텍스트를 정가로 다시 읽습니다',
   'usage.scanning': '기록 스캔 중…',
+  'usage.loading': '사용량 불러오는 중…',
   'usage.noAgents': '작업 중인 에이전트 없음',
   'usage.range.7d': '7일',
   'usage.range.30d': '30일',
@@ -849,6 +850,7 @@ const en: Record<Key, string> = {
   'cache.tip':
     'Prompt cache time left — after it, the next turn re-reads the whole context at full price',
   'usage.scanning': 'Scanning history…',
+  'usage.loading': 'Loading usage…',
   'usage.noAgents': 'No agents running',
   'usage.range.7d': '7 days',
   'usage.range.30d': '30 days',

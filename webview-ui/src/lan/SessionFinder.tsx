@@ -12,6 +12,7 @@ import {
 } from '../constants.js';
 import { t } from '../i18n.js';
 import { transport } from '../transport/index.js';
+import { Loading } from './Loading.js';
 import { openPopout } from './transcriptWindows.js';
 import { tokensText } from './usageSignals.js';
 
@@ -76,7 +77,7 @@ export function SessionFinder() {
           {t('sessions.body')}
         </label>
       </div>
-      {busy && <div className="text-xs text-text-muted">{t('sessions.searching')}</div>}
+      {busy && <Loading text={t('sessions.searching')} />}
       {found && !busy && found.sessions.length === 0 && (
         <div className="text-xs text-text-muted">{t('sessions.none')}</div>
       )}
