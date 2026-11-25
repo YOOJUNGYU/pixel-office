@@ -618,7 +618,7 @@ const ko = {
     '캐릭터(사람 6종이나 펫 Claudio, Gitcat), 색, 닉네임, 이름표 색을 정해요. [옷장에서 꾸미기]로 머리, 옷, 장신구를 하나씩 골라 꾸밀 수도 있어요.\n내 캐릭터와 내 에이전트가 이 모습으로 나오고, 이름 앞에는 PC 계정 이름이 항상 붙어요.',
   'tour.offices.title': '방 (팀 오피스)',
   'tour.offices.body':
-    '제목과 접속코드(선택)를 정해 방을 만들면 같은 망 사람들의 방 목록에 떠요. 접속코드가 있으면 맞혀야 들어옵니다.\n왼쪽 위 🚪 버튼에서 만들고 들어가고, 방장은 제목·최대 인원(2~20)·코드를 바꾸고 강퇴할 수 있어요. 방 안의 내용은 암호화돼서 들어온 사람끼리만 오가요.',
+    '제목과 접속코드(선택)를 정해 방을 만들면 같은 망 사람들의 방 목록에 떠요. 접속코드가 있으면 맞혀야 들어옵니다.\n왼쪽 위 🚪 버튼에서 만들고 들어가고, 방장은 제목·최대 인원(2~20)·코드를 바꾸고 강퇴할 수 있어요. 방장이 방 화면을 떠날 땐 방장을 넘길지 먼저 확인해요. 방 안의 내용은 암호화돼서 들어온 사람끼리만 오가요.',
   'tour.system.title': '자동 실행 · 알림 · 업데이트',
   'tour.system.body':
     '로그인할 때 자동 실행과 PC 알림을 켜고 끕니다. 알림은 누가 들어오고 나갈 때, 내 에이전트가 답을 기다리거나 일을 마쳤을 때 와요.\n새 버전은 알아서 받아서 다시 시작합니다.',
@@ -756,7 +756,7 @@ const ko = {
     '같은 망에서 앱을 쓰는 사람은 설정 없이 함께 들어와요. 에이전트, 캐릭터, 상태 메시지, 배치는 같은 망 안에서만 오가요.\n다른 망 사람은 중계를 거쳐 오른쪽 목록에만 나와요(누가 접속했는지만).\n작업 내용(파일, 명령, 답변)은 보이지 않고 일의 종류, 세션 제목, 토큰 같은 것만 보여요.',
   'manual.team.title': '방 (팀 오피스)',
   'manual.team.body':
-    '왼쪽 위 🚪 버튼에서 제목과 접속코드(선택)로 방을 만들면 내가 방장이 돼요. 같은 망 사람은 방 목록(🔒 = 코드 있음)에서 골라 들어오고, 접속코드가 있으면 맞혀야 해요.\n방장은 🚪 패널에서 제목, 최대 인원(2~20), 코드를 바꾸고 멤버를 강퇴할 수 있어요. 강퇴된 사람은 개인용으로 옮겨져요. 코드 없는 방엔 다시 못 들어오고, 코드 있는 방엔 코드로 다시 들어올 수 있어요.\n방장이 나가거나(나가기, 다른 방, 개인용·공개 탭) 30초 동안 안 보이면 먼저 들어온 다음 멤버가 방장을 이어받아요(1.0.80 이상). 돌아온 원래 방장은 멤버가 돼요. 내용은 암호화돼 같은 망에서만 오가요.\n방은 한 번에 하나만. 방에 있는 동안 공개 오피스에서는 내가 안 보여요.',
+    '왼쪽 위 🚪 버튼에서 제목과 접속코드(선택)로 방을 만들면 내가 방장이 돼요. 같은 망 사람은 방 목록(🔒 = 코드 있음)에서 골라 들어오고, 접속코드가 있으면 맞혀야 해요.\n방장은 🚪 패널에서 제목, 최대 인원(2~20), 코드를 바꾸고 멤버를 강퇴할 수 있어요. 강퇴된 사람은 개인용으로 옮겨져요. 코드 없는 방엔 다시 못 들어오고, 코드 있는 방엔 코드로 다시 들어올 수 있어요.\n방장이 방 화면을 떠나려 하면(나가기, 다른 방, 개인용·공개 탭) 방장을 넘길지 먼저 물어봐요. 방장이 떠나거나 30초 동안 안 보이면 먼저 들어온 다음 멤버가 방장을 이어받아요(1.0.80 이상). 돌아온 원래 방장은 멤버가 돼요. 내용은 암호화돼 같은 망에서만 오가요.\n방은 한 번에 하나만. 방에 있는 동안 공개 오피스에서는 내가 안 보여요.',
   'manual.editFloor.title': '바닥 · 벽 칠하기',
   'manual.editFloor.body':
     '왼쪽 위 레이아웃 버튼으로 편집을 열어요. 바닥 무늬와 색을 고르고 방을 누르면 방 전체가 칠해져요. 서버실은 구역 하나씩.\n벽은 위치는 고정이고 색만 바꿔요. [복사]로 칠해진 바닥을 집어 올 수 있어요.',
@@ -1446,7 +1446,7 @@ const en: Record<Key, string> = {
     "Pick a character (six people or the pets Claudio and Gitcat), a colour, a nickname and your name tag colours, or dress up piece by piece in the wardrobe.\nYour person and your agents use this look. Your PC account name always comes first and can't be changed.",
   'tour.offices.title': 'Rooms (team offices)',
   'tour.offices.body':
-    'Give a room a title and, if you like, an access code: it shows up in the room list of everyone on your network, and a code must be typed to get in.\nCreate and join from the 🚪 button top left; the host can change the title, the max people (2–20) and the code, and remove people. Everything inside is encrypted between the people in it.',
+    'Give a room a title and, if you like, an access code: it shows up in the room list of everyone on your network, and a code must be typed to get in.\nCreate and join from the 🚪 button top left; the host can change the title, the max people (2–20) and the code, and remove people. Leaving the room’s screen, the host is first asked to confirm handing the room over. Everything inside is encrypted between the people in it.',
   'tour.system.title': 'Start at login · Notifications · Updates',
   'tour.system.body':
     'Choose whether Pixel Office starts at login and which PC notifications you get: people coming and going, your agents waiting or done.\nUpdates install themselves. [Check for updates] checks right away.',
@@ -1585,7 +1585,7 @@ const en: Record<Key, string> = {
     'Everyone using the app on your network is in it, with nothing to set up. Agents, characters, status messages and layout stay on that network.\nPeople on other networks come through the relay into the list on the right only (just who is online).\nNo work details (files, commands, replies) are shown there: only the kind of work, session titles, tokens and such.',
   'manual.team.title': 'Room (team office)',
   'manual.team.body':
-    'The 🚪 button top left: create a room with a title and an optional access code, and you are its host. People on your network pick it from the room list (🔒 = has a code); with a code they must type it.\nIn the 🚪 panel the host can change the title, the max people (2–20) and the code, and remove members. A removed person is moved to personal mode. They can’t rejoin a room without a code; a room with a code lets them back in with it.\nWhen the host leaves (Leave, another room, the personal/public tabs) or is gone for 30 s, the next member in join order takes over (1.0.80 or newer). The original host comes back as a member. Traffic is encrypted and stays on your network.\nOne room at a time; while in it, you are not seen in the public office.',
+    'The 🚪 button top left: create a room with a title and an optional access code, and you are its host. People on your network pick it from the room list (🔒 = has a code); with a code they must type it.\nIn the 🚪 panel the host can change the title, the max people (2–20) and the code, and remove members. A removed person is moved to personal mode. They can’t rejoin a room without a code; a room with a code lets them back in with it.\nLeaving the room’s screen (Leave, another room, the personal/public tabs), the host is first asked to confirm handing it over. When the host leaves or is gone for 30 s, the next member in join order takes over (1.0.80 or newer). The original host comes back as a member. Traffic is encrypted and stays on your network.\nOne room at a time; while in it, you are not seen in the public office.',
   'manual.editFloor.title': 'Floors · walls',
   'manual.editFloor.body':
     'The layout button top left opens the editor. Pick a floor pattern and colour, then click a room to paint all of it (the Server Room one zone at a time).\nWalls are fixed in place; only their colour changes. Copy picks up a painted floor.',
