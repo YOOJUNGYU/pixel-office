@@ -37,6 +37,8 @@ import {
   PIN_SAVE_DELAY_MS,
 } from '../constants.js';
 import { createIdentity, isWireId, publicKeyOf, teamKey, teamTag } from './crypto.js';
+import type { RoomState } from './room.js';
+import { legacyRoom, parseRoomState } from './room.js';
 
 /** A joined team office (room). `secret` (base64) never leaves this PC except sealed to a
  *  joiner this PC admits as the room's host. */
@@ -44,10 +46,23 @@ export interface TeamOffice {
   tag: string;
   name: string;
   secret: string;
-  /** This PC created the room: it lists it on the LAN and admits joiners. */
+  /** This PC hosts the room: it lists it on the LAN and admits joiners. With `room`, derived
+   *  (`room.host === me`) and kept only so a ≤ 1.0.79 rollback still hosts its room. */
   host?: true;
-  /** The host's access code ('' or absent = anyone may join). */
+  /** The host's access code ('' or absent = anyone may join); with `room`, = `room.pw`. */
   password?: string;
+  /** The room's shared state (≥ 1.0.80); absent = a member that has heard none yet. */
+  room?: RoomState;
+}
+
+/** `host`/`password` derived from `room` (only the host writes them), for ≤ 1.0.79. */
+function withLegacyHost(o: TeamOffice, me: string): TeamOffice {
+  if (!o.room) return o;
+  const rest = { ...o };
+  delete rest.host;
+  delete rest.password;
+  if (o.room.host !== me) return rest;
+  return { ...rest, host: true, ...(o.room.pw && { password: o.room.pw }) };
 }
 
 export interface Profile {
@@ -158,20 +173,21 @@ export function officeFromSecret(secret: Buffer, name: string): TeamOffice {
 }
 
 /** One team at a time: of the valid, distinct teams keep the one `keepTag` names (the one on
- *  screen), else the first. */
-function parseOffices(x: unknown, keepTag: unknown): TeamOffice[] {
+ *  screen), else the first. A ≤ 1.0.79 hosted room (`host: true`, no `room`) gets a rev 0 state. */
+function parseOffices(x: unknown, keepTag: unknown, me: string): TeamOffice[] {
   const all: TeamOffice[] = [];
   for (const o of Array.isArray(x) ? x : []) {
     if (!isObj(o) || typeof o.secret !== 'string') continue;
     const secret = Buffer.from(o.secret, 'base64');
     if (secret.length !== INVITE_SECRET_BYTES || secret.toString('base64') !== o.secret) continue;
     const office = officeFromSecret(secret, validateOfficeName(o.name) ?? '');
-    const password = validateRoomPassword(o.password);
-    if (o.host === true) {
-      office.host = true;
-      if (password) office.password = password;
-    }
-    if (!all.some((e) => e.tag === office.tag)) all.push(office);
+    const room =
+      parseRoomState(o.room) ??
+      (o.host === true
+        ? legacyRoom(me, office.name, validateRoomPassword(o.password) ?? '')
+        : null);
+    const parsed = room ? withLegacyHost({ ...office, room }, me) : office;
+    if (!all.some((e) => e.tag === parsed.tag)) all.push(parsed);
   }
   const keep = all.find((e) => e.tag === keepTag) ?? all[0];
   if (all.length > MAX_OFFICES) {
@@ -262,7 +278,10 @@ function nicknameSinceOf(raw: Record<string, unknown>, nickname: string, dir: st
 }
 
 export function saveProfile(p: Profile, dir: string = defaultDir()): void {
-  writePrivateJson(dir, PROFILE_FILE_NAME, p);
+  writePrivateJson(dir, PROFILE_FILE_NAME, {
+    ...p,
+    offices: p.offices.map((o) => withLegacyHost(o, p.peerId)),
+  });
 }
 
 /**
@@ -292,7 +311,7 @@ export function loadProfile(dir: string = defaultDir()): Profile {
   const { publicKey, privateKeyPem } = pk
     ? { publicKey: pk, privateKeyPem: pem }
     : createIdentity(peerId);
-  const offices = parseOffices(raw.offices, raw.activeView);
+  const offices = parseOffices(raw.offices, raw.activeView, peerId);
   const activeView =
     raw.activeView === PERSONAL_VIEW || offices.some((o) => o.tag === raw.activeView)
       ? (raw.activeView as string)

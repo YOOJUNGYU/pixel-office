@@ -475,7 +475,8 @@ describe('LanService', () => {
         tag: r.tag,
         title: '방',
         by: peerLabel(lan.self()),
-        password: '',
+        max: 20,
+        room: { host: lan.profile.peerId, pw: '', max: 20 },
       });
       expect(lan.hostedRoom()?.secret.toString('base64')).toBe(r.secret);
       lan.setActiveView(PERSONAL_VIEW);

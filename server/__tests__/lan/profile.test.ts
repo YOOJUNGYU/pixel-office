@@ -55,6 +55,56 @@ describe('loadProfile', () => {
     saveProfile(p, dir);
     expect(loadProfile(dir)).toEqual(p);
   });
+  it('migrates a ≤ 1.0.79 hosted room into a rev 0 room state', () => {
+    const office = officeFromSecret(newRoomSecret(), '방');
+    fs.writeFileSync(
+      path.join(dir, 'profile.json'),
+      JSON.stringify({
+        peerId: 'me',
+        offices: [{ ...office, host: true, password: 'pw' }],
+        activeView: office.tag,
+      }),
+    );
+    const p = loadProfile(dir);
+    expect(p.offices[0].room).toEqual({
+      rev: 0,
+      by: 'me',
+      host: 'me',
+      title: '방',
+      max: 20,
+      pw: 'pw',
+      order: ['me'],
+      kicked: [],
+    });
+    expect(p.offices[0]).toMatchObject({ host: true, password: 'pw' });
+    expect(loadProfile(dir)).toEqual(p); // stable on reload
+  });
+  it("a member's room is saved without host/password; the host's with them (rollback)", () => {
+    const p = loadProfile(dir);
+    const office = officeFromSecret(newRoomSecret(), '방');
+    const room = {
+      rev: 3,
+      by: 'other',
+      host: 'other',
+      title: '방',
+      max: 5,
+      pw: 'code',
+      order: ['other', p.peerId],
+      kicked: [],
+    };
+    saveProfile({ ...p, offices: [{ ...office, host: true, password: 'x', room }] }, dir);
+    const raw = () =>
+      (
+        JSON.parse(fs.readFileSync(path.join(dir, 'profile.json'), 'utf-8')) as {
+          offices: Record<string, unknown>[];
+        }
+      ).offices[0];
+    expect(raw()).not.toHaveProperty('host');
+    expect(raw()).not.toHaveProperty('password');
+    expect(loadProfile(dir).offices[0].room).toEqual(room);
+    saveProfile({ ...p, offices: [{ ...office, room: { ...room, host: p.peerId } }] }, dir);
+    expect(raw()).toMatchObject({ host: true, password: 'code' });
+  });
   it('upgrades a v0.1.0 file: key pair generated, public office, 0600', () => {
     const f = path.join(dir, 'profile.json');
     const v1 = { peerId: 'old-pc', ...ok, nickname: '김' };

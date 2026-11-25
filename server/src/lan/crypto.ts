@@ -11,6 +11,7 @@ import {
   MAX_ROOM_HOST,
   OFFICE_MAX_PEOPLE,
   PUB_KEY_SALT,
+  ROOM_MIN_PEOPLE,
   TEAM_KEY_INFO,
   TEAM_KEY_SALT,
   TEAM_TAG_BYTES,
@@ -47,6 +48,8 @@ export interface RoomWire {
   by: string;
   locked: boolean;
   n: number;
+  /** Max people (≥ 1.0.80); absent = OFFICE_MAX_PEOPLE. */
+  max?: number;
 }
 
 const TAG = new RegExp(`^[A-Za-z0-9_-]{${Math.ceil((TEAM_TAG_BYTES * 4) / 3)}}$`);
@@ -216,6 +219,9 @@ export function parseWire(text: string): Wire | null {
         by: takeCodePoints(by, MAX_ROOM_HOST),
         locked: o.locked,
         n: o.n as number,
+        ...(Number.isInteger(o.max) &&
+          (o.max as number) >= ROOM_MIN_PEOPLE &&
+          (o.max as number) <= OFFICE_MAX_PEOPLE && { max: o.max as number }),
       };
     }
     case 'ask':

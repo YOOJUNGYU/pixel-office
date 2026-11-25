@@ -47,6 +47,7 @@ import {
   PeerNet,
   presencePlains,
 } from '../../src/lan/peerNet.js';
+import type { RoomState } from '../../src/lan/room.js';
 
 const pkt = (id: string, nickname = id): PeerPacket => ({
   v: 1,
@@ -1242,6 +1243,18 @@ describe('aged', () => {
   });
 });
 
+const roomOf = (pw = '', more: Partial<RoomState> = {}): RoomState => ({
+  rev: 1,
+  by: 'A',
+  host: 'A',
+  title: '우리방',
+  max: 20,
+  pw,
+  order: ['A'],
+  kicked: [],
+  ...more,
+});
+
 describe('PeerNet rooms', () => {
   /** `a` hosts a room (code `pw`) and `b` has heard its advert. */
   async function hosted(pw = '') {
@@ -1249,7 +1262,7 @@ describe('PeerNet rooms', () => {
     const secret = newRoomSecret();
     a.offices = [channel(secret)];
     const { tag } = a.offices[0];
-    a.hosted = { tag, title: '우리방', by: 'kim', password: pw, secret };
+    a.hosted = { tag, title: '우리방', by: 'kim', max: 20, room: roomOf(pw), secret };
     b.offline = true; // a personal PC can list and join too
     await pump([a, b], () => b.net.roomList().length > 0);
     return { a, b, tag, secret };
@@ -1264,7 +1277,7 @@ describe('PeerNet rooms', () => {
   it('the host advertises its room on the LAN; the list carries no secret', async () => {
     const { b, tag } = await hosted('1234');
     expect(b.net.roomList()).toEqual([
-      { tag, title: '우리방', host: 'kim', hostId: 'A', locked: true, count: 1 },
+      { tag, title: '우리방', host: 'kim', hostId: 'A', locked: true, count: 1, max: 20 },
     ]);
   });
 
@@ -1287,6 +1300,57 @@ describe('PeerNet rooms', () => {
     const crowd = Array.from({ length: OFFICE_MAX_PEOPLE - 1 }, (_, i) => pkt(`M${i}`));
     vi.spyOn(a.net, 'peers').mockReturnValue(crowd);
     expect(await join(b, tag, '', [a, b])).toEqual({ ok: false, reason: 'roomFull' });
+  });
+
+  it('max people: the advert carries it; a room at its max refuses a newcomer', async () => {
+    const { a, b, tag } = await hosted();
+    a.hosted = { ...a.hosted!, max: 2, room: roomOf('', { max: 2 }) };
+    vi.spyOn(a.net, 'peers').mockReturnValue([pkt('M0')]);
+    await pump([a, b], () => b.net.roomList()[0]?.max === 2);
+    expect(b.net.roomList()[0].max).toBe(2);
+    expect(await join(b, tag, '', [a, b])).toEqual({ ok: false, reason: 'roomFull' });
+  });
+
+  it('an open room refuses a kicked id (banned)', async () => {
+    const { a, b, tag } = await hosted();
+    a.hosted = { ...a.hosted!, room: roomOf('', { kicked: ['B'] }) };
+    expect(await join(b, tag, '', [a, b])).toEqual({ ok: false, reason: 'banned' });
+  });
+
+  it('a locked room lets a kicked id back with the code; the admit carries the room', async () => {
+    const { a, b, tag } = await hosted('1234');
+    a.hosted = { ...a.hosted!, room: roomOf('1234', { kicked: ['B'] }) };
+    const after = roomOf('1234', { rev: 2, order: ['A', 'B'] });
+    const onAdmit = vi.fn(() => after);
+    (a.net as unknown as { opts: { onAdmit?: typeof onAdmit } }).opts.onAdmit = onAdmit;
+    const r = await join(b, tag, '1234', [a, b]);
+    expect(onAdmit).toHaveBeenCalledWith(tag, 'B');
+    expect(r).toMatchObject({ ok: true, room: after });
+  });
+
+  it('a member gets the host room state on the team channel (onRoom)', async () => {
+    const { a, b, tag, secret } = await hosted();
+    b.offline = false;
+    b.offices = [channel(Buffer.from(secret))];
+    a.offices = [{ ...a.offices[0], room: roomOf() }];
+    const got = vi.fn();
+    (b.net as unknown as { opts: { onRoom?: typeof got } }).opts.onRoom = got;
+    await pump([a, b], () => got.mock.calls.length > 0);
+    expect(got).toHaveBeenCalledWith(tag, roomOf(), 'A');
+    expect(b.net.lastHeard(tag, 'A')).toBe(b.t);
+    expect(b.net.lastHeard(tag, 'Z')).toBeUndefined();
+  });
+
+  it('a member does not send a room state it neither hosts nor wrote', async () => {
+    const { a, b, secret } = await hosted();
+    b.offline = false;
+    b.offices = [{ ...channel(Buffer.from(secret)), room: roomOf() }]; // host A, by A
+    a.hosted = null;
+    const got = vi.fn();
+    (a.net as unknown as { opts: { onRoom?: typeof got } }).opts.onRoom = got;
+    await pump([a, b], () => a.net.peers(b.offices[0].tag).length > 0);
+    await pump([a, b], () => false, 3);
+    expect(got).not.toHaveBeenCalled();
   });
 
   it('no answer → timeout; an unknown room → roomGone at once', async () => {

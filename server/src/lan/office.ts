@@ -50,6 +50,7 @@ import {
   validateRoomPassword,
 } from './profile.js';
 import { quietView, redactView } from './redact.js';
+import { legacyRoom } from './room.js';
 import { SharedLayouts } from './sharedLayout.js';
 import { APP_VERSION } from './updater.js';
 
@@ -313,6 +314,7 @@ export class LanService {
           tag: o.tag,
           name: o.name,
           key: teamKey(Buffer.from(o.secret, 'base64')),
+          ...(o.room && { room: o.room }),
         })),
       };
     }
@@ -434,7 +436,11 @@ export class LanService {
     if (n === null) return 'nameInvalid';
     const pw = validateRoomPassword(password);
     if (pw === null) return 'passwordInvalid';
-    const office: TeamOffice = { ...officeFromSecret(newRoomSecret(), n), host: true };
+    const office: TeamOffice = {
+      ...officeFromSecret(newRoomSecret(), n),
+      room: legacyRoom(this.profile.peerId, n, pw),
+      host: true,
+    };
     if (pw) office.password = pw;
     this.update({ offices: [office], activeView: office.tag });
     return null;
@@ -490,12 +496,16 @@ export class LanService {
   /** The room this PC hosts while it is on screen (advertised and admitting), else null. */
   hostedRoom(): HostedRoom | null {
     const o = this.profile.offices[0];
-    if (!o?.host || this.profile.activeView !== o.tag) return null;
+    const me = this.profile.peerId;
+    if (!o || !(o.room ? o.room.host === me : o.host) || this.profile.activeView !== o.tag)
+      return null;
+    const room = o.room ?? legacyRoom(me, o.name, o.password ?? '');
     return {
       tag: o.tag,
       title: o.name,
       by: peerLabel(this.self()),
-      password: o.password ?? '',
+      max: room.max,
+      room,
       secret: Buffer.from(o.secret, 'base64'),
     };
   }
@@ -508,7 +518,7 @@ export class LanService {
       host: r.host,
       locked: r.locked,
       count: r.count,
-      max: OFFICE_MAX_PEOPLE,
+      max: r.max ?? OFFICE_MAX_PEOPLE,
     }));
   }
 

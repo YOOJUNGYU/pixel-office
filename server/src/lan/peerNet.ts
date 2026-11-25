@@ -60,6 +60,8 @@ import {
   teamKey,
   teamTag,
 } from './crypto.js';
+import type { RoomState } from './room.js';
+import { admitVerdict, parseRoomState } from './room.js';
 import { layoutHash } from './sharedLayout.js';
 
 export const PEER_TTL_MS = 5_000;
@@ -73,6 +75,8 @@ export interface TeamChannel {
   tag: string;
   key: Buffer;
   name: string;
+  /** The room's state as this PC holds it; sent on the channel only by its host or writer. */
+  room?: RoomState;
 }
 
 /** The room this PC hosts and has on screen (LanService), advertised on the LAN. */
@@ -81,8 +85,10 @@ export interface HostedRoom {
   title: string;
   /** Host label (peerLabel). */
   by: string;
-  /** '' = anyone may join. */
-  password: string;
+  /** Max people, advertised. */
+  max: number;
+  /** The room's state: access code (`pw`, '' = anyone may join), max, kicked ids. */
+  room: RoomState;
   secret: Buffer;
 }
 
@@ -94,11 +100,13 @@ export interface RoomInfo {
   hostId: string;
   locked: boolean;
   count: number;
+  /** Advertised max people (absent from a ≤ 1.0.79 host). */
+  max?: number;
 }
 
 export type JoinResult =
-  | { ok: true; secret: Buffer; title: string }
-  | { ok: false; reason: 'wrongPassword' | 'roomFull' | 'roomGone' | 'timeout' };
+  | { ok: true; secret: Buffer; title: string; room?: RoomState }
+  | { ok: false; reason: 'wrongPassword' | 'roomFull' | 'roomGone' | 'timeout' | 'banned' };
 
 interface PendingJoin {
   tag: string;
@@ -145,7 +153,7 @@ interface Heard {
 export interface Inner {
   seq: number;
   packet: PeerPacket;
-  office?: { name: string };
+  office?: { name: string; room?: RoomState };
 }
 
 const ipToInt = (ip: string): number =>
@@ -328,9 +336,14 @@ function parseAsk(text: string | null): { seq: number; tag: string; pw: string }
 }
 
 /** Decrypted admit → `{seq, tag, ok, secret?, reason?}`, else null. */
-function parseAdmit(
-  text: string | null,
-): { seq: number; tag: string; ok: boolean; secret: Buffer | null; reason: unknown } | null {
+function parseAdmit(text: string | null): {
+  seq: number;
+  tag: string;
+  ok: boolean;
+  secret: Buffer | null;
+  reason: unknown;
+  room: RoomState | null;
+} | null {
   if (text === null) return null;
   try {
     const o = JSON.parse(text) as Record<string, unknown> | null;
@@ -342,6 +355,7 @@ function parseAdmit(
       ok: o.ok,
       secret: parseRoomSecret(o.secret),
       reason: o.reason,
+      room: parseRoomState(o.room),
     };
   } catch {
     return null;
@@ -356,11 +370,15 @@ function parseInner(text: string | null): Inner | null {
     if (!o || typeof o !== 'object' || !Number.isSafeInteger(o.seq)) return null;
     const packet = parsePeerPacket(JSON.stringify(o.packet));
     if (!packet) return null;
-    const name = (o.office as { name?: unknown } | undefined)?.name;
+    const office = o.office as { name?: unknown; room?: unknown } | undefined;
+    const name = office?.name;
+    const room = parseRoomState(office?.room);
     return {
       seq: o.seq as number,
       packet,
-      ...(typeof name === 'string' && { office: { name: name.slice(0, MAX_OFFICE_NAME) } }),
+      ...(typeof name === 'string' && {
+        office: { name: name.slice(0, MAX_OFFICE_NAME), ...(room && { room }) },
+      }),
     };
   } catch {
     return null;
@@ -452,6 +470,10 @@ export class PeerNet {
       pins: { get(id: string): string | undefined; set(id: string, pk: string): void };
       /** Broadcast targets override ("host:port"), for tests. */
       targets?: () => string[];
+      /** A room state heard on a joined team channel from another member (LanService decides). */
+      onRoom?: (tag: string, room: RoomState, from: string) => void;
+      /** As the host: `id` is admitted; returns the state to hand it (kicked → removed). */
+      onAdmit?: (tag: string, id: string) => RoomState;
       /** A live peer's avatar moved (or appeared), so the UI can show it before the next tick. */
       onAvatar?: () => void;
       /** Shared layouts: this PC's version and deflated JSON per channel, and a peer's
@@ -527,10 +549,12 @@ export class PeerNet {
         return;
       }
       for (const o of offices) {
+        const room =
+          o.room && (o.room.host === identity.id || o.room.by === identity.id) ? o.room : null;
         const inner: Inner = {
           seq: ++this.seq,
           packet: this.opts.getPacket(o.tag),
-          ...(o.name && { office: { name: o.name } }),
+          ...((o.name || room) && { office: { name: o.name, ...(room && { room }) } }),
         };
         const around = envelope({ v: 2, t: 'team', tag: o.tag });
         for (const plain of presencePlains(inner, identity.id, around)) {
@@ -590,8 +614,9 @@ export class PeerNet {
         tag: room.tag,
         title: room.title,
         by: room.by,
-        locked: room.password !== '',
+        locked: room.room.pw !== '',
         n: Math.min(OFFICE_MAX_PEOPLE, this.peers(room.tag).length + 1),
+        max: room.max,
       };
       for (const t of broadcast) this.send(advert, t);
     }
@@ -640,6 +665,7 @@ export class PeerNet {
         hostId: w.id,
         locked: w.locked,
         count: w.n,
+        ...(w.max !== undefined && { max: w.max }),
       }));
   }
 
@@ -700,19 +726,30 @@ export class PeerNet {
     if (pinned === undefined) this.opts.pins.set(w.from, w.pk);
     const member = this.seen.get(room.tag)?.get(w.from);
     const inside = member !== undefined && this.live(member.at, t);
-    const reply = !samePassword(ask.pw, room.password)
-      ? { ok: false, reason: 'password' }
-      : !inside && this.peers(room.tag).length + 1 >= OFFICE_MAX_PEOPLE
-        ? { ok: false, reason: 'full' }
-        : { ok: true, secret: room.secret.toString('base64') };
-    const plain = JSON.stringify({ seq: ++this.seq, tag: room.tag, ...reply });
-    const admit: Wire = {
+    const verdict = admitVerdict(
+      room.room,
+      w.from,
+      samePassword(ask.pw, room.room.pw),
+      this.peers(room.tag).length + 1,
+      inside,
+    );
+    const head = { seq: ++this.seq, tag: room.tag };
+    const ok = { ...head, ok: true, secret: room.secret.toString('base64') };
+    const admitOf = (reply: object): Wire => ({
       v: 2,
       t: 'admit',
       from: identity.id,
       to: w.from,
-      ...seal(key, admitAad(identity.id, w.from), plain),
-    };
+      ...seal(key, admitAad(identity.id, w.from), JSON.stringify(reply)),
+    });
+    let admit = admitOf(
+      verdict === 'ok'
+        ? { ...ok, room: this.opts.onAdmit?.(room.tag, w.from) ?? room.room }
+        : { ...head, ok: false, reason: verdict },
+    );
+    // Long order/kicked lists: admitted without the state, which the joiner then hears on
+    // the team channel (split presence) like a ≤ 1.0.79 host's members do.
+    if (verdict === 'ok' && JSON.stringify(admit).length > MAX_DATAGRAM_BYTES) admit = admitOf(ok);
     this.send(admit, `${rinfo.address}:${rinfo.port.toString()}`);
   }
 
@@ -723,12 +760,19 @@ export class PeerNet {
     const a = parseAdmit(open(j.key, admitAad(w.from, w.to), w.n, w.c));
     if (!a || a.tag !== j.tag || !this.fresh(`admit|${w.from}`, a.seq)) return;
     if (!a.ok) {
-      this.finishJoin({ ok: false, reason: a.reason === 'full' ? 'roomFull' : 'wrongPassword' });
+      const reason =
+        a.reason === 'full' ? 'roomFull' : a.reason === 'banned' ? 'banned' : 'wrongPassword';
+      this.finishJoin({ ok: false, reason });
       return;
     }
     // Only the secret of the room asked for (its tag is derived from it).
     if (!a.secret || teamTag(teamKey(a.secret)) !== j.tag) return;
-    this.finishJoin({ ok: true, secret: a.secret, title: j.title });
+    this.finishJoin({
+      ok: true,
+      secret: a.secret,
+      title: j.title,
+      ...(a.room && { room: a.room }),
+    });
   }
 
   /** `texts` sealed pairwise for `id` as pub wires (none without a pair key). */
@@ -978,6 +1022,16 @@ export class PeerNet {
     };
   }
 
+  /** When `id`'s presence on `tag` was last accepted (until pruned), else undefined. */
+  lastHeard(tag: string, id: string): number | undefined {
+    return this.seen.get(tag)?.get(id)?.at;
+  }
+
+  /** The app version `id` last announced on `tag`, else undefined. */
+  peerVer(tag: string, id: string): string | undefined {
+    return this.seen.get(tag)?.get(id)?.packet.peer.ver;
+  }
+
   /** The name a member last announced for a team office. */
   teamName(tag: string): string | undefined {
     return this.names.get(tag);
@@ -1085,7 +1139,9 @@ export class PeerNet {
     if (this.layoutPart(w.tag, plain)) return;
     const inner = this.unpack(w.tag, plain);
     if (!inner || inner.packet.peer.id === me) return;
-    if (this.accept(w.tag, inner) && inner.office?.name) this.names.set(w.tag, inner.office.name);
+    if (!this.accept(w.tag, inner)) return;
+    if (inner.office?.name) this.names.set(w.tag, inner.office.name);
+    if (inner.office?.room) this.opts.onRoom?.(w.tag, inner.office.room, inner.packet.peer.id);
   }
 
   /** A pairwise public presence or layout part, from UDP or the relay. */
