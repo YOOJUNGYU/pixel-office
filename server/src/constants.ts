@@ -232,6 +232,10 @@ export const MAX_HELLO_PEERS = 256;
  *  office tracks at most this many − 1 other PCs heard over UDP (the relay never counts),
  *  a room's host admits no one past it. */
 export const OFFICE_MAX_PEOPLE = 20;
+/** A room's max people setting range (upper bound = OFFICE_MAX_PEOPLE). */
+export const ROOM_MIN_PEOPLE = 2;
+/** Kicked ids a room remembers (oldest dropped). */
+export const ROOM_MAX_KICKED = 20;
 /** A room's access code, code points. */
 export const MAX_ROOM_PASSWORD = 32;
 /** The public office counts as full for this PC once, this long after it entered it, the
