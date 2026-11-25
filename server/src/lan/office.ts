@@ -26,6 +26,7 @@ import type {
   DirectoryPersonMessage,
   OfficeErrorReason,
   OfficePersonMessage,
+  OfficeSummary,
   PeopleDirectory,
   RoomSummary,
 } from '../../../core/src/messages.js';
@@ -35,9 +36,12 @@ import {
   OFFICE_MAX_PEOPLE,
   PING_APP,
   PING_TIMEOUT_MS,
+  ROOM_HOST_GONE_MS,
+  ROOM_MIN_PEOPLE,
+  ROOM_STATE_MIN_VER,
 } from '../constants.js';
 import { MAX_SEAT_REPORT, MAX_SEAT_VIEW_ID } from '../constants.js';
-import { newRoomSecret, teamKey } from './crypto.js';
+import { isWireId, newRoomSecret, teamKey } from './crypto.js';
 import type { HostedRoom, JoinResult, NetDirectory, RoomInfo, TeamChannel } from './peerNet.js';
 import { fitPacket } from './peerNet.js';
 import type { EditableProfile, Profile, TeamOffice } from './profile.js';
@@ -50,7 +54,8 @@ import {
   validateRoomPassword,
 } from './profile.js';
 import { quietView, redactView } from './redact.js';
-import { legacyRoom } from './room.js';
+import type { RoomState } from './room.js';
+import { acceptRoom, atLeastVersion, legacyRoom, successor, upkeep, withKick } from './room.js';
 import { SharedLayouts } from './sharedLayout.js';
 import { APP_VERSION } from './updater.js';
 
@@ -70,6 +75,9 @@ export function buildOffice(
 ): OfficeAgent[] {
   return [...toAgents(self, local), ...peers.flatMap((p) => toAgents(p.peer, p.views))];
 }
+
+/** Room news for this PC's page (the caller delivers it as officeNotice). */
+export type RoomNotice = { reason: 'kicked' | 'nowHost'; title: string };
 
 const toChatMessage = (c: PeerChat): ChatMessage => ({ id: c.id, text: c.text });
 
@@ -106,6 +114,8 @@ export class LanService {
     publicFull?(): boolean;
     /** Ask a room's host to let this PC in. */
     joinRoom?(tag: string, pw: string, done: (r: JoinResult) => void): void;
+    /** When `id`'s presence on `tag` was last heard (PeerNet's clock = Date.now). */
+    lastHeard?(tag: string, id: string): number | undefined;
   } = {
     peers: () => [],
     sendNow: () => {},
@@ -129,6 +139,8 @@ export class LanService {
   checkLayout: (raw: unknown) => Record<string, unknown> | null = () => null;
   /** A peer's newer layout of `channel` was stored; the UI server re-sends layoutLoaded. */
   layoutChanged: (channel: string) => void = () => {};
+  /** Since when the joined room has been on screen (members not heard since count from here). */
+  private onScreen: { tag: string; at: number } | null = null;
 
   constructor(
     public profile: Profile,
@@ -410,7 +422,10 @@ export class LanService {
 
   /** Live peers of a view; none at all in personal mode (PeerNet is offline too). */
   private peersIn(view: string): PeerPacket[] {
-    return this.personal ? [] : this.net.peers(view);
+    if (this.personal) return [];
+    const kicked = this.profile.offices.find((o) => o.tag === view)?.room?.kicked ?? [];
+    const peers = this.net.peers(view);
+    return kicked.length ? peers.filter((p) => !kicked.includes(p.peer.id)) : peers;
   }
 
   /** The public office only while in no team; a team office only once joined. */
@@ -420,22 +435,189 @@ export class LanService {
 
   /** Offices for this PC's browser: names only, never secrets (my own room's access code
    *  is shown to me, its host). */
-  officeList(): { tag: string; name: string; host?: true; password?: string }[] {
-    return this.profile.offices.map((o) => ({
-      tag: o.tag,
-      name: o.name || this.net.teamName(o.tag) || '',
-      ...(o.host && { host: true as const }),
-      ...(o.host && o.password && { password: o.password }),
-    }));
+  officeList(): OfficeSummary[] {
+    const me = this.profile.peerId;
+    return this.profile.offices.map((o) => {
+      const host = o.room ? o.room.host === me : o.host === true;
+      const pw = o.room ? o.room.pw : o.password;
+      const next = host && o.room ? this.successorOf(o.tag, o.room) : null;
+      const nextPeer = next && this.peersIn(o.tag).find((p) => p.peer.id === next)?.peer;
+      return {
+        tag: o.tag,
+        name: o.name || this.net.teamName(o.tag) || '',
+        ...(host && { host: true as const }),
+        ...(host && pw && { password: pw }),
+        ...(o.room && { hostId: o.room.host, max: o.room.max }),
+        ...(host && o.room && { next: nextPeer ? peerLabel(nextPeer) : '' }),
+      };
+    });
+  }
+
+  /** Live members of a room that keep room state (≥ ROOM_STATE_MIN_VER), me first, then in
+   *  first-heard order. Nobody but me in personal mode. */
+  private liveIds(tag: string): string[] {
+    const me = this.profile.peerId;
+    const ids = this.peersIn(tag)
+      .filter((p) => p.peer.id !== me && atLeastVersion(p.peer.ver, ROOM_STATE_MIN_VER))
+      .map((p) => p.peer.id);
+    return [me, ...ids];
+  }
+
+  private successorOf(tag: string, s: RoomState): string | null {
+    const live = new Set(this.liveIds(tag));
+    return successor(s, (id) => live.has(id));
+  }
+
+  /** Store a room's new state (its title is the office name) and send it at once. */
+  private writeRoom(tag: string, room: RoomState): void {
+    this.update({
+      offices: this.profile.offices.map((o) =>
+        o.tag === tag ? { ...o, room, name: room.title } : o,
+      ),
+    });
+  }
+
+  /** I host the room on screen: leaving its screen would stop it being listed and admitting,
+   *  so the page asks first (handover popup). */
+  needsHandover(): boolean {
+    return this.hostedRoom() !== null;
+  }
+
+  /** Before a move off the room this PC hosts on screen. Without the page's consent
+   *  (`handover`) → false, nothing changes. With it the role goes to the successor (sent while
+   *  still on the room's view); no successor = the room just stops being listed. */
+  private handOff(handover: unknown): boolean {
+    const h = this.hostedRoom();
+    if (!h) return true;
+    if (handover !== true) return false;
+    const next = this.successorOf(h.tag, h.room);
+    if (next) {
+      const { room } = h;
+      this.writeRoom(h.tag, { ...room, rev: room.rev + 1, by: this.profile.peerId, host: next });
+    }
+    return true;
+  }
+
+  /** A room state heard on the team channel (PeerNet.onRoom, ~1/s per writer: only a newer,
+   *  acceptable one does anything). Kicked → this PC leaves for personal mode. Never throws. */
+  receiveRoom(tag: string, room: RoomState): RoomNotice | null {
+    try {
+      const o = this.profile.offices.find((x) => x.tag === tag);
+      if (!o || !acceptRoom(o.room, room)) return null;
+      const me = this.profile.peerId;
+      if (room.kicked.includes(me)) {
+        this.update({
+          offices: this.profile.offices.filter((x) => x.tag !== tag),
+          activeView: PERSONAL_VIEW,
+        });
+        return { reason: 'kicked', title: room.title };
+      }
+      const was = o.room?.host === me;
+      this.writeRoom(tag, room);
+      return room.host === me && !was ? { reason: 'nowHost', title: room.title } : null;
+    } catch (err) {
+      // Runs from a UDP datagram: never throw out of it.
+      console.error('[Pixel Office] Failed to save room state:', err);
+      return null;
+    }
+  }
+
+  /** As the host: `id` was let in (PeerNet.onAdmit, on every ok answer to a re-sent ask). A
+   *  kicked id (locked room, right code) is taken off the list in a new rev; else unchanged. */
+  admitted(tag: string, id: string): RoomState {
+    const h = this.hostedRoom();
+    const s = h?.tag === tag ? h.room : legacyRoom(this.profile.peerId, tag, '');
+    if (!s.kicked.includes(id)) return s;
+    const next = {
+      ...s,
+      rev: s.rev + 1,
+      by: this.profile.peerId,
+      kicked: s.kicked.filter((k) => k !== id),
+    };
+    try {
+      this.writeRoom(tag, next);
+    } catch (err) {
+      console.error('[Pixel Office] Failed to save room state:', err);
+    }
+    return next;
+  }
+
+  /** Every second. The room on screen: its host keeps the order (live members in, gone ones
+   *  out); a member takes over when the host has been silent ROOM_HOST_GONE_MS and it is the
+   *  successor. Never throws. */
+  tickRoom(now: number): RoomNotice | null {
+    const o = this.profile.offices[0];
+    if (!o?.room || this.profile.activeView !== o.tag) {
+      this.onScreen = null;
+      return null;
+    }
+    if (this.onScreen?.tag !== o.tag) this.onScreen = { tag: o.tag, at: now };
+    const since = this.onScreen.at;
+    const gone = (id: string) =>
+      now - Math.max(this.net.lastHeard?.(o.tag, id) ?? -Infinity, since) > ROOM_HOST_GONE_MS;
+    const s = o.room;
+    const me = this.profile.peerId;
+    try {
+      if (s.host === me) {
+        const next = upkeep(s, me, this.liveIds(o.tag), gone);
+        if (next) this.writeRoom(o.tag, next);
+        return null;
+      }
+      if (!gone(s.host) || this.successorOf(o.tag, s) !== me) return null;
+      this.writeRoom(o.tag, { ...s, rev: s.rev + 1, by: me, host: me });
+      return { reason: 'nowHost', title: s.title };
+    } catch (err) {
+      console.error('[Pixel Office] Failed to save room state:', err);
+      return null;
+    }
+  }
+
+  /** As the host: change the room's title, max people or access code (absent = unchanged). */
+  setRoom(u: { title?: unknown; max?: unknown; password?: unknown }): OfficeErrorReason | null {
+    const o = this.profile.offices[0];
+    const me = this.profile.peerId;
+    if (o?.room?.host !== me) return 'roomGone';
+    const s = o.room;
+    const title = u.title === undefined ? s.title : validateOfficeName(u.title);
+    if (title === null) return 'nameInvalid';
+    const max = u.max === undefined ? s.max : u.max;
+    if (
+      !Number.isInteger(max) ||
+      (max as number) < ROOM_MIN_PEOPLE ||
+      (max as number) > OFFICE_MAX_PEOPLE
+    )
+      return 'maxInvalid';
+    const pw = u.password === undefined ? s.pw : validateRoomPassword(u.password);
+    if (pw === null) return 'passwordInvalid';
+    // A lower max keeps everyone inside: only new joins are refused (admitVerdict).
+    this.writeRoom(o.tag, { ...s, rev: s.rev + 1, by: me, title, max: max as number, pw });
+    return null;
+  }
+
+  /** As the host: kick `peerId` (not me) from the room. Every member then hides it, and the
+   *  kicked PC's own app leaves to personal mode. */
+  // ponytail: honest-client kick: a modified client keeps the team key; re-key on kick if that matters
+  kickMember(peerId: unknown): boolean {
+    const o = this.profile.offices[0];
+    const me = this.profile.peerId;
+    if (o?.room?.host !== me || typeof peerId !== 'string' || !isWireId(peerId) || peerId === me)
+      return false;
+    this.writeRoom(o.tag, withKick(o.room, me, peerId));
+    return true;
   }
 
   /** New room hosted by this PC (title + optional access code); it becomes the active view
    *  and replaces the current team (one at a time) in the same save. null = created. */
-  createOffice(name: unknown, password?: unknown): OfficeErrorReason | null {
+  createOffice(
+    name: unknown,
+    password?: unknown,
+    handover?: unknown,
+  ): OfficeErrorReason | 'handover' | null {
     const n = validateOfficeName(name);
     if (n === null) return 'nameInvalid';
     const pw = validateRoomPassword(password);
     if (pw === null) return 'passwordInvalid';
+    if (!this.handOff(handover)) return 'handover';
     const office: TeamOffice = {
       ...officeFromSecret(newRoomSecret(), n),
       room: legacyRoom(this.profile.peerId, n, pw),
@@ -447,8 +629,14 @@ export class LanService {
   }
 
   /** Join a listed room through its host. `done(null)` = joined (the room is the view now);
-   *  already in it → switched to it, 'alreadyJoined'. */
-  joinOffice(tag: unknown, password: unknown, done: (err: OfficeErrorReason | null) => void): void {
+   *  already in it → switched to it, 'alreadyJoined'. Hosting the room on screen needs
+   *  `handover` ('handover' = refused before asking; the role passes on success). */
+  joinOffice(
+    tag: unknown,
+    password: unknown,
+    done: (err: OfficeErrorReason | 'handover' | null) => void,
+    handover?: unknown,
+  ): void {
     const pw = validateRoomPassword(password);
     if (typeof tag !== 'string' || pw === null) {
       done(pw === null ? 'passwordInvalid' : 'roomGone');
@@ -457,6 +645,10 @@ export class LanService {
     if (this.profile.offices.some((o) => o.tag === tag)) {
       this.setActiveView(tag);
       done('alreadyJoined');
+      return;
+    }
+    if (this.needsHandover() && handover !== true) {
+      done('handover');
       return;
     }
     if (!this.net.joinRoom) {
@@ -474,7 +666,11 @@ export class LanService {
         return;
       }
       try {
-        this.update({ offices: [office], activeView: office.tag });
+        this.handOff(handover);
+        this.update({
+          offices: [{ ...office, ...(r.room && { room: r.room }) }],
+          activeView: office.tag,
+        });
       } catch (err) {
         // Runs from a UDP datagram: never throw out of it.
         console.error('[Pixel Office] Failed to save offices:', err);
@@ -522,9 +718,11 @@ export class LanService {
     }));
   }
 
-  leaveOffice(tag: unknown): boolean {
+  /** Leaving the room this PC hosts on screen needs `handover` (false = refused). */
+  leaveOffice(tag: unknown, handover?: unknown): boolean {
     const offices = this.profile.offices.filter((o) => o.tag !== tag);
     if (offices.length === this.profile.offices.length) return false;
+    if (this.hostedRoom()?.tag === tag && !this.handOff(handover)) return false;
     const { activeView } = this.profile;
     this.update({
       offices,
@@ -533,10 +731,13 @@ export class LanService {
     return true;
   }
 
-  /** PUBLIC_VIEW only while in no team, a joined tag, or PERSONAL_VIEW (always). */
-  setActiveView(view: unknown): boolean {
+  /** PUBLIC_VIEW only while in no team, a joined tag, or PERSONAL_VIEW (always). Leaving the
+   *  room this PC hosts on screen needs `handover` (false = refused). */
+  setActiveView(view: unknown, handover?: unknown): boolean {
     if (!isViewOpen(this.profile.offices, view)) return false;
-    if (view !== this.profile.activeView) this.update({ activeView: view as string });
+    if (view === this.profile.activeView) return true;
+    if (!this.handOff(handover)) return false;
+    this.update({ activeView: view as string });
     return true;
   }
 

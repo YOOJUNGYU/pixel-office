@@ -134,10 +134,10 @@ describe('LanService chat', () => {
     lan.sendChat('team only', 0);
     expect(lan.packet(tag).chat?.text).toBe('team only');
     expect(lan.packet(PUBLIC_VIEW)).not.toHaveProperty('chat');
-    lan.setActiveView(PERSONAL_VIEW);
+    lan.setActiveView(PERSONAL_VIEW, true);
     lan.setActiveView(tag);
     expect(lan.packet(tag).chat?.text).toBe('team only');
-    lan.createOffice('팀2'); // replaces the team: its chat goes with it
+    lan.createOffice('팀2', undefined, true); // replaces the team: its chat goes with it
     expect(lan.profile).not.toHaveProperty('chat');
   });
 

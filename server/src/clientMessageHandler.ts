@@ -325,14 +325,14 @@ function handleOfficeChange(
     switch (msg.type) {
       case 'createOffice': {
         const err = lan.createOffice(msg.name, msg.password);
-        if (err) send(officeError(err));
+        if (err && err !== 'handover') send(officeError(err));
         ok = err === null;
         break;
       }
       case 'joinOffice':
         // Answered later: the room's host lets this PC in (or not) over the LAN.
         lan.joinOffice(msg.tag, msg.password, (err) => {
-          if (err) send(officeError(err));
+          if (err && err !== 'handover') send(officeError(err));
           if (err === null || err === 'alreadyJoined')
             onChanged?.(lan.profile.activeView !== wasView); // alreadyJoined switched the view
           else send(officesMessage(lan));

@@ -236,6 +236,11 @@ export const OFFICE_MAX_PEOPLE = 20;
 export const ROOM_MIN_PEOPLE = 2;
 /** Kicked ids a room remembers (oldest dropped). */
 export const ROOM_MAX_KICKED = 20;
+/** A room member not heard this long is gone: the host drops it from the order, and a silent
+ *  host is taken over by its successor (also counted from when the room came on screen). */
+export const ROOM_HOST_GONE_MS = 30_000;
+/** The oldest app version that keeps room state: only such members can become host. */
+export const ROOM_STATE_MIN_VER = '1.0.80';
 /** A room's access code, code points. */
 export const MAX_ROOM_PASSWORD = 32;
 /** The public office counts as full for this PC once, this long after it entered it, the

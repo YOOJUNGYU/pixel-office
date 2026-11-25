@@ -12,17 +12,19 @@ import {
   profileMessage,
   snapshotMessage,
 } from '../../src/clientMessageHandler.js';
+import { ROOM_HOST_GONE_MS, ROOM_STATE_MIN_VER } from '../../src/constants.js';
 import { FileStateAdapter } from '../../src/fileStateAdapter.js';
 import { createIdentity, newRoomSecret } from '../../src/lan/crypto.js';
 import { buildOffice, LanService } from '../../src/lan/office.js';
 import type { JoinResult } from '../../src/lan/peerNet.js';
 import type { Profile } from '../../src/lan/profile.js';
 import { loadProfile, osAccount } from '../../src/lan/profile.js';
+import type { RoomState } from '../../src/lan/room.js';
 import { APP_VERSION } from '../../src/lan/updater.js';
 
 /** A room created by `lan` (its host), as stored. */
 const room = (lan: LanService, name: string, password?: string) => {
-  expect(lan.createOffice(name, password)).toBeNull();
+  expect(lan.createOffice(name, password, true)).toBeNull();
   return lan.profile.offices[0];
 };
 
@@ -479,7 +481,7 @@ describe('LanService', () => {
         room: { host: lan.profile.peerId, pw: '', max: 20 },
       });
       expect(lan.hostedRoom()?.secret.toString('base64')).toBe(r.secret);
-      lan.setActiveView(PERSONAL_VIEW);
+      lan.setActiveView(PERSONAL_VIEW, true);
       expect(lan.hostedRoom()).toBeNull();
     });
 
@@ -491,7 +493,17 @@ describe('LanService', () => {
       expect(msg).not.toContain(secret);
       expect(officesMessage(lan)).toEqual({
         type: 'officesState',
-        offices: [{ tag: created.tag, name: '팀', host: true, password: 'pw' }],
+        offices: [
+          {
+            tag: created.tag,
+            name: '팀',
+            host: true,
+            password: 'pw',
+            hostId: 'me',
+            max: 20,
+            next: '',
+          },
+        ],
         activeView: created.tag,
       });
       const file = path.join(dir, 'profile.json');
@@ -573,11 +585,207 @@ describe('LanService', () => {
       lan.net.joinRoom = (_t, _pw, done) =>
         done({ ok: true, secret: Buffer.from(a.secret, 'base64'), title: 'a' });
       const got: (string | null)[] = [];
-      lan.joinOffice(a.tag, '', (e) => got.push(e));
+      lan.joinOffice(a.tag, '', (e) => got.push(e), true);
       lan.joinOffice(a.tag, '', (e) => got.push(e));
       expect(got).toEqual([null, 'alreadyJoined']);
       expect(lan.profile.offices.map((o) => o.tag)).toEqual([a.tag]);
       expect(lan.profile.activeView).toBe(a.tag);
+    });
+  });
+
+  describe('room host powers', () => {
+    const NEW = ROOM_STATE_MIN_VER;
+    const pk = (id: string, ver = NEW): PeerPacket => ({
+      v: 1,
+      peer: { id, account: id, nickname: id, palette: 0, hueShift: 0, ver },
+      views: [],
+    });
+    const dirs: string[] = [];
+    afterEach(() => dirs.splice(0).forEach((d) => fs.rmSync(d, { recursive: true, force: true })));
+    /** A LanService with a fake net: `live` = live team packets, `heard` = lastHeard per id,
+     *  `sent` = the profile at every sendNow. */
+    const mk = (peerId: string) => {
+      const d = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-room-'));
+      dirs.push(d);
+      const lan = new LanService({ ...profile, peerId }, { views: () => [] }, d);
+      const live: PeerPacket[] = [];
+      const heard = new Map<string, number>();
+      const sent: Profile[] = [];
+      lan.net = {
+        ...lan.net,
+        peers: (v: string) => (v === PUBLIC_VIEW ? [] : live),
+        sendNow: () => sent.push(lan.profile),
+        lastHeard: (_t: string, id: string) => heard.get(id),
+      };
+      return { lan, live, heard, sent };
+    };
+    const state = (lan: LanService) => lan.profile.offices[0]?.room as RoomState;
+    /** Host 'me' with a room listing `members` in its order (via its own upkeep). */
+    const hosting = (members: string[], pw?: string) => {
+      const h = mk('me');
+      const { tag, secret } = room(h.lan, 'R', pw);
+      h.live.push(...members.map((m) => pk(m)));
+      members.forEach((m) => h.heard.set(m, 0));
+      h.lan.tickRoom(0);
+      expect(state(h.lan).order).toEqual(['me', ...members]);
+      return { ...h, tag, secret };
+    };
+    /** `id` joined the host's room, holding `s`. */
+    const joined = (id: string, tag: string, secret: string, s: RoomState) => {
+      const m = mk(id);
+      m.lan.net.joinRoom = (_t, _pw, done) =>
+        done({ ok: true, secret: Buffer.from(secret, 'base64'), title: s.title, room: s });
+      const got: (string | null)[] = [];
+      m.lan.joinOffice(tag, '', (e) => got.push(e));
+      expect(got).toEqual([null]);
+      expect(state(m.lan)).toEqual(s);
+      return m;
+    };
+
+    it('a member named in a newer kick leaves for personal mode; others hide it', () => {
+      const h = hosting(['mate']);
+      const m = joined('mate', h.tag, h.secret, state(h.lan));
+      expect(h.lan.kickMember('me')).toBe(false);
+      expect(h.lan.kickMember('bad id!')).toBe(false);
+      expect(h.lan.kickMember('mate')).toBe(true);
+      expect(state(h.lan)).toMatchObject({ order: ['me'], kicked: ['mate'] });
+      expect(h.sent.at(-1)?.offices[0].room?.kicked).toEqual(['mate']);
+      expect(h.lan.people(h.tag).map((p) => p.peerId)).toEqual(['me']);
+      expect(m.lan.kickMember('me')).toBe(false); // not the host
+      expect(m.lan.receiveRoom(h.tag, state(h.lan))).toEqual({ reason: 'kicked', title: 'R' });
+      expect(m.lan.profile).toMatchObject({ offices: [], activeView: PERSONAL_VIEW });
+    });
+
+    it('leaving the hosted room needs consent; with it the successor is written first', () => {
+      const h = hosting(['mate']);
+      expect(h.lan.needsHandover()).toBe(true);
+      expect(h.lan.setActiveView(PERSONAL_VIEW)).toBe(false);
+      expect(h.lan.leaveOffice(h.tag)).toBe(false);
+      expect(h.lan.createOffice('other')).toBe('handover');
+      const got: (string | null)[] = [];
+      h.lan.joinOffice('AAAAAAAAAAA', '', (e) => got.push(e));
+      expect(got).toEqual(['handover']);
+      expect(h.lan.hostedRoom()?.tag).toBe(h.tag);
+      const rev = state(h.lan).rev;
+      h.sent.length = 0;
+      expect(h.lan.setActiveView(PERSONAL_VIEW, true)).toBe(true);
+      // sent while still on the room's view, before the switch
+      expect(h.sent[0]).toMatchObject({ activeView: h.tag });
+      expect(h.sent[0].offices[0].room).toMatchObject({ rev: rev + 1, by: 'me', host: 'mate' });
+      expect(h.lan.profile.activeView).toBe(PERSONAL_VIEW);
+      expect(h.lan.needsHandover()).toBe(false);
+      // back on the room tab: a plain member
+      h.lan.setActiveView(h.tag);
+      expect(h.lan.hostedRoom()).toBeNull();
+    });
+
+    it('an old peer is no successor; the host alone keeps the room across a view switch', () => {
+      const h = hosting([]);
+      h.live.push(pk('old', '1.0.79'));
+      h.lan.tickRoom(1);
+      expect(state(h.lan).order).toEqual(['me']);
+      expect(h.lan.officeList()[0]).toMatchObject({ host: true, hostId: 'me', next: '' });
+      const before = state(h.lan);
+      expect(h.lan.setActiveView(PERSONAL_VIEW, true)).toBe(true);
+      expect(state(h.lan)).toEqual(before);
+      expect(h.lan.setActiveView(h.tag)).toBe(true);
+      expect(h.lan.hostedRoom()?.tag).toBe(h.tag);
+    });
+
+    it('officeList names the successor to the host', () => {
+      const h = hosting(['mate']);
+      expect(h.lan.officeList()[0]).toMatchObject({ hostId: 'me', max: 20, next: 'mate' });
+    });
+
+    it('a takeover demotes the original host; its stale rev is never taken back', () => {
+      const h = hosting(['mate', 'zed']);
+      const s = state(h.lan);
+      const z = joined('zed', h.tag, h.secret, s);
+      const take: RoomState = { ...s, rev: s.rev + 1, by: 'mate', host: 'mate' };
+      expect(z.lan.receiveRoom(h.tag, take)).toBeNull();
+      expect(h.lan.receiveRoom(h.tag, take)).toBeNull();
+      expect(state(h.lan)).toEqual(take);
+      expect(h.lan.hostedRoom()).toBeNull();
+      expect(h.lan.officeList()[0]).not.toHaveProperty('host');
+      expect(h.lan.officeList()[0]).toMatchObject({ hostId: 'mate' });
+      expect(z.lan.receiveRoom(h.tag, s)).toBeNull();
+      expect(state(z.lan)).toEqual(take);
+      // a state written by a plain member is ignored
+      expect(z.lan.receiveRoom(h.tag, { ...take, rev: take.rev + 1, by: 'me' })).toBeNull();
+      expect(state(z.lan)).toEqual(take);
+    });
+
+    it('the successor takes over after ROOM_HOST_GONE_MS of host silence; others wait', () => {
+      const h = hosting(['mate', 'zed']);
+      const s = state(h.lan);
+      const m = joined('mate', h.tag, h.secret, s);
+      const z = joined('zed', h.tag, h.secret, s);
+      m.live.push(pk('zed'));
+      z.live.push(pk('mate'));
+      for (const x of [m, z]) x.heard.set('me', 1000);
+      expect(m.lan.tickRoom(1000)).toBeNull();
+      expect(z.lan.tickRoom(1000)).toBeNull();
+      expect(m.lan.tickRoom(1000 + ROOM_HOST_GONE_MS)).toBeNull();
+      expect(z.lan.tickRoom(1001 + ROOM_HOST_GONE_MS)).toBeNull();
+      expect(m.lan.tickRoom(1001 + ROOM_HOST_GONE_MS)).toEqual({ reason: 'nowHost', title: 'R' });
+      expect(state(m.lan)).toMatchObject({ rev: s.rev + 1, by: 'mate', host: 'mate' });
+      expect(m.lan.hostedRoom()?.tag).toBe(h.tag);
+      expect(z.lan.receiveRoom(h.tag, state(m.lan))).toBeNull();
+      expect(state(z.lan).host).toBe('mate');
+    });
+
+    it('a handed-over host role is announced to its new host', () => {
+      const h = hosting(['mate']);
+      const m = joined('mate', h.tag, h.secret, state(h.lan));
+      h.lan.setActiveView(PERSONAL_VIEW, true);
+      expect(m.lan.receiveRoom(h.tag, state(h.lan))).toEqual({ reason: 'nowHost', title: 'R' });
+      expect(m.lan.receiveRoom(h.tag, state(h.lan))).toBeNull(); // the same rev again
+    });
+
+    it('setRoom: host only, validated; a lower max keeps everyone', () => {
+      const h = hosting(['mate', 'zed']);
+      const s = state(h.lan);
+      expect(h.lan.setRoom({ max: 1 })).toBe('maxInvalid');
+      expect(h.lan.setRoom({ max: 21 })).toBe('maxInvalid');
+      expect(h.lan.setRoom({ max: 2.5 })).toBe('maxInvalid');
+      expect(h.lan.setRoom({ title: '' })).toBe('nameInvalid');
+      expect(h.lan.setRoom({ password: 'x'.repeat(33) })).toBe('passwordInvalid');
+      expect(state(h.lan)).toEqual(s);
+      expect(h.lan.setRoom({ max: 2, title: ' New ', password: 'pw' })).toBeNull();
+      expect(state(h.lan)).toMatchObject({
+        rev: s.rev + 1,
+        title: 'New',
+        max: 2,
+        pw: 'pw',
+        order: ['me', 'mate', 'zed'],
+      });
+      expect(h.lan.profile.offices[0].name).toBe('New');
+      expect(h.lan.officeList()[0]).toMatchObject({ name: 'New', password: 'pw', max: 2 });
+      const m = joined('mate', h.tag, h.secret, state(h.lan));
+      expect(m.lan.setRoom({ max: 5 })).toBe('roomGone');
+    });
+
+    it('admitted lifts a kick once (locked room re-admission), idempotent', () => {
+      const h = hosting(['mate'], 'pw');
+      h.lan.kickMember('mate');
+      const rev = state(h.lan).rev;
+      expect(h.lan.admitted(h.tag, 'mate').kicked).toEqual([]);
+      expect(state(h.lan)).toMatchObject({ rev: rev + 1, kicked: [] });
+      expect(h.lan.admitted(h.tag, 'mate').rev).toBe(rev + 1);
+      expect(h.lan.admitted(h.tag, 'new').rev).toBe(rev + 1);
+    });
+
+    it('receiveRoom never throws (a failing save is logged)', () => {
+      const h = hosting(['mate']);
+      const m = joined('mate', h.tag, h.secret, state(h.lan));
+      const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+      saves.mockImplementationOnce(() => {
+        throw new Error('disk full');
+      });
+      const s = state(h.lan);
+      expect(m.lan.receiveRoom(h.tag, { ...s, rev: s.rev + 1, title: 'T2' })).toBeNull();
+      expect(err).toHaveBeenCalled();
+      err.mockRestore();
     });
   });
 
@@ -630,7 +838,7 @@ describe('LanService', () => {
       const lan = mk({});
       const { tag } = room(lan, '우리팀');
       lan.net.directory = () => ({ public: [], teams: { [tag]: [mkPeer('m')] }, personal: [] });
-      lan.setActiveView(PERSONAL_VIEW);
+      lan.setActiveView(PERSONAL_VIEW, true);
       const d = lan.directory();
       expect(ids(d.personal)).toEqual(['me']);
       expect(ids(d.teams[0].people)).toEqual(['m']);

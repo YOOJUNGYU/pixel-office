@@ -109,6 +109,8 @@ describe('withKick / atLeastVersion / legacyRoom', () => {
     expect(atLeastVersion('1.0.80', '1.0.80')).toBe(true);
     expect(atLeastVersion('1.0.9', '1.0.80')).toBe(false);
     expect(atLeastVersion(undefined, '1.0.80')).toBe(false);
+    expect(atLeastVersion('1.0.80-beta.1', '1.0.80')).toBe(true);
+    expect(atLeastVersion('1.0.79-rc', '1.0.80')).toBe(false);
   });
   it('builds a legacy room', () => {
     expect(legacyRoom(A, 'T', 'p')).toEqual(st({ rev: 0, title: 'T', pw: 'p' }));

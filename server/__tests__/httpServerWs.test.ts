@@ -331,7 +331,15 @@ describe('/ws LAN office', () => {
     local.send(JSON.stringify({ type: 'createOffice', name: '팀', password: ' 1234 ' }));
     const st = (await state) as { offices: unknown[] };
     expect(st.offices).toEqual([
-      { tag: lan.profile.offices[0].tag, name: '팀', host: true, password: '1234' },
+      {
+        tag: lan.profile.offices[0].tag,
+        name: '팀',
+        host: true,
+        password: '1234',
+        hostId: lan.profile.peerId,
+        max: 20,
+        next: '',
+      },
     ]);
     expect(st).not.toHaveProperty('remoteView');
     expect(JSON.stringify(st)).not.toContain(lan.profile.offices[0].secret);

@@ -112,9 +112,10 @@ export function withKick(s: RoomState, me: string, id: string): RoomState {
   return { ...s, rev: s.rev + 1, by: me, order: s.order.filter((o) => o !== id), kicked };
 }
 
+/** x.y.z only: a `-prerelease` suffix is ignored (1.0.80-beta counts as 1.0.80). */
 export function atLeastVersion(ver: string | undefined, min: string): boolean {
   if (!ver) return false;
-  const a = ver.split('.').map(Number);
+  const a = ver.split('-')[0].split('.').map(Number);
   const b = min.split('.').map(Number);
   for (let i = 0; i < 3; i++) {
     const d = (a[i] || 0) - (b[i] || 0);
