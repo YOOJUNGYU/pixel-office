@@ -3,6 +3,7 @@ import { Button } from '../components/ui/Button.js';
 import { t, useLang } from '../i18n.js';
 import { transport } from '../transport/index.js';
 import { switcherItems } from './offices.js';
+import { confirmHandover } from './roomsModel.js';
 
 /**
  * Top-centre office tabs: 🏠 personal + 🌐 public + 🔒 each team. This PC's browser only.
@@ -34,9 +35,9 @@ export function OfficeSwitcher({ state }: { state: Omit<OfficesState, 'type'> })
           variant={item.active ? 'active' : item.disabled ? 'disabled' : 'default'}
           className="whitespace-nowrap"
           onClick={() => {
-            if (!item.disabled && !item.active) {
-              transport.send({ type: 'setActiveView', view: item.view });
-            }
+            if (item.disabled || item.active) return;
+            const ok = confirmHandover(state);
+            if (ok) transport.send({ type: 'setActiveView', view: item.view, ...ok });
           }}
         >
           {item.isPublic

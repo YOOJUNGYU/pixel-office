@@ -15,12 +15,15 @@ interface MenuButtonsProps {
   /** Other PCs' agents' speech bubbles shown (default) or hidden; null hides the button. */
   othersBubbles: boolean;
   onToggleOthersBubbles: (() => void) | null;
+  /** null hides the 🚪 rooms button (read-only viewers, mobile, no offices yet). */
+  onToggleRooms: (() => void) | null;
+  isRoomsOpen: boolean;
   /** The ? manual panel (every feature, searchable, + the tour). */
   isManualOpen: boolean;
   onToggleManual: () => void;
 }
 
-/** Layout, Settings, usage, others' bubbles and the ? manual as icon buttons: the start of the
+/** Layout, Settings, usage, rooms, others' bubbles and the ? manual as icon buttons: the start of the
  *  top-left row (ZoomControls). */
 export function MenuButtons({
   isEditMode,
@@ -29,6 +32,8 @@ export function MenuButtons({
   onToggleSettings,
   onToggleUsage,
   isUsageOpen,
+  onToggleRooms,
+  isRoomsOpen,
   othersBubbles,
   onToggleOthersBubbles,
   isManualOpen,
@@ -107,6 +112,34 @@ export function MenuButtons({
             <rect x="7.5" y="4" width="3" height="11" />
             <rect x="13" y="7" width="3" height="8" />
             <rect x="1" y="15" width="16" height="2" />
+          </svg>
+        </Button>
+      )}
+      {onToggleRooms && (
+        <Button
+          size="icon_lg"
+          variant={isRoomsOpen ? 'active' : 'default'}
+          onClick={onToggleRooms}
+          aria-pressed={isRoomsOpen}
+          data-tour="rooms-button"
+          className={BTN_CLASS}
+          data-tip={t('rooms.window')}
+          aria-label={t('rooms.window')}
+        >
+          {/* Pixel door, ajar */}
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 18 18"
+            fill="currentColor"
+            aria-hidden
+            shapeRendering="crispEdges"
+          >
+            <rect x="3" y="1" width="12" height="2" />
+            <rect x="3" y="1" width="2" height="16" />
+            <rect x="13" y="1" width="2" height="16" />
+            <rect x="1" y="15" width="16" height="2" />
+            <rect x="9" y="8" width="2" height="2" />
           </svg>
         </Button>
       )}

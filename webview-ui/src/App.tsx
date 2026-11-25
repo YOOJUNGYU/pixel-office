@@ -45,6 +45,7 @@ import { PeoplePanel } from './lan/PeoplePanel.js';
 import { sameProfile } from './lan/profileEcho.js';
 import { ProfileModal } from './lan/ProfileModal.js';
 import { RoomPlates } from './lan/RoomPlates.js';
+import { RoomsPanel } from './lan/RoomsPanel.js';
 import { openPopout, usePopoutIds } from './lan/transcriptWindows.js';
 import { UpdateBanner } from './lan/UpdateBanner.js';
 import { UsagePanel } from './lan/UsagePanel.js';
@@ -139,11 +140,13 @@ function App() {
   // Overlay geometry: the root div is the canvas container's size.
   const containerRef = useRef<HTMLDivElement>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  // The panel under the top-left buttons: 📊 usage or the ? manual, one at a time.
-  const [topPanel, setTopPanel] = useState<'usage' | 'manual' | null>(null);
+  // The panel under the top-left buttons: 📊 usage, 🚪 rooms or the ? manual, one at a time.
+  type TopPanel = 'usage' | 'rooms' | 'manual';
+  const [topPanel, setTopPanel] = useState<TopPanel | null>(null);
   const isUsageOpen = topPanel === 'usage';
+  const isRoomsOpen = topPanel === 'rooms';
   const isManualOpen = topPanel === 'manual';
-  const togglePanel = (p: 'usage' | 'manual') => setTopPanel((v) => (v === p ? null : p));
+  const togglePanel = (p: TopPanel) => setTopPanel((v) => (v === p ? null : p));
   // Other PCs' agents' speech bubbles (top-left toggle), remembered per viewer; shown by default.
   const [othersBubbles, setOthersBubbles] = useState(() => {
     try {
@@ -293,7 +296,8 @@ function App() {
     };
     const caps = new Set<Capability>();
     if (!officeReadOnly && !isMobile) caps.add('edit').add('chat');
-    if (offices) caps.add('switcher').add('offices');
+    if (offices) caps.add('switcher');
+    if (offices && !officeReadOnly && !isMobile) caps.add('offices'); // the 🚪 rooms panel
     if (profile?.canEdit) caps.add('profile');
     setIsSettingsOpen(false);
     setIsProfileOpen(false);
@@ -510,6 +514,7 @@ function App() {
 
   const settingsOpen = touring ? scene?.settings === true : isSettingsOpen;
   const usageOpen = touring ? scene?.usage === true : isUsageOpen;
+  const roomsOpen = touring ? scene?.rooms === true : isRoomsOpen;
   const manualOpen = touring ? scene?.manual === true : isManualOpen;
   const profileOpen = touring ? scene?.profile === true : isProfileOpen;
 
@@ -666,6 +671,10 @@ function App() {
               onToggleSettings={() => setIsSettingsOpen((v) => !v)}
               onToggleUsage={officeReadOnly || isMobile ? null : () => togglePanel('usage')}
               isUsageOpen={usageOpen}
+              onToggleRooms={
+                officeReadOnly || isMobile || !offices ? null : () => togglePanel('rooms')
+              }
+              isRoomsOpen={roomsOpen}
               isManualOpen={manualOpen}
               onToggleManual={() => togglePanel('manual')}
               othersBubbles={othersBubbles}
@@ -729,6 +738,15 @@ function App() {
               </>
             ) : usageOpen && !officeReadOnly && !isMobile ? (
               <UsagePanel onClose={() => setTopPanel(null)} />
+            ) : roomsOpen && offices && !officeReadOnly && !isMobile ? (
+              <RoomsPanel
+                state={offices}
+                rooms={rooms}
+                people={people}
+                reply={officeReply}
+                onReplyHandled={clearOfficeReply}
+                onClose={() => setTopPanel(null)}
+              />
             ) : manualOpen ? (
               <ManualPanel
                 onClose={() => setTopPanel(null)}
@@ -854,10 +872,6 @@ function App() {
           notify={notify}
           onNotifyChange={setNotify}
           relayAdmin={relayAdmin}
-          offices={offices}
-          rooms={rooms}
-          officeReply={officeReply}
-          onOfficeReplyHandled={clearOfficeReply}
         />
       </div>
       {/* Outside the app root: the overlay makes the root inert while it runs. */}

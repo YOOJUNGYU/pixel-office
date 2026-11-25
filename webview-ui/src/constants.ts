@@ -752,6 +752,13 @@ export const MAX_OFFICE_NAME = 20;
 export const MAX_ROOM_PASSWORD = 32;
 /** How long "copied" stays next to a Copy button. */
 export const OFFICE_COPIED_MS = 2_000;
+/** A room's max people the host can pick (server ROOM_MIN_PEOPLE..OFFICE_MAX_PEOPLE). */
+export const ROOM_MIN_PEOPLE = 2;
+export const ROOM_MAX_PEOPLE = 20;
+/** 🚪 rooms panel (under the top-left buttons): default size, remembered size per viewer. */
+export const ROOMS_PANEL_DEFAULT_W_PX = 420;
+export const ROOMS_PANEL_DEFAULT_H_PX = 560;
+export const ROOMS_PANEL_SIZE_KEY = 'pixel-office.rooms.size';
 
 // ── Onboarding tour ──────────────────────────────────────────
 /** localStorage flag: this browser finished or skipped the tour. */

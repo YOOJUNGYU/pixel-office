@@ -1,11 +1,10 @@
 import { useRef, useState } from 'react';
 
 import type { Lang } from '../../../core/src/lan.js';
-import type { AutostartState, OfficesState, RoomSummary } from '../../../core/src/messages.js';
+import type { AutostartState } from '../../../core/src/messages.js';
 import { ADMIN_REVEAL_CLICKS, ADMIN_REVEAL_GAP_MS, RELAY_ADMIN_TOKEN_MAX } from '../constants.js';
-import type { NotifySettings, OfficeReply } from '../hooks/useExtensionMessages.js';
+import type { NotifySettings } from '../hooks/useExtensionMessages.js';
 import { LANG_NAMES, setLang, t, useLang } from '../i18n.js';
-import { OfficeSettings } from '../lan/OfficeSettings.js';
 import type { ThemePref } from '../theme.js';
 import { setThemePref, THEME_PREFS, useThemePref } from '../theme.js';
 import { transport } from '../transport/index.js';
@@ -28,12 +27,6 @@ interface SettingsModalProps {
   onNotifyChange: (v: NotifySettings) => void;
   /** An admin token for the internet public office is stored (never sent back to the page). */
   relayAdmin: boolean;
-  /** Team offices (this PC's browser only); the 오피스 section is hidden when null. */
-  offices: Omit<OfficesState, 'type'> | null;
-  /** Rooms heard on this LAN (room list). */
-  rooms: RoomSummary[];
-  officeReply: OfficeReply | null;
-  onOfficeReplyHandled: () => void;
 }
 
 export function SettingsModal({
@@ -45,10 +38,6 @@ export function SettingsModal({
   notify,
   onNotifyChange,
   relayAdmin,
-  offices,
-  rooms,
-  officeReply,
-  onOfficeReplyHandled,
 }: SettingsModalProps) {
   const lang = useLang();
   const themePref = useThemePref();
@@ -212,14 +201,6 @@ export function SettingsModal({
             </Button>
           </div>
         </div>
-      )}
-      {offices && (
-        <OfficeSettings
-          state={offices}
-          rooms={rooms}
-          reply={officeReply}
-          onReplyHandled={onOfficeReplyHandled}
-        />
       )}
       {/* The server closes this page's socket with WS_CLOSE_APP_QUIT → the "종료됨" notice. */}
       <MenuItem

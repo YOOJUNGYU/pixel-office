@@ -38,6 +38,8 @@ export interface Scene {
   legend?: boolean;
   /** The 📊 usage panel open. */
   usage?: boolean;
+  /** The 🚪 rooms panel open. */
+  rooms?: boolean;
   /** The ? manual panel open. */
   manual?: boolean;
 }
@@ -150,8 +152,8 @@ export const STEPS: Step[] = [
   },
   {
     id: 'offices',
-    targets: [{ dom: 'settings-offices' }],
-    scene: { settings: true },
+    targets: [{ dom: 'rooms-button' }, { dom: 'rooms-panel' }],
+    scene: { rooms: true },
     requires: ['offices'],
   },
   {
