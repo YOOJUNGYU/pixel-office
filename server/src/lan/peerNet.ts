@@ -473,7 +473,7 @@ export class PeerNet {
       /** A room state heard on a joined team channel from another member (LanService decides). */
       onRoom?: (tag: string, room: RoomState, from: string) => void;
       /** As the host: `id` is admitted; returns the state to hand it (kicked → removed). */
-      onAdmit?: (tag: string, id: string) => RoomState;
+      onAdmit?: (tag: string, id: string) => RoomState | undefined;
       /** A live peer's avatar moved (or appeared), so the UI can show it before the next tick. */
       onAvatar?: () => void;
       /** Shared layouts: this PC's version and deflated JSON per channel, and a peer's
@@ -600,6 +600,13 @@ export class PeerNet {
     this.sendRelay(t);
   }
 
+  /** People in the room I host, me included; a kicked ≤ 1.0.79 PC still on the channel
+   *  is not counted. */
+  private roomCount(room: HostedRoom): number {
+    const { kicked } = room.room;
+    return this.peers(room.tag).filter((p) => !kicked.includes(p.peer.id)).length + 1;
+  }
+
   /** Rooms: our advert while hosting one on screen, and the pending join's ask (re-sent
    *  every tick until answered or timed out). */
   private sendRoom(broadcast: string[]): void {
@@ -615,7 +622,7 @@ export class PeerNet {
         title: room.title,
         by: room.by,
         locked: room.room.pw !== '',
-        n: Math.min(OFFICE_MAX_PEOPLE, this.peers(room.tag).length + 1),
+        n: Math.min(OFFICE_MAX_PEOPLE, this.roomCount(room)),
         max: room.max,
       };
       for (const t of broadcast) this.send(advert, t);
@@ -730,7 +737,7 @@ export class PeerNet {
       room.room,
       w.from,
       samePassword(ask.pw, room.room.pw),
-      this.peers(room.tag).length + 1,
+      this.roomCount(room),
       inside,
     );
     const head = { seq: ++this.seq, tag: room.tag };

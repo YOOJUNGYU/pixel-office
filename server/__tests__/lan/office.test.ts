@@ -769,10 +769,61 @@ describe('LanService', () => {
       const h = hosting(['mate'], 'pw');
       h.lan.kickMember('mate');
       const rev = state(h.lan).rev;
-      expect(h.lan.admitted(h.tag, 'mate').kicked).toEqual([]);
+      expect(h.lan.admitted(h.tag, 'mate')?.kicked).toEqual([]);
       expect(state(h.lan)).toMatchObject({ rev: rev + 1, kicked: [] });
-      expect(h.lan.admitted(h.tag, 'mate').rev).toBe(rev + 1);
-      expect(h.lan.admitted(h.tag, 'new').rev).toBe(rev + 1);
+      expect(h.lan.admitted(h.tag, 'mate')?.rev).toBe(rev + 1);
+      expect(h.lan.admitted(h.tag, 'new')?.rev).toBe(rev + 1);
+      expect(h.lan.admitted('other-tag', 'mate')).toBeUndefined(); // not hosting that room
+    });
+
+    describe('page messages', () => {
+      const ask = (lan: LanService, msg: Record<string, unknown>, privileged = true) => {
+        const sent: Record<string, unknown>[] = [];
+        handleClientMessage(msg as never, (m) => sent.push(m), {
+          adapter: new FileStateAdapter(),
+          cache: null,
+          privileged,
+          lan,
+          onOfficesChanged: () => sent.push(officesMessage(lan)),
+        });
+        return sent;
+      };
+
+      it('setRoom: refused read-only; privileged → officesState with the new max, or officeError', () => {
+        const h = hosting(['mate']);
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        expect(ask(h.lan, { type: 'setRoom', max: 5 }, false)).toEqual([]);
+        warn.mockRestore();
+        expect(state(h.lan).max).not.toBe(5);
+        const ok = ask(h.lan, { type: 'setRoom', max: 5 });
+        expect(ok).toHaveLength(1);
+        expect(ok[0]).toMatchObject({ type: 'officesState' });
+        expect(h.lan.officeList()[0].max).toBe(5);
+        expect(ask(h.lan, { type: 'setRoom', max: 999 })).toEqual([
+          { type: 'officeError', reason: 'maxInvalid' },
+        ]);
+      });
+
+      it('kickMember: officesState (after the change, or unchanged when refused)', () => {
+        const h = hosting(['mate']);
+        expect(ask(h.lan, { type: 'kickMember', peerId: 'mate' })[0]).toMatchObject({
+          type: 'officesState',
+        });
+        expect(state(h.lan).kicked).toEqual(['mate']);
+        const rev = state(h.lan).rev;
+        expect(ask(h.lan, { type: 'kickMember', peerId: 'me' })).toEqual([officesMessage(h.lan)]);
+        expect(state(h.lan).rev).toBe(rev);
+      });
+
+      it('a host switching view without handover gets officesState unchanged; with it, it moves', () => {
+        const h = hosting(['mate']);
+        const out = ask(h.lan, { type: 'setActiveView', view: PERSONAL_VIEW });
+        expect(out).toEqual([officesMessage(h.lan)]);
+        expect(h.lan.profile.activeView).toBe(h.tag);
+        ask(h.lan, { type: 'setActiveView', view: PERSONAL_VIEW, handover: true });
+        expect(h.lan.profile.activeView).toBe(PERSONAL_VIEW);
+        expect(state(h.lan).host).toBe('mate');
+      });
     });
 
     it('receiveRoom never throws (a failing save is logged)', () => {

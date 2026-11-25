@@ -132,6 +132,8 @@ export class LanService {
   private moveSave: NodeJS.Timeout | null = null;
   /** A peer's avatar moved (PeerNet); the UI server pushes a snapshot. */
   peerMoved: () => void = () => {};
+  /** A room state heard from a peer kicked me or made me host; the UI server tells the pages. */
+  roomNotice: (n: RoomNotice) => void = () => {};
   /** Shared (public + team) office layouts, newest version per channel. */
   readonly layouts: SharedLayouts;
   /** A layout fit to store (sanitizeLayout against the bundled default), else null.
@@ -524,9 +526,10 @@ export class LanService {
 
   /** As the host: `id` was let in (PeerNet.onAdmit, on every ok answer to a re-sent ask). A
    *  kicked id (locked room, right code) is taken off the list in a new rev; else unchanged. */
-  admitted(tag: string, id: string): RoomState {
+  admitted(tag: string, id: string): RoomState | undefined {
     const h = this.hostedRoom();
-    const s = h?.tag === tag ? h.room : legacyRoom(this.profile.peerId, tag, '');
+    if (h?.tag !== tag) return undefined;
+    const s = h.room;
     if (!s.kicked.includes(id)) return s;
     const next = {
       ...s,
@@ -582,15 +585,16 @@ export class LanService {
     if (title === null) return 'nameInvalid';
     const max = u.max === undefined ? s.max : u.max;
     if (
+      typeof max !== 'number' ||
       !Number.isInteger(max) ||
-      (max as number) < ROOM_MIN_PEOPLE ||
-      (max as number) > OFFICE_MAX_PEOPLE
+      max < ROOM_MIN_PEOPLE ||
+      max > OFFICE_MAX_PEOPLE
     )
       return 'maxInvalid';
     const pw = u.password === undefined ? s.pw : validateRoomPassword(u.password);
     if (pw === null) return 'passwordInvalid';
     // A lower max keeps everyone inside: only new joins are refused (admitVerdict).
-    this.writeRoom(o.tag, { ...s, rev: s.rev + 1, by: me, title, max: max as number, pw });
+    this.writeRoom(o.tag, { ...s, rev: s.rev + 1, by: me, title, max, pw });
     return null;
   }
 

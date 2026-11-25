@@ -1311,6 +1311,15 @@ describe('PeerNet rooms', () => {
     expect(await join(b, tag, '', [a, b])).toEqual({ ok: false, reason: 'roomFull' });
   });
 
+  it('a kicked PC still on the channel (≤ 1.0.79) is not counted: advert n, room full', async () => {
+    const { a, b, tag } = await hosted();
+    a.hosted = { ...a.hosted!, max: 2, room: roomOf('1234', { max: 2, kicked: ['M0'] }) };
+    vi.spyOn(a.net, 'peers').mockReturnValue([pkt('M0')]);
+    await pump([a, b], () => b.net.roomList()[0]?.max === 2);
+    expect(b.net.roomList()[0].count).toBe(1);
+    expect(await join(b, tag, '1234', [a, b])).toMatchObject({ ok: true });
+  });
+
   it('an open room refuses a kicked id (banned)', async () => {
     const { a, b, tag } = await hosted();
     a.hosted = { ...a.hosted!, room: roomOf('', { kicked: ['B'] }) };

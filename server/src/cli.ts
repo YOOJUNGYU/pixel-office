@@ -235,6 +235,11 @@ export async function main(boot = true): Promise<void> {
     hostedRoom: () => lan.hostedRoom(),
     offline: () => lan.personal,
     onAvatar: () => lan.peerMoved(),
+    onRoom: (tag, room) => {
+      const n = lan.receiveRoom(tag, room);
+      if (n) lan.roomNotice(n);
+    },
+    onAdmit: (tag, id) => lan.admitted(tag, id),
     layouts: {
       rev: (channel) => lan.layouts.rev(channel),
       blob: (channel) => lan.layouts.blob(channel),

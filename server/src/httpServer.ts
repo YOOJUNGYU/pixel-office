@@ -239,6 +239,13 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     let lastOffices = JSON.stringify(officesMessage(lan));
     let lastRooms = JSON.stringify(roomsMessage(lan));
     const timer = setInterval(() => {
+      // The room on screen: host upkeep, or a takeover when the host is gone.
+      try {
+        const n = lan.tickRoom(Date.now());
+        if (n) lan.roomNotice(n);
+      } catch (err) {
+        console.error('[Pixel Office] Room tick failed:', err);
+      }
       const offices = JSON.stringify(officesMessage(lan));
       const officesChanged = offices !== lastOffices;
       lastOffices = offices;
@@ -279,6 +286,11 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
         for (const c of usageRanges.keys()) safeSend(c, now);
       }
     }, SNAPSHOT_INTERVAL_MS);
+    // Kicked (→ personal: its own layout) or now the room's host: the pages say so.
+    lan.roomNotice = (n) => {
+      for (const c of clients) safeSend(c, { type: 'officeNotice', ...n });
+      onOfficesChanged(n.reason === 'kicked');
+    };
     // A peer's avatar moved: one extra snapshot, coalesced to ≤ 5 per second.
     let push: NodeJS.Timeout | null = null;
     lan.peerMoved = () => {

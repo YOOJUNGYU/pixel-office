@@ -202,9 +202,18 @@ export function handleClientMessage(
       if (ctx.lan) handleOfficeChange(msg, send, ctx.lan, ctx.onOfficesChanged);
       break;
 
-    // Implemented in a later task (room host powers).
-    case 'setRoom':
+    // Host powers: the change, or why not (kick: the unchanged state).
+    case 'setRoom': {
+      if (!ctx.lan) break;
+      const err = ctx.lan.setRoom(msg);
+      if (err) send(officeError(err));
+      else ctx.onOfficesChanged?.(false);
+      break;
+    }
     case 'kickMember':
+      if (!ctx.lan) break;
+      if (ctx.lan.kickMember(msg.peerId)) ctx.onOfficesChanged?.(false);
+      else send(officesMessage(ctx.lan));
       break;
 
     case 'sendChat':
@@ -324,25 +333,30 @@ function handleOfficeChange(
   try {
     switch (msg.type) {
       case 'createOffice': {
-        const err = lan.createOffice(msg.name, msg.password);
+        const err = lan.createOffice(msg.name, msg.password, msg.handover === true);
         if (err && err !== 'handover') send(officeError(err));
         ok = err === null;
         break;
       }
       case 'joinOffice':
         // Answered later: the room's host lets this PC in (or not) over the LAN.
-        lan.joinOffice(msg.tag, msg.password, (err) => {
-          if (err && err !== 'handover') send(officeError(err));
-          if (err === null || err === 'alreadyJoined')
-            onChanged?.(lan.profile.activeView !== wasView); // alreadyJoined switched the view
-          else send(officesMessage(lan));
-        });
+        lan.joinOffice(
+          msg.tag,
+          msg.password,
+          (err) => {
+            if (err && err !== 'handover') send(officeError(err));
+            if (err === null || err === 'alreadyJoined')
+              onChanged?.(lan.profile.activeView !== wasView); // alreadyJoined switched the view
+            else send(officesMessage(lan));
+          },
+          msg.handover === true,
+        );
         return;
       case 'leaveOffice':
-        ok = lan.leaveOffice(msg.tag);
+        ok = lan.leaveOffice(msg.tag, msg.handover === true);
         break;
       case 'setActiveView':
-        ok = lan.setActiveView(msg.view);
+        ok = lan.setActiveView(msg.view, msg.handover === true);
         break;
     }
   } catch (err) {
