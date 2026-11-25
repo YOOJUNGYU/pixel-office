@@ -403,7 +403,10 @@ export class LanService {
       teams: this.officeList().map(({ tag: t, name }) => ({
         tag: t,
         name,
-        people: list(mine('team'), net.teams[t] ?? []),
+        people: list(
+          mine('team'),
+          (net.teams[t] ?? []).filter((p) => !this.kickedIn(t).includes(p.id)),
+        ),
       })),
       personal: list(mine('personal'), net.personal),
     };
@@ -425,9 +428,14 @@ export class LanService {
   /** Live peers of a view; none at all in personal mode (PeerNet is offline too). */
   private peersIn(view: string): PeerPacket[] {
     if (this.personal) return [];
-    const kicked = this.profile.offices.find((o) => o.tag === view)?.room?.kicked ?? [];
+    const kicked = this.kickedIn(view);
     const peers = this.net.peers(view);
     return kicked.length ? peers.filter((p) => !kicked.includes(p.peer.id)) : peers;
+  }
+
+  /** Ids the room of `view` has kicked (none for the public office or an old team). */
+  private kickedIn(view: string): string[] {
+    return this.profile.offices.find((o) => o.tag === view)?.room?.kicked ?? [];
   }
 
   /** The public office only while in no team; a team office only once joined. */

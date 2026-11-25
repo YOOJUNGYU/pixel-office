@@ -1,4 +1,5 @@
 /* eslint-disable pixel-agents/no-inline-colors -- test fixtures */
+import * as dgram from 'dgram';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -17,6 +18,7 @@ import { FileStateAdapter } from '../../src/fileStateAdapter.js';
 import { createIdentity, newRoomSecret } from '../../src/lan/crypto.js';
 import { buildOffice, LanService } from '../../src/lan/office.js';
 import type { JoinResult } from '../../src/lan/peerNet.js';
+import { PeerNet } from '../../src/lan/peerNet.js';
 import type { Profile } from '../../src/lan/profile.js';
 import { loadProfile, osAccount } from '../../src/lan/profile.js';
 import type { RoomState } from '../../src/lan/room.js';
@@ -815,6 +817,47 @@ describe('LanService', () => {
         expect(state(h.lan).rev).toBe(rev);
       });
 
+      it('createOffice / joinOffice / leaveOffice from the hosted room need handover', () => {
+        const h = hosting(['mate']);
+        const unchanged = officesMessage(h.lan);
+        expect(ask(h.lan, { type: 'createOffice', name: 'other' })).toEqual([unchanged]);
+        h.lan.net.joinRoom = () => {
+          throw new Error('asked without consent');
+        };
+        expect(ask(h.lan, { type: 'joinOffice', tag: 'AAAAAAAAAAA', password: '' })).toEqual([
+          unchanged,
+        ]);
+        expect(ask(h.lan, { type: 'leaveOffice', tag: h.tag })).toEqual([unchanged]);
+        expect(h.lan.profile.offices.map((o) => o.tag)).toEqual([h.tag]);
+        expect(state(h.lan).host).toBe('me');
+
+        // leaveOffice with handover: the role passes, then the room is left
+        h.sent.length = 0;
+        ask(h.lan, { type: 'leaveOffice', tag: h.tag, handover: true });
+        expect(h.sent[0].offices[0].room).toMatchObject({ host: 'mate' });
+        expect(h.lan.profile.offices).toEqual([]);
+
+        // createOffice with handover
+        const c = hosting(['mate']);
+        ask(c.lan, { type: 'createOffice', name: 'other', handover: true });
+        expect(
+          c.sent.some((p) => p.offices[0]?.tag === c.tag && p.offices[0].room?.host === 'mate'),
+        ).toBe(true);
+        expect(c.lan.profile.offices.map((o) => o.name)).toEqual(['other']);
+
+        // joinOffice with handover
+        const j = hosting(['mate']);
+        const other = mk('x');
+        const { tag, secret } = room(other.lan, 'O');
+        j.lan.net.joinRoom = (_t, _pw, done) =>
+          done({ ok: true, secret: Buffer.from(secret, 'base64'), title: 'O' });
+        ask(j.lan, { type: 'joinOffice', tag, password: '', handover: true });
+        expect(
+          j.sent.some((p) => p.offices[0]?.tag === j.tag && p.offices[0].room?.host === 'mate'),
+        ).toBe(true);
+        expect(j.lan.profile.offices.map((o) => o.tag)).toEqual([tag]);
+      });
+
       it('a host switching view without handover gets officesState unchanged; with it, it moves', () => {
         const h = hosting(['mate']);
         const out = ask(h.lan, { type: 'setActiveView', view: PERSONAL_VIEW });
@@ -824,6 +867,134 @@ describe('LanService', () => {
         expect(h.lan.profile.activeView).toBe(PERSONAL_VIEW);
         expect(state(h.lan).host).toBe('mate');
       });
+    });
+
+    it('directory: a kicked id is not listed in the team area', () => {
+      const h = hosting(['mate', 'zed']);
+      const info = (id: string) => pk(id).peer;
+      h.lan.net.directory = () => ({
+        public: [],
+        teams: { [h.tag]: [info('mate'), info('zed')] },
+        personal: [],
+      });
+      expect(h.lan.kickMember('mate')).toBe(true);
+      expect(h.lan.directory().teams[0].people.map((p) => p.peerId)).toEqual(['me', 'zed']);
+    });
+
+    it('a handover and a takeover of the same rev (two hosts) converge after upkeep', () => {
+      const h = hosting(['mate', 'zed']);
+      const s = state(h.lan);
+      const m = joined('mate', h.tag, h.secret, s);
+      const z = joined('zed', h.tag, h.secret, s);
+      m.live.push(pk('zed'));
+      z.live.push(pk('mate'));
+      for (const x of [h, m, z]) x.lan.tickRoom(1000);
+      for (const x of [m, z]) x.heard.set('me', 1000);
+      // The host no longer hears mate: it hands over to zed as it leaves the room's screen…
+      h.live.splice(0, h.live.length, pk('zed'));
+      expect(h.lan.setActiveView(PERSONAL_VIEW, true)).toBe(true);
+      const handed = state(h.lan);
+      expect(handed).toMatchObject({ rev: s.rev + 1, by: 'me', host: 'zed' });
+      // …while mate, not hearing it, takes over: same rev, by mate ('me' > 'mate').
+      expect(m.lan.tickRoom(1001 + ROOM_HOST_GONE_MS)).toEqual({ reason: 'nowHost', title: 'R' });
+      const taken = state(m.lan);
+      expect(taken).toMatchObject({ rev: s.rev + 1, by: 'mate', host: 'mate' });
+      expect(z.lan.receiveRoom(h.tag, handed)).toEqual({ reason: 'nowHost', title: 'R' });
+      expect(z.lan.receiveRoom(h.tag, taken)).toBeNull();
+      expect(m.lan.receiveRoom(h.tag, handed)).toBeNull();
+      expect([m.lan.hostedRoom()?.tag, z.lan.hostedRoom()?.tag]).toEqual([h.tag, h.tag]);
+      // Both hosts drop the silent original host from the order: r+2 each, larger `by` wins.
+      const later = 2000 + ROOM_HOST_GONE_MS;
+      m.lan.tickRoom(later);
+      z.lan.tickRoom(later);
+      const [ms, zs] = [state(m.lan), state(z.lan)];
+      expect([ms.rev, zs.rev]).toEqual([s.rev + 2, s.rev + 2]);
+      for (const x of [h, m, z]) {
+        x.lan.receiveRoom(h.tag, ms);
+        x.lan.receiveRoom(h.tag, zs);
+      }
+      for (const x of [h, m, z]) expect(state(x.lan)).toEqual(zs);
+      expect(zs).toMatchObject({ by: 'zed', host: 'zed' });
+      expect(zs.order).not.toContain('me');
+      expect(m.lan.hostedRoom()).toBeNull();
+      expect(z.lan.hostedRoom()?.tag).toBe(h.tag);
+    });
+
+    it('real PeerNet: silence is judged on ROOM_HOST_GONE_MS, not the peer TTL', async () => {
+      const freePort = () =>
+        new Promise<number>((res) => {
+          const sock = dgram.createSocket('udp4');
+          sock.bind(0, '127.0.0.1', () => {
+            const { port } = sock.address();
+            sock.close(() => res(port));
+          });
+        });
+      const clock = { t: 0, quiet: false };
+      const ports = [await freePort(), await freePort()];
+      const targets = ports.map((p) => `127.0.0.1:${p.toString()}`);
+      const nets: PeerNet[] = [];
+      const wire = (lan: LanService, port: number) => {
+        const net = new PeerNet({
+          port,
+          targets: () => (clock.quiet ? [] : targets),
+          identity: { id: lan.profile.peerId, ...lan.profile.identity },
+          // this build may be older than ROOM_STATE_MIN_VER: announce a room-aware version
+          getPacket: (c) => {
+            const p = lan.packet(c);
+            return { ...p, peer: { ...p.peer, ver: NEW } };
+          },
+          manualPeers: () => [],
+          offices: () => lan.teamChannels(),
+          hostedRoom: () => lan.hostedRoom(),
+          offline: () => lan.personal,
+          onRoom: (tag, r) => lan.receiveRoom(tag, r),
+          pins: new Map<string, string>(),
+          now: () => clock.t,
+        });
+        nets.push(net);
+        return net;
+      };
+      try {
+        const h = mk('me');
+        const { tag, secret } = room(h.lan, 'R');
+        const m = joined('mate', tag, secret, state(h.lan));
+        h.lan.net = wire(h.lan, ports[0]);
+        m.lan.net = wire(m.lan, ports[1]);
+        await Promise.all(nets.map((n) => n.start()));
+        for (const x of [h, m]) x.lan.tickRoom(clock.t);
+        clock.t = 100_000; // long on the room's screen
+        const pump = async () => {
+          for (let i = 0; i < 100 && !state(h.lan).order.includes('mate'); i++) {
+            nets.forEach((n) => n.sendNow());
+            await new Promise((r) => setTimeout(r, 20));
+            h.lan.tickRoom(clock.t);
+          }
+          for (let i = 0; i < 5; i++) {
+            nets.forEach((n) => n.sendNow());
+            await new Promise((r) => setTimeout(r, 20));
+          }
+        };
+        await pump();
+        expect(state(h.lan).order).toEqual(['me', 'mate']);
+        expect(m.lan.net.lastHeard?.(tag, 'me')).toBe(clock.t);
+        expect(h.lan.net.lastHeard?.(tag, 'mate')).toBe(clock.t);
+        const heard = clock.t;
+        clock.quiet = true; // both silent from here on (still ticking: stale peers are pruned)
+        clock.t = heard + 10_000; // past PEER_TTL_MS, within ROOM_HOST_GONE_MS
+        nets.forEach((n) => n.sendNow());
+        expect(m.lan.net.peers(tag)).toEqual([]);
+        expect(m.lan.tickRoom(clock.t)).toBeNull();
+        expect(state(m.lan).host).toBe('me');
+        h.lan.tickRoom(clock.t);
+        expect(state(h.lan).order).toEqual(['me', 'mate']); // the host keeps the member
+        clock.t = heard + 31_000;
+        nets.forEach((n) => n.sendNow());
+        expect(m.lan.tickRoom(clock.t)).toEqual({ reason: 'nowHost', title: 'R' });
+        h.lan.tickRoom(clock.t);
+        expect(state(h.lan).order).toEqual(['me']);
+      } finally {
+        nets.forEach((n) => n.stop());
+      }
     });
 
     it('receiveRoom never throws (a failing save is logged)', () => {

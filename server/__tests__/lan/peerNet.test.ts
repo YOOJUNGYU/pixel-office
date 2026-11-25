@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import * as dgram from 'dgram';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as zlib from 'zlib';
@@ -21,6 +21,7 @@ import {
   OFFICE_MAX_PEOPLE,
   PRESENCE_MAX_COMPRESSED,
   PUBLIC_FULL_GRACE_MS,
+  ROOM_HOST_GONE_MS,
   ROOM_JOIN_TIMEOUT_MS,
 } from '../../src/constants.js';
 import type { Identity } from '../../src/lan/crypto.js';
@@ -1348,6 +1349,58 @@ describe('PeerNet rooms', () => {
     expect(got).toHaveBeenCalledWith(tag, roomOf(), 'A');
     expect(b.net.lastHeard(tag, 'A')).toBe(b.t);
     expect(b.net.lastHeard(tag, 'Z')).toBeUndefined();
+  });
+
+  it('lastHeard outlives PEER_TTL_MS: kept ROOM_HOST_GONE_MS after the last presence', async () => {
+    const { a, b, tag, secret } = await hosted();
+    b.offline = false;
+    b.offices = [channel(Buffer.from(secret))];
+    a.offices = [{ ...a.offices[0], room: roomOf() }];
+    await pump([a, b], () => b.net.lastHeard(tag, 'A') !== undefined);
+    const heard = b.t;
+    a.net.stop(); // the host goes silent
+    b.t += 10_000;
+    b.net.sendNow(); // prunes
+    expect(b.net.peers(tag)).toEqual([]);
+    expect(b.net.lastHeard(tag, 'A')).toBe(heard);
+    b.t = heard + ROOM_HOST_GONE_MS + 1;
+    b.net.sendNow();
+    expect(b.net.lastHeard(tag, 'A')).toBeUndefined();
+  });
+
+  it('a busy host with a full room state still sends its presence (room counted when fitting)', async () => {
+    const { a, b, tag, secret } = await hosted();
+    b.offline = false;
+    b.offices = [channel(Buffer.from(secret))];
+    const ids = (n: number) => Array.from({ length: n }, () => randomUUID());
+    const full = roomOf('x'.repeat(32), {
+      title: '가'.repeat(20),
+      order: ['A', ...ids(19)],
+      kicked: ids(20),
+    });
+    a.offices = [{ ...a.offices[0], room: full }];
+    const view = (i: number) => ({
+      id: `s${i}-${randomUUID()}`,
+      provider: 'claude' as const,
+      kind: 'main' as const,
+      num: i,
+      room: 'coding' as const,
+      permission: false,
+      act: 'run' as const,
+      // random bytes: the deflated size, not the JSON size, is what limits it
+      target: randomBytes(90).toString('base64'),
+      reason: randomBytes(135).toString('base64'),
+    });
+    // As LanService.packet does: fitted to the limit without the room.
+    const big = fitPacket({ ...pkt('A'), views: Array.from({ length: 400 }, (_, i) => view(i)) });
+    (a.net as unknown as { opts: { getPacket: () => PeerPacket } }).opts.getPacket = () => big;
+    const inner: Inner = { seq: 1, packet: big, office: { name: 'team', room: full } };
+    expect(presencePlains(inner, 'A', 100)).toEqual([]); // unfitted: too many parts
+    const got = vi.fn();
+    (b.net as unknown as { opts: { onRoom?: typeof got } }).opts.onRoom = got;
+    await pump([a, b], () => got.mock.calls.length > 0);
+    expect(got).toHaveBeenCalledWith(tag, full, 'A');
+    expect(b.net.peers(tag)[0].views.length).toBeGreaterThan(10);
   });
 
   it('a member does not send a room state it neither hosts nor wrote', async () => {

@@ -41,6 +41,7 @@ import {
   RELAY_MIN_SEND_MS,
   ROOM_ASK_GAP_MS,
   ROOM_ASKS_PER_SEC,
+  ROOM_HOST_GONE_MS,
   ROOM_JOIN_TIMEOUT_MS,
   SEQ_MEMORY_MS,
 } from '../constants.js';
@@ -177,11 +178,11 @@ export function broadcastAddresses(
 }
 
 /** Drops trailing views until the presence fits MAX_PRESENCE_PARTS deflated parts
- *  (and PRESENCE_MAX_JSON before deflate). */
-export function fitPacket(p: PeerPacket): PeerPacket {
+ *  (and PRESENCE_MAX_JSON before deflate), counting the `office` it travels with. */
+export function fitPacket(p: PeerPacket, office?: Inner['office']): PeerPacket {
   const views = [...p.views];
   const fits = (): boolean => {
-    const text = JSON.stringify({ ...p, views });
+    const text = JSON.stringify({ ...p, views, office });
     return (
       Buffer.byteLength(text) <= PRESENCE_MAX_JSON &&
       zlib.deflateSync(text).length <= PRESENCE_MAX_COMPRESSED
@@ -409,6 +410,9 @@ export class PeerNet {
   private readonly relayPeople = new Map<string, { peer: PeerInfo; personal: boolean }>();
   /** channel (PUBLIC_VIEW | tag) → sender id → last packet. */
   private readonly seen = new Map<string, Map<string, { packet: PeerPacket; at: number }>>();
+  /** team tag → sender id → when its presence was last accepted. Kept ROOM_HOST_GONE_MS, not
+   *  PEER_TTL_MS: room takeover and upkeep judge silence on this longer clock. */
+  private readonly heardTeam = new Map<string, Map<string, number>>();
   /** `${channel}|${sender}` → last accepted seq. */
   private readonly lastSeq = new Map<string, { seq: number; at: number }>();
   /** `${channel}|${sender}` → the split presence being assembled (one per sender). */
@@ -551,10 +555,13 @@ export class PeerNet {
       for (const o of offices) {
         const room =
           o.room && (o.room.host === identity.id || o.room.by === identity.id) ? o.room : null;
+        const office = (o.name || room) && { name: o.name, ...(room && { room }) };
+        const packet = this.opts.getPacket(o.tag);
         const inner: Inner = {
           seq: ++this.seq,
-          packet: this.opts.getPacket(o.tag),
-          ...((o.name || room) && { office: { name: o.name, ...(room && { room }) } }),
+          // getPacket fitted the views alone; a room state (≤ ~2 KB) needs its share too.
+          packet: room ? fitPacket(packet, office || undefined) : packet,
+          ...(office && { office }),
         };
         const around = envelope({ v: 2, t: 'team', tag: o.tag });
         for (const plain of presencePlains(inner, identity.id, around)) {
@@ -1029,9 +1036,9 @@ export class PeerNet {
     };
   }
 
-  /** When `id`'s presence on `tag` was last accepted (until pruned), else undefined. */
+  /** When `id`'s presence on team `tag` was last accepted (kept ROOM_HOST_GONE_MS), else undefined. */
   lastHeard(tag: string, id: string): number | undefined {
-    return this.seen.get(tag)?.get(id)?.at;
+    return this.heardTeam.get(tag)?.get(id);
   }
 
   /** The app version `id` last announced on `tag`, else undefined. */
@@ -1147,6 +1154,9 @@ export class PeerNet {
     const inner = this.unpack(w.tag, plain);
     if (!inner || inner.packet.peer.id === me) return;
     if (!this.accept(w.tag, inner)) return;
+    let heard = this.heardTeam.get(w.tag);
+    if (!heard) this.heardTeam.set(w.tag, (heard = new Map()));
+    heard.set(inner.packet.peer.id, this.now());
     if (inner.office?.name) this.names.set(w.tag, inner.office.name);
     if (inner.office?.room) this.opts.onRoom?.(w.tag, inner.office.room, inner.packet.peer.id);
   }
@@ -1359,6 +1369,10 @@ export class PeerNet {
     for (const [ch, peers] of this.seen) {
       if (!live.has(ch)) this.seen.delete(ch);
       else for (const [id, e] of peers) if (!this.live(e.at, t)) peers.delete(id);
+    }
+    for (const [tag, heard] of this.heardTeam) {
+      if (!live.has(tag)) this.heardTeam.delete(tag);
+      else for (const [id, at] of heard) if (t - at > ROOM_HOST_GONE_MS) heard.delete(id);
     }
     for (const tag of this.names.keys()) if (!live.has(tag)) this.names.delete(tag);
     for (const [tag, r] of this.rooms) if (!this.live(r.at, t)) this.rooms.delete(tag);
