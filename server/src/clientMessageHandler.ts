@@ -202,6 +202,11 @@ export function handleClientMessage(
       if (ctx.lan) handleOfficeChange(msg, send, ctx.lan, ctx.onOfficesChanged);
       break;
 
+    // Implemented in a later task (room host powers).
+    case 'setRoom':
+    case 'kickMember':
+      break;
+
     case 'sendChat':
     case 'deleteChat':
       if (!ctx.lan) break;
@@ -546,6 +551,8 @@ const KNOWN_CLIENT_TYPES: ReadonlySet<string> = new Set<ClientMessage['type']>([
   'setActiveView',
   'setRelayAdminToken',
   'relayKick',
+  'setRoom',
+  'kickMember',
   'arcadeStart',
   'submitScore',
   'openArcade',

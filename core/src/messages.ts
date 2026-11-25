@@ -75,7 +75,9 @@ export type ClientMessage =
   | OpenUsage
   | CloseUsage
   | FindSessions
-  | RelayKick;
+  | RelayKick
+  | SetRoom
+  | KickMember;
 
 export interface LayoutLoaded {
   type: 'layoutLoaded';
@@ -487,6 +489,9 @@ export interface OfficeSummary {
   name: string;
   host?: boolean;
   password?: string;
+  hostId?: string;
+  max?: number;
+  next?: string;
 }
 
 export interface RoomsState {
@@ -506,9 +511,10 @@ export interface RoomSummary {
 export interface OfficeNotice {
   type: 'officeNotice';
   reason: OfficeNoticeReason;
+  title?: string;
 }
 
-export type OfficeNoticeReason = 'publicFull';
+export type OfficeNoticeReason = 'publicFull' | 'kicked' | 'nowHost';
 
 export interface OfficeError {
   type: 'officeError';
@@ -522,7 +528,9 @@ export type OfficeErrorReason =
   | 'wrongPassword'
   | 'roomFull'
   | 'roomGone'
-  | 'timeout';
+  | 'timeout'
+  | 'banned'
+  | 'maxInvalid';
 
 export interface ProfileError {
   type: 'profileError';
@@ -722,22 +730,26 @@ export interface CreateOffice {
   type: 'createOffice';
   name: string;
   password?: string;
+  handover?: boolean;
 }
 
 export interface JoinOffice {
   type: 'joinOffice';
   tag: string;
   password?: string;
+  handover?: boolean;
 }
 
 export interface LeaveOffice {
   type: 'leaveOffice';
   tag: string;
+  handover?: boolean;
 }
 
 export interface SetActiveView {
   type: 'setActiveView';
   view: string;
+  handover?: boolean;
 }
 
 export interface SendChat {
@@ -827,5 +839,17 @@ export interface FindSessions {
 
 export interface RelayKick {
   type: 'relayKick';
+  peerId: string;
+}
+
+export interface SetRoom {
+  type: 'setRoom';
+  title?: string;
+  max?: number;
+  password?: string;
+}
+
+export interface KickMember {
+  type: 'kickMember';
   peerId: string;
 }

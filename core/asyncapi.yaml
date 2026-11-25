@@ -152,6 +152,8 @@ components:
         - $ref: '#/components/schemas/CloseUsage'
         - $ref: '#/components/schemas/FindSessions'
         - $ref: '#/components/schemas/RelayKick'
+        - $ref: '#/components/schemas/SetRoom'
+        - $ref: '#/components/schemas/KickMember'
       discriminator: type
 
     # ── Server message variants ────────────────────────────────────
@@ -563,6 +565,9 @@ components:
       description: >-
         A joined team office (room). `name` is '' when unknown. `host` = this
         PC created it; `password` = its access code, shown to its host only.
+        Room state (host, limit, successor) is never sent to the browser
+        except these fields. `hostId` = the room host's peer id, `max` = the
+        people limit, `next` = the successor's label (host only, '' = none).
       type: object
       additionalProperties: false
       required: [tag, name]
@@ -574,6 +579,12 @@ components:
         host:
           type: boolean
         password:
+          type: string
+        hostId:
+          type: string
+        max:
+          type: integer
+        next:
           type: string
 
     RoomsState:
@@ -597,7 +608,9 @@ components:
         Something the server did to the office view on its own, to every
         loopback page: `publicFull` = the public office already holds its 20
         people on this network and none of them took this PC in, so it moved
-        to personal mode.
+        to personal mode; `kicked` = the host removed this PC from the room
+        `title` (moved to personal); `nowHost` = this PC became host of the
+        room `title`.
       type: object
       additionalProperties: false
       required: [type, reason]
@@ -606,10 +619,12 @@ components:
           const: officeNotice
         reason:
           $ref: '#/components/schemas/OfficeNoticeReason'
+        title:
+          type: string
 
     OfficeNoticeReason:
       type: string
-      enum: [publicFull]
+      enum: [publicFull, kicked, nowHost]
 
     RoomSummary:
       description: >-
@@ -999,6 +1014,8 @@ components:
           roomFull,
           roomGone,
           timeout,
+          banned,
+          maxInvalid,
         ]
 
     LayoutSaved:
@@ -1936,12 +1953,47 @@ components:
           type: string
           pattern: '^[A-Za-z0-9_.-]{1,64}$'
 
+    SetRoom:
+      description: >-
+        Host only (loopback browser only): change the hosted room's `title`,
+        `max` people (2-20) and/or access code `password` ('' = open). Room
+        state is never sent to the browser except the OfficeSummary fields;
+        `password` is still host-only. Answered with officesState (or
+        officeError).
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: setRoom
+        title:
+          type: string
+        max:
+          type: integer
+        password:
+          type: string
+
+    KickMember:
+      description: >-
+        Host only (loopback browser only): remove a member from the hosted
+        room and ban it from rejoining.
+      type: object
+      additionalProperties: false
+      required: [type, peerId]
+      properties:
+        type:
+          const: kickMember
+        peerId:
+          type: string
+          pattern: '^[A-Za-z0-9_.-]{1,64}$'
+
     CreateOffice:
       description: >-
         Create a room hosted by this PC (loopback browser only): `name` = its
         title (1–20 chars), `password` = an optional access code (≤ 32 chars,
         '' = anyone may join). Answered with officesState (or officeError).
-        Already in a team: that team is left in the same save.
+        Already in a team: that team is left in the same save (`handover` =
+        hand over the room this PC hosts first).
       type: object
       additionalProperties: false
       required: [type, name]
@@ -1952,13 +2004,16 @@ components:
           type: string
         password:
           type: string
+        handover:
+          type: boolean
 
     JoinOffice:
       description: >-
         Join a listed room (loopback browser only) through its host, with
         its access code when it has one. Answered with officesState once the
         host lets this PC in, else officeError. Already in a team: that team
-        is left in the same save.
+        is left in the same save (`handover` = hand over the room this PC
+        hosts first).
       type: object
       additionalProperties: false
       required: [type, tag]
@@ -1969,9 +2024,13 @@ components:
           type: string
         password:
           type: string
+        handover:
+          type: boolean
 
     LeaveOffice:
-      description: Leave a team office (loopback browser only). Answered with officesState.
+      description: >-
+        Leave a team office (loopback browser only). Answered with officesState.
+        `handover` = hand the room this PC hosts to its successor first.
       type: object
       additionalProperties: false
       required: [type, tag]
@@ -1980,6 +2039,8 @@ components:
           const: leaveOffice
         tag:
           type: string
+        handover:
+          type: boolean
 
     SetActiveView:
       description: >-
@@ -1987,7 +2048,8 @@ components:
         `personal` (this PC alone, offline: no datagram in or out, team offices
         kept; its own smaller layout). Loopback browser only; any other value is
         refused (officesState re-sent). Switching personal on or off sends
-        layoutLoaded (that mode's layout) before officesState.
+        layoutLoaded (that mode's layout) before officesState. `handover` =
+        hand over the room this PC hosts when switching away from it.
       type: object
       additionalProperties: false
       required: [type, view]
@@ -1996,6 +2058,8 @@ components:
           const: setActiveView
         view:
           type: string
+        handover:
+          type: boolean
 
     SendChat:
       description: >-

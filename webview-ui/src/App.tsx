@@ -317,9 +317,19 @@ function App() {
 
   // A short toast: the server refused a layout save, [Save] got no answer (the editor
   // keeps the layout), or a relayKick answer. A new object per event restarts the timer.
-  const [toast, setToast] = useState<{ key: Key; ok?: true; long?: true } | null>(null);
+  const [toast, setToast] = useState<{
+    key: Key;
+    params?: Record<string, string>;
+    ok?: true;
+    long?: true;
+  } | null>(null);
   useEffect(() => {
-    if (officeNotice) setToast({ key: `office.notice.${officeNotice.reason}`, long: true });
+    if (officeNotice)
+      setToast({
+        key: `office.notice.${officeNotice.reason}`,
+        params: { title: officeNotice.title ?? '' },
+        long: true,
+      });
   }, [officeNotice]);
   useEffect(() => {
     if (layoutSaveRejections > 0) setToast({ key: 'app.layoutSaveRejected' });
@@ -756,7 +766,7 @@ function App() {
             role="alert"
             className={`absolute left-1/2 -translate-x-1/2 bottom-80 z-20 ${toast.ok ? 'bg-accent' : 'bg-danger'} text-white text-sm py-3 px-8 rounded-none border-2 border-border shadow-pixel pointer-events-none ${toast.long ? 'w-max max-w-[90vw] text-center' : 'whitespace-nowrap'}`}
           >
-            {t(toast.key)}
+            {t(toast.key, toast.params)}
           </div>
         )}
 
